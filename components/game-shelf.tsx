@@ -96,7 +96,7 @@ export function GameShelf({ games, index, onIndex, onLaunch }: GameShelfProps) {
 
       <div
         className={cn(
-          "flex w-max items-end gap-6 transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none sm:gap-8",
+          "flex w-max items-end gap-6 [transform-style:preserve-3d] transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none sm:gap-8",
           metrics.step === 0 && "opacity-0",
         )}
         style={{ transform: `translate3d(${offset}px, 0, 0)` }}
@@ -104,54 +104,73 @@ export function GameShelf({ games, index, onIndex, onLaunch }: GameShelfProps) {
         {games.map((game, gameIndex) => {
           const selected = gameIndex === index
           const delta = gameIndex - index
-          const rotate = Math.max(-26, Math.min(26, delta * -12))
+          const absDelta = Math.abs(delta)
+          const isOffscreen = absDelta > 12
+
+          // Parabolic / Bezier 3D arc offsets
+          const arcY = Math.min(36, Math.pow(absDelta, 1.35) * 3.6)
+          const arcZ = -Math.min(260, Math.pow(absDelta, 1.25) * 32)
+          const rotateY = -Math.sign(delta) * Math.min(35, Math.pow(absDelta, 0.72) * 13)
+          const scale = selected ? 1.08 : Math.max(0.74, 1 - Math.pow(absDelta, 0.8) * 0.075)
+          const opacity = selected ? 1 : Math.max(0.38, 1 - Math.pow(absDelta, 0.7) * 0.18)
+          const zIndex = selected ? 30 : Math.max(1, 20 - absDelta)
+
           return (
             <div
               key={game.id}
               ref={gameIndex === 0 ? tileRef : undefined}
-              className="flex w-[148px] shrink-0 flex-col gap-3 transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none sm:w-[188px] lg:w-[210px]"
+              className={cn(
+                "flex w-[148px] shrink-0 flex-col gap-3 [transform-style:preserve-3d] transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none sm:w-[188px] lg:w-[210px]",
+                isOffscreen && "pointer-events-none invisible",
+              )}
               style={{
-                transform: `rotateY(${rotate * 0.45}deg) scale(${selected ? 1.04 : 0.9})`,
-                opacity: selected ? 1 : Math.max(0.42, 1 - Math.abs(delta) * 0.22),
-                zIndex: selected ? 2 : 1,
+                transform: `translate3d(0, ${arcY}px, ${arcZ}px) rotateY(${rotateY}deg) scale(${scale})`,
+                opacity,
+                zIndex,
               }}
             >
-              <button
-                type="button"
-                aria-current={selected ? "true" : undefined}
-                aria-label={
-                  selected ? `Play ${game.title}` : `Focus ${game.title}`
-                }
-                className={cn(
-                  "aspect-square w-full rounded-2xl transition-shadow duration-700 focus-visible:ring-3 focus-visible:ring-ring focus-visible:outline-none",
-                  selected &&
-                    "shadow-[0_18px_50px_oklch(0.62_0.12_245/0.35)] ring-1 ring-foreground/80",
-                )}
-                onClick={() => {
-                  if (ignoreClickRef.current) {
-                    ignoreClickRef.current = false
-                    return
-                  }
-                  if (selected) onLaunch(gameIndex)
-                  else onIndex(gameIndex)
-                }}
-              >
-                <GameCover game={game} selected={selected} />
-              </button>
-              <div
-                aria-hidden
-                className="h-16 overflow-hidden opacity-50"
-                style={{
-                  maskImage:
-                    "linear-gradient(to bottom, oklch(1 0 0 / 70%), transparent)",
-                }}
-              >
-                <div className="origin-top -scale-y-100">
-                  <div className="aspect-square w-full">
-                    <GameCover game={game} />
+              {isOffscreen ? (
+                <div className="aspect-square w-full rounded-2xl" />
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    aria-current={selected ? "true" : undefined}
+                    aria-label={
+                      selected ? `Play ${game.title}` : `Focus ${game.title}`
+                    }
+                    className={cn(
+                      "aspect-square w-full rounded-2xl transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] focus-visible:ring-3 focus-visible:ring-ring focus-visible:outline-none",
+                      selected &&
+                        "shadow-[0_20px_60px_oklch(0.62_0.14_245/0.45)] ring-2 ring-primary/80 ring-offset-2 ring-offset-background",
+                    )}
+                    onClick={() => {
+                      if (ignoreClickRef.current) {
+                        ignoreClickRef.current = false
+                        return
+                      }
+                      if (selected) onLaunch(gameIndex)
+                      else onIndex(gameIndex)
+                    }}
+                  >
+                    <GameCover game={game} selected={selected} />
+                  </button>
+                  <div
+                    aria-hidden
+                    className="h-16 overflow-hidden opacity-50 transition-opacity duration-700"
+                    style={{
+                      maskImage:
+                        "linear-gradient(to bottom, oklch(1 0 0 / 70%), transparent)",
+                    }}
+                  >
+                    <div className="origin-top -scale-y-100">
+                      <div className="aspect-square w-full">
+                        <GameCover game={game} />
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
+                </>
+              )}
             </div>
           )
         })}

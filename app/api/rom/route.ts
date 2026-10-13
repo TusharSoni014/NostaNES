@@ -1,5 +1,5 @@
 import type { NextRequest } from "next/server"
-import { isSafeNesFile, R2_NES_PREFIX } from "@/lib/games"
+import { isSafeNesFile, R2_NES_PREFIX, R2_PUBLIC_BASE } from "@/lib/games"
 
 export async function GET(request: NextRequest) {
   const file = request.nextUrl.searchParams.get("file") ?? ""
@@ -7,12 +7,30 @@ export async function GET(request: NextRequest) {
     return Response.json({ error: "Unknown ROM" }, { status: 400 })
   }
 
-  const upstream = `${R2_NES_PREFIX}/${encodeURIComponent(file)}`
-  const response = await fetch(upstream)
+  const urlsToTry = [
+    `${R2_NES_PREFIX}/${encodeURIComponent(file)}`,
+    `${R2_PUBLIC_BASE}/${encodeURIComponent(file)}`,
+  ]
 
-  if (!response.ok || !response.body) {
+  let upstreamResponse: Response | null = null
+
+  for (const upstream of urlsToTry) {
+    try {
+      const response = await fetch(upstream)
+      if (response.ok && response.body) {
+        upstreamResponse = response
+        break
+      }
+    } catch {
+      // Continue to next candidate
+    }
+  }
+
+  if (!upstreamResponse || !upstreamResponse.body) {
     return Response.json({ error: "ROM not found" }, { status: 404 })
   }
+
+  const response = upstreamResponse
 
   const headers = new Headers({
     "Content-Type": "application/octet-stream",

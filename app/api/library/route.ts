@@ -1,32 +1,21 @@
-import { cacheLife } from "next/cache"
-import raw from "@/data/roms.json"
-import {
-  CATALOG_URL,
-  mergeLibrary,
-  normalizeCatalog,
-  type RomEntry,
-} from "@/lib/games"
+import { fetchGamesFromBucket } from "@/lib/r2"
 
 export async function GET() {
-  const games = await loadLibrary()
-  return Response.json({ games })
-}
-
-async function loadLibrary() {
-  "use cache"
-  cacheLife("minutes")
-
-  const local = raw as RomEntry[]
-  let remote: RomEntry[] = []
-
   try {
-    const response = await fetch(CATALOG_URL, { cache: "no-store" })
-    if (response.ok) {
-      remote = normalizeCatalog(await response.json())
-    }
-  } catch {
-    remote = []
+    const games = await fetchGamesFromBucket()
+    return Response.json(
+      { games },
+      {
+        headers: {
+          "Cache-Control": "public, max-age=30, stale-while-revalidate=60",
+        },
+      },
+    )
+  } catch (error) {
+    console.error("Failed to fetch games from bucket:", error)
+    return Response.json(
+      { games: [], error: "Failed to load library from server" },
+      { status: 500 },
+    )
   }
-
-  return mergeLibrary(local, remote)
 }

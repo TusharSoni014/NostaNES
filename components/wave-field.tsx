@@ -17,8 +17,21 @@ uniform vec2 u_pointer;
 uniform float u_motion;
 uniform float u_shift;
 
+// Triangular dither to eliminate color banding in deep 8-bit darks
 float dither(vec2 px) {
   return fract(52.9829189 * fract(dot(px, vec2(0.06711056, 0.00583715))));
+}
+
+// Dynamic undulating silk wave with traveling current
+float silkWave(float x, float t, float layer) {
+  // Horizontal drift gives ribbons continuous, noticeable flowing motion
+  float flowX = x * (0.55 + layer * 0.12) + t * (0.38 + layer * 0.14);
+  float w = sin(flowX + layer * 1.45) * (0.24 - layer * 0.03);
+  w += sin(x * 1.15 - t * 0.28 + layer * 2.2) * 0.11;
+  w += cos(x * 0.38 + t * 0.18 + layer * 0.8) * 0.15;
+  // Dynamic response when user navigates through shelf
+  w += sin(x * 1.6 + u_shift * 3.14159) * 0.045 * u_motion;
+  return w;
 }
 
 void main() {
@@ -26,34 +39,68 @@ void main() {
   vec2 uv = frag / u_resolution;
   float aspect = u_resolution.x / max(u_resolution.y, 1.0);
   vec2 p = (uv - 0.5) * vec2(aspect, 1.0);
+
   float t = u_time * u_motion;
-  p += u_pointer * 0.04;
 
-  vec2 q = p;
-  q.x += sin(p.y * 1.2 + t * 0.14) * 0.12;
-  q.y += sin(p.x * 0.65 + t * 0.08) * 0.04;
+  // Fluid pointer parallax
+  p += u_pointer * 0.035;
 
-  vec3 col = vec3(0.008, 0.018, 0.05);
+  // Diagonal flow matrix (~14 deg tilt for organic drape)
+  float angle = -0.22;
+  mat2 rot = mat2(cos(angle), sin(angle), -sin(angle), cos(angle));
+  vec2 pr = rot * p;
 
+  // Add subtle space warp for natural liquid fluid dynamics
+  pr.x += sin(pr.y * 1.4 + t * 0.22) * 0.08;
+  pr.y += cos(pr.x * 0.8 + t * 0.16) * 0.05;
+
+  // Deep obsidian base canvas (#030716)
+  vec3 col = vec3(0.006, 0.014, 0.034);
+
+  // Flowing atmospheric backlight that pulses and drifts slowly
+  vec2 lightPos = vec2(-0.25 * aspect + sin(t * 0.15) * 0.08, 0.15 + cos(t * 0.12) * 0.06);
+  float dLight = length(p - lightPos);
+  vec3 ambientGlow = vec3(0.022, 0.075, 0.18) * exp(-dLight * 1.45);
+  col += ambientGlow;
+
+  // 4 deep, luxurious translucent silk folds with parallax speeds
   for (int i = 0; i < 4; i++) {
     float fi = float(i);
-    float freq = 0.62 + fi * 0.14;
-    float y = sin(q.x * freq + t * (0.1 + fi * 0.025) + fi * 1.7) * 0.16;
-    y += sin(q.x * 0.28 - t * 0.06 + fi) * 0.05;
-    y += (fi - 1.5) * 0.3;
-    float d = q.y - y;
-    float sigma = 0.115 + fi * 0.012;
-    float glow = exp(-(d * d) / (sigma * sigma));
-    float core = exp(-(d * d) / (sigma * sigma * 0.22));
-    vec3 body = mix(vec3(0.0, 0.22, 0.62), vec3(0.12, 0.5, 0.95), fi / 3.0);
-    vec3 hot = mix(vec3(0.45, 0.78, 1.0), vec3(0.82, 0.94, 1.0), fi / 3.0);
-    body = mix(body, vec3(0.08, 0.4, 0.9), u_shift * 0.4);
-    col += body * glow * 0.72;
-    col += hot * core * 0.22;
+    float depth = fi / 3.0; // 0.0 (deep background) to 1.0 (foreground)
+
+    // Noticeable traveling speed per layer
+    float tLayer = t * (0.42 + depth * 0.18) + u_shift * 0.45;
+    float crestY = silkWave(pr.x, tLayer, fi) + (fi - 1.5) * 0.22;
+    float dy = pr.y - crestY;
+
+    // Smooth Gaussian light envelopes with silky falloff
+    float broadBand = exp(-(dy * dy) / (0.05 + depth * 0.035));
+    float softCore = exp(-(dy * dy) / (0.008 + depth * 0.006));
+    float rimShine = exp(-abs(dy) * 22.0) * (0.35 + depth * 0.2);
+
+    // Deep, flowing PlayStation-inspired sapphire & navy palette
+    vec3 bandCol = mix(vec3(0.012, 0.055, 0.15), vec3(0.028, 0.12, 0.32), depth);
+    vec3 coreCol = mix(vec3(0.035, 0.14, 0.34), vec3(0.07, 0.26, 0.62), depth);
+    vec3 rimCol = mix(vec3(0.12, 0.38, 0.82), vec3(0.24, 0.62, 0.98), depth);
+
+    // Dynamic carousel browsing accent
+    bandCol = mix(bandCol, vec3(0.04, 0.18, 0.44), u_shift * 0.35);
+
+    col += bandCol * broadBand * 0.55;
+    col += coreCol * softCore * 0.32;
+    col += rimCol * rimShine * 0.18;
   }
 
-  float vig = smoothstep(1.22, 0.22, length(p * vec2(0.62, 0.9)));
-  col *= mix(0.78, 1.0, vig);
+  // Text legibility mask: gently deepen the center zone where big title and tags sit
+  float centerDist = length(p * vec2(0.85, 1.3));
+  float textClearZone = smoothstep(0.15, 0.85, centerDist);
+  col = mix(col * 0.78, col, textClearZone);
+
+  // Soft vignette around edges for cinematic console frame
+  float vig = smoothstep(1.4, 0.36, length(p * vec2(0.62, 0.88)));
+  col *= mix(0.72, 1.0, vig);
+
+  // Strict clamp to maintain calm, non-glaring deep background
   col = clamp(col, 0.0, 1.0);
   col += (dither(frag) - 0.5) / 255.0;
 
@@ -104,7 +151,7 @@ export function WaveField({ shift }: WaveFieldProps) {
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
       renderer.outputColorSpace = THREE.LinearSRGBColorSpace
       renderer.toneMapping = THREE.NoToneMapping
-      renderer.setClearColor(0x071422, 1)
+      renderer.setClearColor(0x020712, 1)
       renderer.domElement.style.width = "100%"
       renderer.domElement.style.height = "100%"
       renderer.domElement.style.display = "block"

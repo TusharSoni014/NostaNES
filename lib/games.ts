@@ -1,14 +1,10 @@
 export const R2_PUBLIC_BASE =
+  process.env.NEXT_PUBLIC_BUCKET_URL ||
+  process.env.R2_PUBLIC_BASE ||
   "https://pub-703c32454a66472bbf4e8546b6c0894f.r2.dev"
 
-export const R2_NES_PREFIX = `${R2_PUBLIC_BASE}/NES`
-
-export const CATALOG_URL = `${R2_NES_PREFIX}/catalog.json`
-
-export type RomEntry = {
-  file: string
-  year?: number
-}
+export const R2_NES_PREFIX =
+  process.env.R2_NES_PREFIX || `${R2_PUBLIC_BASE}/NES`
 
 export type Game = {
   id: string
@@ -75,55 +71,23 @@ export function parseRomFile(file: string, year?: number): Game {
     .replace(/\s+/g, " ")
     .trim()
 
+  const detectedYear =
+    year ??
+    (() => {
+      const found = tags.find((t) => /^(19\d\d|20\d\d)$/.test(t))
+      return found ? parseInt(found, 10) : undefined
+    })()
+
   return {
     id: file,
     file,
     title: title || file,
     region,
     tags,
-    year,
+    year: detectedYear,
   }
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null
-}
-
-export function normalizeCatalog(input: unknown): RomEntry[] {
-  const list = Array.isArray(input)
-    ? input
-    : isRecord(input) && Array.isArray(input.games)
-      ? input.games
-      : []
-
-  return list.flatMap((item) => {
-    if (typeof item === "string") return [{ file: item }]
-    if (isRecord(item) && typeof item.file === "string") {
-      return [
-        {
-          file: item.file,
-          year: typeof item.year === "number" ? item.year : undefined,
-        },
-      ]
-    }
-    return []
-  })
-}
-
-export function mergeLibrary(local: RomEntry[], remote: RomEntry[]): Game[] {
-  const map = new Map<string, RomEntry>()
-
-  for (const entry of [...local, ...remote]) {
-    if (!isSafeNesFile(entry.file)) continue
-    const previous = map.get(entry.file)
-    map.set(entry.file, {
-      file: entry.file,
-      year: entry.year ?? previous?.year,
-    })
-  }
-
-  return [...map.values()].map((entry) => parseRomFile(entry.file, entry.year))
-}
 
 export function coverPalette(title: string) {
   const palettes = [

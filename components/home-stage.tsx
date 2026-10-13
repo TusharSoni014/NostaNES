@@ -2,26 +2,16 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { Gamepad2Icon, PlayIcon, SearchIcon } from "lucide-react"
-import { GameShelf } from "@/components/game-shelf"
+import { Clock } from "@/components/clock"
+import { ControlsDialog } from "@/components/controls-dialog"
+import { GameDetailsPanel } from "@/components/game-details-panel"
+import { GameList } from "@/components/game-list"
+import { GameListSkeleton } from "@/components/game-list-skeleton"
+import { GamepadStatusIndicator } from "@/components/gamepad-status-indicator"
 import { PlayerStage } from "@/components/player-stage"
+import { useShelfNavigation } from "@/components/use-shelf-navigation"
 import { WaveField } from "@/components/wave-field"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Field, FieldLabel } from "@/components/ui/field"
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupInput,
-} from "@/components/ui/input-group"
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
 import {
   Empty,
   EmptyDescription,
@@ -29,39 +19,65 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty"
+import { Field, FieldLabel } from "@/components/ui/field"
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+} from "@/components/ui/input-group"
 import { Kbd } from "@/components/ui/kbd"
 import { Separator } from "@/components/ui/separator"
-import { Skeleton } from "@/components/ui/skeleton"
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { motion, AnimatePresence } from "motion/react"
 import type { Game } from "@/lib/games"
 
-export function HomeStage() {
-  const [games, setGames] = useState<Game[] | null>(null)
+export type HomeStageProps = {
+  initialGames?: Game[]
+}
+
+export function HomeStage({ initialGames }: HomeStageProps = {}) {
+  const [games, setGames] = useState<Game[] | null>(
+    initialGames && initialGames.length > 0 ? initialGames : null,
+  )
   const [failed, setFailed] = useState(false)
   const [index, setIndex] = useState(0)
   const [playing, setPlaying] = useState<Game | null>(null)
   const [controlsOpen, setControlsOpen] = useState(false)
   const [query, setQuery] = useState("")
   const [region, setRegion] = useState("All")
+  const [reloadKey, setReloadKey] = useState(0)
 
+  // Fetch games dynamically from server if not pre-populated or if reloaded
   useEffect(() => {
+    if (initialGames && initialGames.length > 0 && reloadKey === 0) {
+      return
+    }
+
     const controller = new AbortController()
-    fetch("/api/library", { signal: controller.signal })
+    fetch("/api/library", {
+      signal: controller.signal,
+      cache: "no-store",
+    })
       .then((response) => {
-        if (!response.ok) throw new Error("library")
+        if (!response.ok) throw new Error("Failed to load library from server")
         return response.json() as Promise<{ games: Game[] }>
       })
-      .then((data) => setGames(data.games))
+      .then((data) => {
+        setGames(data.games)
+        setFailed(false)
+      })
       .catch((error: unknown) => {
         if (error instanceof DOMException && error.name === "AbortError") return
         setFailed(true)
       })
+
     return () => controller.abort()
-  }, [])
+  }, [initialGames, reloadKey])
 
   const regions = useMemo(() => {
     const found = new Set<string>()
@@ -93,99 +109,51 @@ export function HomeStage() {
     [count],
   )
 
+  const jump = useCallback(
+    (step: number) => {
+      setIndex((current) => {
+        const next = Math.max(0, Math.min(count - 1, current + step))
+        return next
+      })
+    },
+    [count],
+  )
+
   const launch = useCallback(() => {
     if (!selected) return
     setPlaying(selected)
   }, [selected])
 
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if (playing) {
-        if (event.key === "Escape") {
-          event.preventDefault()
-          event.stopPropagation()
-          setPlaying(null)
-        }
-        return
-      }
-      if (controlsOpen) return
-      const target = event.target
-      if (
-        target instanceof HTMLElement &&
-        target.closest("input, textarea, [data-slot=toggle-group]")
-      ) {
-        return
-      }
-      const onControl =
-        target instanceof HTMLElement &&
-        Boolean(target.closest("button, a, input, textarea"))
-      if (event.key === "ArrowRight") {
-        event.preventDefault()
-        move(1)
-      } else if (event.key === "ArrowLeft") {
-        event.preventDefault()
-        move(-1)
-      } else if (event.key === "Enter" && !onControl) {
-        event.preventDefault()
-        launch()
-      }
-    }
-    window.addEventListener("keydown", onKey, true)
-    return () => window.removeEventListener("keydown", onKey, true)
-  }, [controlsOpen, launch, move, playing])
+  const toggleControls = useCallback(() => {
+    setControlsOpen((prev) => !prev)
+  }, [])
 
-  useEffect(() => {
-    if (playing || count === 0) return
-    let frame = 0
-    let lockUntil = 0
-    let previousCross = false
-
-    const loop = (time: number) => {
-      const pads = navigator.getGamepads?.() ?? []
-      const pad = [...pads].find((item) => item !== null)
-      if (pad) {
-        const left = (pad.axes[0] ?? 0) < -0.55 || Boolean(pad.buttons[14]?.pressed)
-        const right = (pad.axes[0] ?? 0) > 0.55 || Boolean(pad.buttons[15]?.pressed)
-        if (time > lockUntil && (left || right)) {
-          move(left ? -1 : 1)
-          lockUntil = time + 260
-        }
-        const cross = Boolean(pad.buttons[0]?.pressed)
-        if (cross && !previousCross) launch()
-        previousCross = cross
-      }
-      frame = window.requestAnimationFrame(loop)
-    }
-
-    frame = window.requestAnimationFrame(loop)
-    return () => window.cancelAnimationFrame(frame)
-  }, [count, launch, move, playing])
-
-  useEffect(() => {
-    let lockUntil = 0
-    const onWheel = (event: WheelEvent) => {
-      if (playing || controlsOpen) return
-      const delta =
-        Math.abs(event.deltaX) > Math.abs(event.deltaY)
-          ? event.deltaX
-          : event.deltaY
-      if (Math.abs(delta) < 8) return
-      event.preventDefault()
-      const now = performance.now()
-      if (now < lockUntil) return
-      lockUntil = now + 280
-      move(delta > 0 ? 1 : -1)
-    }
-    window.addEventListener("wheel", onWheel, { passive: false })
-    return () => window.removeEventListener("wheel", onWheel)
-  }, [controlsOpen, move, playing])
+  // Hook handles Keyboard, Gamepad (Xbox/PlayStation/generic), and mouse wheel
+  useShelfNavigation({
+    count,
+    isPlaying: Boolean(playing),
+    controlsOpen,
+    move,
+    jump,
+    launch,
+    onToggleControls: toggleControls,
+  })
 
   return (
     <div className="relative flex h-dvh flex-col overflow-hidden">
       <WaveField shift={count === 0 ? 0 : (index % 4) / 3} />
 
-      <div className="relative z-10 flex min-h-0 flex-1 flex-col">
-        <header className="flex items-center justify-between gap-4 px-5 pt-6 sm:px-10">
+      <motion.div
+        animate={{
+          opacity: playing ? 0 : 1,
+          scale: playing ? 0.94 : 1,
+          filter: playing ? "blur(6px)" : "blur(0px)",
+          y: playing ? 16 : 0,
+        }}
+        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+        className="relative z-10 flex min-h-0 flex-1 flex-col"
+      >
+        <header className="flex shrink-0 items-center justify-between gap-4 px-5 pt-6 sm:px-10">
           <div className="flex items-center gap-3">
             <span className="grid size-9 place-items-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
               N
@@ -197,10 +165,13 @@ export function HomeStage() {
               </p>
             </div>
           </div>
-          <Clock />
+          <div className="flex items-center gap-3">
+            <GamepadStatusIndicator />
+            <Clock />
+          </div>
         </header>
 
-        <div className="flex flex-col gap-3 px-4 pt-5 sm:px-10">
+        <div className="flex shrink-0 flex-col gap-3 px-4 pt-5 sm:px-10 z-20">
           <Field className="max-w-sm">
             <FieldLabel htmlFor="library-search" className="sr-only">
               Search cartridges
@@ -239,9 +210,9 @@ export function HomeStage() {
           </ToggleGroup>
         </div>
 
-        <main className="flex min-h-0 flex-1 flex-col justify-end">
+        <main className="flex min-h-0 flex-1 flex-col overflow-hidden py-3">
           {failed ? (
-            <div className="px-6 pb-16">
+            <div className="my-auto px-6 pb-16">
               <Empty>
                 <EmptyHeader>
                   <EmptyMedia variant="icon">
@@ -249,15 +220,28 @@ export function HomeStage() {
                   </EmptyMedia>
                   <EmptyTitle>The library did not load</EmptyTitle>
                   <EmptyDescription>
-                    Refresh the page to try the cartridge list again.
+                    Could not fetch cartridges from the server.
                   </EmptyDescription>
                 </EmptyHeader>
+                <div className="mt-4 flex justify-center">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setFailed(false)
+                      setReloadKey((k) => k + 1)
+                    }}
+                  >
+                    Retry
+                  </Button>
+                </div>
               </Empty>
             </div>
           ) : games === null ? (
-            <ShelfSkeleton />
+            <div className="flex min-h-0 flex-1 px-4 sm:px-10">
+              <GameListSkeleton />
+            </div>
           ) : games.length === 0 ? (
-            <div className="px-6 pb-16">
+            <div className="my-auto px-6 pb-16">
               <Empty>
                 <EmptyHeader>
                   <EmptyMedia variant="icon">
@@ -265,14 +249,14 @@ export function HomeStage() {
                   </EmptyMedia>
                   <EmptyTitle>No cartridges yet</EmptyTitle>
                   <EmptyDescription>
-                    Add NES files to the library list and they will appear on
-                    this shelf.
+                    Upload NES ROM files to the R2 bucket and they will appear
+                    automatically on this shelf.
                   </EmptyDescription>
                 </EmptyHeader>
               </Empty>
             </div>
           ) : visible.length === 0 ? (
-            <div className="px-6 pb-16">
+            <div className="my-auto px-6 pb-16">
               <Empty>
                 <EmptyHeader>
                   <EmptyMedia variant="icon">
@@ -286,84 +270,55 @@ export function HomeStage() {
               </Empty>
             </div>
           ) : selected ? (
-            <div className="flex flex-col gap-2">
-              <div
-                key={selected.id}
-                className="nostanes-rise flex flex-col items-center gap-3 px-6 text-center"
-              >
-                <div className="flex flex-wrap items-center justify-center gap-2">
-                  <Badge>NES</Badge>
-                  <Badge variant="outline">{selected.region}</Badge>
-                  {selected.year ? (
-                    <Badge variant="secondary">{selected.year}</Badge>
-                  ) : null}
-                </div>
-                <h1 className="max-w-4xl text-4xl font-medium tracking-tight text-balance sm:text-6xl">
-                  {selected.title}
-                </h1>
-                <p className="text-sm text-muted-foreground">
-                  {selected.tags.length > 0
-                    ? selected.tags.join(" · ")
-                    : "Cartridge"}
-                  <span className="px-2 text-foreground/30">/</span>
-                  <span className="font-mono tracking-[0.18em]">
-                    {String(index + 1).padStart(2, "0")}
-                    {" · "}
-                    {String(visible.length).padStart(2, "0")}
-                  </span>
-                </p>
+            <div className="flex min-h-0 flex-1 flex-col md:flex-row gap-6 lg:gap-8 overflow-hidden px-3 sm:px-8">
+              {/* Left Column: Scrollable list of games */}
+              <div className="flex min-h-0 flex-1 flex-col">
+                <GameList
+                  games={visible}
+                  selectedIndex={index}
+                  onSelectIndex={setIndex}
+                  onLaunch={(next) => {
+                    const game = visible[next]
+                    if (game) setPlaying(game)
+                  }}
+                />
               </div>
-              <GameShelf
-                games={visible}
-                index={index}
-                onIndex={setIndex}
-                onLaunch={(next) => {
-                  const game = visible[next]
-                  if (game) setPlaying(game)
-                }}
-              />
+
+              {/* Right Column: Selected game preview and details (Tablet/Desktop) */}
+              <div className="hidden shrink-0 md:flex flex-col justify-center min-h-0 max-h-full">
+                <GameDetailsPanel
+                  game={selected}
+                  onLaunch={() => setPlaying(selected)}
+                />
+              </div>
             </div>
           ) : null}
         </main>
 
-        <footer className="flex items-center justify-between gap-3 px-4 pb-5 sm:px-10">
+        <footer className="flex shrink-0 items-center justify-between gap-3 px-4 pb-5 sm:px-10">
           <div className="hidden flex-wrap items-center gap-3 text-sm text-muted-foreground sm:flex">
             <span className="flex items-center gap-1">
-              <Kbd>←</Kbd>
-              <Kbd>→</Kbd>
-              Move
+              <Kbd>↑</Kbd>
+              <Kbd>↓</Kbd>
+              <span className="text-[11px] text-muted-foreground/75">(D-Pad)</span>
+              Navigate
             </span>
             <Separator orientation="vertical" className="hidden h-4 sm:block" />
             <span className="flex items-center gap-1">
               <Kbd>Enter</Kbd>
-              Start
+              <span className="text-[11px] text-muted-foreground/75">(A/✕)</span>
+              Play
+            </span>
+            <Separator orientation="vertical" className="hidden h-4 sm:block" />
+            <span className="text-xs text-muted-foreground/80">
+              {visible.length} {visible.length === 1 ? "game" : "games"} available
             </span>
           </div>
           <div className="ml-auto flex items-center gap-2">
-            <Dialog open={controlsOpen} onOpenChange={setControlsOpen}>
-              <DialogTrigger render={<Button variant="outline" size="lg" />}>
-                Controls
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Controls</DialogTitle>
-                  <DialogDescription>
-                    Move along the shelf, then play with the NES layout.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="flex flex-col gap-3">
-                  <ControlRow label="Move on the shelf" keys={["←", "→"]} />
-                  <ControlRow label="Start the game" keys={["Enter"]} />
-                  <Separator />
-                  <ControlRow label="D-pad" keys={["Arrows"]} />
-                  <ControlRow label="B button" keys={["Z"]} />
-                  <ControlRow label="A button" keys={["X"]} />
-                  <ControlRow label="Start" keys={["Enter"]} />
-                  <ControlRow label="Select" keys={["Shift"]} />
-                  <ControlRow label="Leave the game" keys={["Esc"]} />
-                </div>
-              </DialogContent>
-            </Dialog>
+            <ControlsDialog
+              open={controlsOpen}
+              onOpenChange={setControlsOpen}
+            />
             <Tooltip>
               <TooltipTrigger
                 render={
@@ -377,64 +332,13 @@ export function HomeStage() {
             </Tooltip>
           </div>
         </footer>
-      </div>
+      </motion.div>
 
-      {playing ? (
-        <PlayerStage game={playing} onExit={() => setPlaying(null)} />
-      ) : null}
+      <AnimatePresence>
+        {playing ? (
+          <PlayerStage game={playing} onExit={() => setPlaying(null)} />
+        ) : null}
+      </AnimatePresence>
     </div>
-  )
-}
-
-function ControlRow({ label, keys }: { label: string; keys: string[] }) {
-  return (
-    <div className="flex items-center justify-between gap-4">
-      <span>{label}</span>
-      <span className="flex items-center gap-1">
-        {keys.map((key) => (
-          <Kbd key={key}>{key}</Kbd>
-        ))}
-      </span>
-    </div>
-  )
-}
-
-function ShelfSkeleton() {
-  return (
-    <div className="flex flex-col items-center gap-8 px-6 pb-10">
-      <div className="flex w-full max-w-md flex-col items-center gap-3">
-        <Skeleton className="h-5 w-24" />
-        <Skeleton className="h-12 w-64" />
-      </div>
-      <div className="flex items-center gap-6">
-        <Skeleton className="size-36 rounded-2xl opacity-60 sm:size-48" />
-        <Skeleton className="size-44 rounded-2xl sm:size-56" />
-        <Skeleton className="size-36 rounded-2xl opacity-60 sm:size-48" />
-      </div>
-    </div>
-  )
-}
-
-function Clock() {
-  const [label, setLabel] = useState<string | null>(null)
-
-  useEffect(() => {
-    const format = () =>
-      new Intl.DateTimeFormat(undefined, {
-        weekday: "short",
-        hour: "numeric",
-        minute: "2-digit",
-      }).format(new Date())
-
-    const update = () => setLabel(format())
-    update()
-    const id = window.setInterval(update, 1000)
-    return () => window.clearInterval(id)
-  }, [])
-
-  return (
-    <p className="font-mono text-sm text-muted-foreground tabular-nums">
-      {label ?? "––"}
-    </p>
   )
 }
