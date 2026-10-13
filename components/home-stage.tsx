@@ -146,12 +146,10 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
       <motion.div
         animate={{
           opacity: playing ? 0 : 1,
-          scale: playing ? 0.94 : 1,
-          filter: playing ? "blur(6px)" : "blur(0px)",
-          y: playing ? 16 : 0,
+          scale: playing ? 0.96 : 1,
         }}
-        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-        className="relative z-10 flex min-h-0 flex-1 flex-col"
+        transition={{ duration: 0.25, ease: "easeOut" }}
+        className="relative z-10 flex min-h-0 flex-1 flex-col will-change-[opacity,transform]"
       >
         <header className="flex shrink-0 items-center justify-between gap-4 px-5 pt-6 sm:px-10">
           <div className="flex items-center gap-3">

@@ -1,6 +1,6 @@
 "use client"
 
-import { GameCover } from "@/components/game-cover"
+import { NesControllerIcon } from "@/components/player/nes-controller-icon"
 import { Button } from "@/components/ui/button"
 import {
   Empty,
@@ -25,40 +25,37 @@ export const PlayerOverlay = ({ game, phase, onExit }: PlayerOverlayProps) => (
       {phase === "loading" && (
         <motion.div
           key="loading-overlay"
-          initial={{ opacity: 0, scale: 0.88 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 1.05, filter: "blur(10px)" }}
-          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-          className="absolute inset-0 flex flex-col items-center justify-center gap-6 bg-gradient-to-b from-background/95 to-background/85 p-6 backdrop-blur-xl"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.25, ease: "easeOut" }}
+          className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-6 bg-black p-6 will-change-opacity rounded-none"
         >
-          <motion.div
-            animate={{ scale: [0.97, 1.02, 0.97] }}
-            transition={{
-              repeat: Infinity,
-              duration: 3,
-              ease: "easeInOut",
-            }}
-            className="size-48 sm:size-60 drop-shadow-[0_25px_60px_rgba(0,0,0,0.95)]"
-          >
-            <GameCover game={game} selected />
-          </motion.div>
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15 }}
-            className="flex items-center gap-3 rounded-full border border-foreground/15 bg-background/80 px-5 py-2 text-xs text-muted-foreground backdrop-blur-xl shadow-2xl"
-          >
-            <Spinner className="size-3.5 text-primary" />
-            <span className="font-mono text-sm tracking-wide text-foreground">
-              Loading Cartridge...
+          {/* NES Emulator Controller Icon */}
+          <div className="flex flex-col items-center gap-4">
+            <NesControllerIcon className="w-52 sm:w-64 h-auto drop-shadow-[0_12px_32px_rgba(239,68,68,0.3)] animate-pulse" />
+            <div className="flex flex-col items-center gap-1 text-center">
+              <span className="text-xs font-mono font-medium uppercase tracking-[0.2em] text-red-400">
+                NES Emulator
+              </span>
+              <h3 className="text-sm sm:text-base font-bold tracking-tight text-white max-w-sm truncate">
+                {game.title}
+              </h3>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2.5 rounded-full border border-white/15 bg-white/5 px-4 py-1.5 text-xs text-white/80 shadow-xl">
+            <Spinner className="size-3 text-red-500" />
+            <span className="font-mono text-xs tracking-wider uppercase text-white/90">
+              Initializing Core & ROM...
             </span>
-          </motion.div>
+          </div>
         </motion.div>
       )}
     </AnimatePresence>
 
     {phase === "error" ? (
-      <div className="absolute inset-0 flex items-center justify-center bg-background/90 p-6">
+      <div className="absolute inset-0 z-20 flex items-center justify-center bg-black p-6 rounded-none">
         <Empty>
           <EmptyHeader>
             <EmptyTitle>The cartridge did not start</EmptyTitle>

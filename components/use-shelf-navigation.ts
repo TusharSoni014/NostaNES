@@ -13,6 +13,10 @@ type ShelfNavigationOptions = {
   onToggleControls?: () => void
 }
 
+const KEY_STEADY_INTERVAL_MS = 160
+const KEY_TURBO_INTERVAL_MS = 70
+const KEY_FAST_HOLD_THRESHOLD_MS = 2500
+
 /**
  * Handles keyboard arrows, Enter, Gamepad (Xbox/PlayStation/generic), and mouse wheel
  * navigation for browsing the cartridge library.
@@ -29,7 +33,6 @@ export const useShelfNavigation = ({
   launch,
   onToggleControls,
 }: ShelfNavigationOptions) => {
-  // Keep latest callbacks and options in a stable ref to prevent effect recreation
   const optionsRef = useRef({
     count,
     isPlaying,
@@ -39,6 +42,9 @@ export const useShelfNavigation = ({
     launch,
     onToggleControls,
   })
+
+  const lastKeyTimeRef = useRef(0)
+  const keyHoldStartRef = useRef(0)
 
   useEffect(() => {
     optionsRef.current = {
@@ -52,7 +58,7 @@ export const useShelfNavigation = ({
     }
   })
 
-  // Keyboard navigation
+  // Keyboard navigation matching console pacing
   useEffect(() => {
     if (isPlaying) return
 
@@ -72,13 +78,38 @@ export const useShelfNavigation = ({
         target instanceof HTMLElement &&
         Boolean(target.closest("button, a, input, textarea"))
 
-      if (event.key === "ArrowDown" || event.key === "ArrowRight") {
+      const isNavKey =
+        event.key === "ArrowDown" ||
+        event.key === "ArrowUp" ||
+        event.key === "ArrowLeft" ||
+        event.key === "ArrowRight"
+
+      if (isNavKey) {
         event.preventDefault()
-        opts.move(1)
-      } else if (event.key === "ArrowUp" || event.key === "ArrowLeft") {
-        event.preventDefault()
-        opts.move(-1)
-      } else if (event.key === "Enter" && !onControl) {
+        const now = performance.now()
+
+        if (event.repeat) {
+          const holdDuration = now - keyHoldStartRef.current
+          const interval =
+            holdDuration >= KEY_FAST_HOLD_THRESHOLD_MS
+              ? KEY_TURBO_INTERVAL_MS
+              : KEY_STEADY_INTERVAL_MS
+
+          if (now - lastKeyTimeRef.current < interval) {
+            return
+          }
+        } else {
+          keyHoldStartRef.current = now
+        }
+
+        lastKeyTimeRef.current = now
+        const dir =
+          event.key === "ArrowDown" || event.key === "ArrowRight" ? 1 : -1
+        opts.move(dir)
+        return
+      }
+
+      if (event.key === "Enter" && !onControl) {
         event.preventDefault()
         opts.launch()
       } else if (event.key === "PageDown" && opts.jump) {
@@ -90,8 +121,18 @@ export const useShelfNavigation = ({
       }
     }
 
+    const onKeyUp = (event: KeyboardEvent) => {
+      if (event.key.startsWith("Arrow")) {
+        keyHoldStartRef.current = 0
+      }
+    }
+
     window.addEventListener("keydown", onKey, true)
-    return () => window.removeEventListener("keydown", onKey, true)
+    window.addEventListener("keyup", onKeyUp, true)
+    return () => {
+      window.removeEventListener("keydown", onKey, true)
+      window.removeEventListener("keyup", onKeyUp, true)
+    }
   }, [isPlaying])
 
   // Native Gamepad navigation dispatcher

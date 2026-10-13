@@ -7,7 +7,6 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { motion } from "motion/react"
 import { cn } from "@/lib/utils"
 
 type PlayerHeaderProps = {
@@ -23,20 +22,19 @@ export const PlayerHeader = ({
   onToggleFullscreen,
   onRequestExit,
 }: PlayerHeaderProps) => (
-  <motion.header
-    initial={{ opacity: 0, y: -20 }}
-    animate={{ opacity: 1, y: 0 }}
-    transition={{ duration: 0.4, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+  <header
     className={cn(
-      "flex shrink-0 items-center justify-between gap-4 px-6 py-4 transition-all sm:px-10",
-      isFullscreen && "bg-background/80 backdrop-blur-md",
+      "flex shrink-0 items-center justify-between gap-4 px-6 py-3 transition-opacity duration-200 z-30 sm:px-10",
+      isFullscreen
+        ? "absolute top-0 inset-x-0 opacity-0 hover:opacity-100 focus-within:opacity-100 bg-gradient-to-b from-black/90 via-black/40 to-transparent"
+        : "bg-black/90",
     )}
   >
     <div className="flex min-w-0 flex-col gap-0.5">
-      <p className="text-[11px] tracking-[0.22em] text-muted-foreground uppercase">
+      <p className="text-[11px] tracking-[0.22em] text-white/50 uppercase">
         Now playing
       </p>
-      <h2 className="truncate text-lg font-semibold tracking-tight sm:text-xl">
+      <h2 className="truncate text-base font-semibold tracking-tight text-white sm:text-lg">
         {title}
       </h2>
     </div>
@@ -49,6 +47,7 @@ export const PlayerHeader = ({
               size="icon"
               aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
               onClick={onToggleFullscreen}
+              className="bg-black/40 border-white/20 text-white hover:bg-white/10"
             />
           }
         >
@@ -69,6 +68,7 @@ export const PlayerHeader = ({
               variant="outline"
               onClick={onRequestExit}
               aria-label="Exit game"
+              className="bg-black/40 border-white/20 text-white hover:bg-white/10"
             />
           }
         >
@@ -78,5 +78,5 @@ export const PlayerHeader = ({
         <TooltipContent>Leave the game (Esc)</TooltipContent>
       </Tooltip>
     </div>
-  </motion.header>
+  </header>
 )

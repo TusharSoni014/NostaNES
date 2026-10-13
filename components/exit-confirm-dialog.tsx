@@ -1,29 +1,21 @@
 "use client"
 
-import { AlertTriangleIcon, PlayIcon, LogOutIcon } from "lucide-react"
+import { PauseIcon, PlayIcon, LogOutIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Kbd } from "@/components/ui/kbd"
 
 type ExitConfirmDialogProps = {
   open: boolean
-  countdown: number
-  totalDuration?: number
   onResume: () => void
   onConfirmExit: () => void
 }
 
 export function ExitConfirmDialog({
   open,
-  countdown,
-  totalDuration = 5,
   onResume,
   onConfirmExit,
 }: ExitConfirmDialogProps) {
   if (!open) return null
-
-  const progressFraction = Math.max(0, Math.min(1, countdown / totalDuration))
-  const circumference = 2 * Math.PI * 26
-  const strokeOffset = circumference * (1 - progressFraction)
 
   return (
     <div
@@ -31,87 +23,55 @@ export function ExitConfirmDialog({
       aria-modal="true"
       aria-labelledby="exit-dialog-title"
       aria-describedby="exit-dialog-desc"
-      className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 p-6 backdrop-blur-md animate-in fade-in duration-200"
+      className="absolute inset-0 z-50 flex items-center justify-center bg-black/85 p-6 backdrop-blur-md animate-in fade-in duration-150"
     >
-      <div className="relative flex w-full max-w-md flex-col items-center gap-6 rounded-3xl border border-foreground/20 bg-background/95 p-7 text-center shadow-[0_24px_70px_rgba(0,0,0,0.85)] ring-1 ring-primary/30 backdrop-blur-2xl animate-in zoom-in-95 duration-200">
-        {/* Animated Circular Countdown Ring */}
-        <div className="relative flex size-20 items-center justify-center">
-          <svg className="size-full -rotate-90" viewBox="0 0 64 64">
-            <circle
-              cx="32"
-              cy="32"
-              r="26"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="4"
-              className="text-foreground/15"
-            />
-            <circle
-              cx="32"
-              cy="32"
-              r="26"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="4"
-              strokeDasharray={circumference}
-              strokeDashoffset={strokeOffset}
-              strokeLinecap="round"
-              className="text-primary transition-all duration-300 ease-linear"
-            />
-          </svg>
-          <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="font-mono text-2xl font-bold tracking-tight text-foreground">
-              {countdown}
-            </span>
-            <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
-              sec
-            </span>
-          </div>
+      <div className="relative flex w-full max-w-sm flex-col items-center gap-5 rounded-2xl border border-white/15 bg-zinc-950 p-6 text-center shadow-[0_24px_80px_rgba(0,0,0,0.95)] ring-1 ring-white/10 animate-in zoom-in-95 duration-150">
+        {/* Pause Badge */}
+        <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/80">
+          <PauseIcon className="size-3 text-amber-400 fill-amber-400" />
+          <span className="font-mono text-[11px] font-semibold tracking-wider uppercase text-amber-400">
+            Game Paused
+          </span>
         </div>
 
+        {/* Dialog Header */}
         <div className="flex flex-col gap-1.5">
-          <div className="flex items-center justify-center gap-2">
-            <AlertTriangleIcon className="size-5 text-amber-400" />
-            <h2 id="exit-dialog-title" className="text-xl font-semibold tracking-tight">
-              Exit Game?
-            </h2>
-          </div>
-          <p id="exit-dialog-desc" className="text-sm text-muted-foreground text-balance">
-            Game paused. Auto-returning to the shelf in{" "}
-            <span className="font-mono font-medium text-foreground">{countdown}s</span>.
-            Confirm exit or resume playing.
+          <h2 id="exit-dialog-title" className="text-lg font-bold tracking-tight text-white sm:text-xl">
+            Exit to Game Library?
+          </h2>
+          <p id="exit-dialog-desc" className="text-xs text-white/60 text-balance leading-relaxed">
+            Your current game is paused. Any unsaved progress will be lost if you return to the shelf.
           </p>
         </div>
 
-        {/* Linear progress bar */}
-        <div className="w-full overflow-hidden rounded-full bg-foreground/10 h-1.5">
-          <div
-            className="h-full bg-primary transition-all duration-200 ease-linear"
-            style={{ width: `${progressFraction * 100}%` }}
-          />
-        </div>
-
-        <div className="flex w-full flex-col-reverse gap-2.5 sm:flex-row sm:justify-center">
+        {/* Clear Action Buttons with Keyboard and Gamepad Badges */}
+        <div className="flex w-full flex-col gap-2.5 pt-1">
           <Button
-            variant="outline"
             size="lg"
-            className="flex-1"
+            className="w-full gap-2 text-xs sm:text-sm font-semibold bg-white text-zinc-950 hover:bg-zinc-200 shadow-md"
             onClick={onResume}
             autoFocus
           >
-            <PlayIcon className="size-4" />
-            Resume
-            <Kbd className="ml-1.5 hidden sm:inline-block">Esc</Kbd>
+            <PlayIcon className="size-3.5 fill-current" />
+            Resume Playing
+            <span className="ml-auto flex items-center gap-1">
+              <Kbd className="bg-zinc-200 text-zinc-900 border-zinc-300 text-[10px]">Esc</Kbd>
+              <Kbd className="bg-zinc-200 text-zinc-900 border-zinc-300 text-[10px]">B / ○</Kbd>
+            </span>
           </Button>
+
           <Button
             variant="destructive"
             size="lg"
-            className="flex-1"
+            className="w-full gap-2 text-xs sm:text-sm font-semibold border border-red-500/30"
             onClick={onConfirmExit}
           >
-            <LogOutIcon className="size-4" />
-            Confirm Exit
-            <Kbd className="ml-1.5 hidden sm:inline-block">Enter</Kbd>
+            <LogOutIcon className="size-3.5" />
+            Exit to Library
+            <span className="ml-auto flex items-center gap-1">
+              <Kbd className="bg-red-950 text-red-200 border-red-800 text-[10px]">Enter</Kbd>
+              <Kbd className="bg-red-950 text-red-200 border-red-800 text-[10px]">A / ✕</Kbd>
+            </span>
           </Button>
         </div>
       </div>

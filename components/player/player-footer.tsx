@@ -26,13 +26,23 @@ export const PlayerFooter = ({ isFullscreen }: PlayerFooterProps) => (
     <Separator orientation="vertical" className="hidden h-3.5 sm:block" />
     <span className="flex items-center gap-1">
       <Kbd>Z</Kbd>
-      <span className="text-[11px] text-muted-foreground/80">(A/X)</span>
+      <span className="text-[11px] text-muted-foreground/80">(A)</span>
       B
     </span>
     <span className="flex items-center gap-1">
       <Kbd>X</Kbd>
-      <span className="text-[11px] text-muted-foreground/80">(B/Y)</span>
+      <span className="text-[11px] text-muted-foreground/80">(B)</span>
       A
+    </span>
+    <span className="flex items-center gap-1">
+      <Kbd>A</Kbd>
+      <span className="text-[11px] text-muted-foreground/80">(X)</span>
+      Turbo B
+    </span>
+    <span className="flex items-center gap-1">
+      <Kbd>S</Kbd>
+      <span className="text-[11px] text-muted-foreground/80">(Y)</span>
+      Turbo A
     </span>
     <span className="flex items-center gap-1">
       <Kbd>Enter</Kbd>

@@ -106,11 +106,13 @@ export const ControlsDialog = ({ open, onOpenChange }: ControlsDialogProps) => {
               In-Game NES Layout
             </p>
             <ControlRow label="D-Pad / Movement" keys={["D-Pad", "L-Stick"]} />
-            <ControlRow label="NES B (Run / Attack)" keys={["A", "X"]} detail="Xbox A or X" />
-            <ControlRow label="NES A (Jump / Action)" keys={["B", "Y"]} detail="Xbox B or Y" />
+            <ControlRow label="NES B (Run / Attack)" keys={["A", "✕"]} detail="Standard B" />
+            <ControlRow label="NES A (Jump / Action)" keys={["B", "○"]} detail="Standard A" />
+            <ControlRow label="Turbo B (Rapid-fire)" keys={["X", "□"]} detail="Turbo B" />
+            <ControlRow label="Turbo A (Rapid-fire)" keys={["Y", "△"]} detail="Turbo A" />
             <ControlRow label="Start" keys={["Menu", "Options"]} />
             <ControlRow label="Select" keys={["View", "Share"]} />
-            <ControlRow label="Exit Dialog (5s)" keys={["Guide", "View"]} />
+            <ControlRow label="Hold to Exit (5s)" keys={["Select"]} detail="Hold 5s to leave" />
           </div>
         ) : (
           <div className="flex flex-col gap-2">
@@ -126,12 +128,14 @@ export const ControlsDialog = ({ open, onOpenChange }: ControlsDialogProps) => {
               In-Game NES Layout
             </p>
             <ControlRow label="D-Pad" keys={["Arrows"]} />
-            <ControlRow label="NES B button" keys={["Z"]} />
-            <ControlRow label="NES A button" keys={["X"]} />
+            <ControlRow label="NES B button" keys={["Z"]} detail="Standard B" />
+            <ControlRow label="NES A button" keys={["X"]} detail="Standard A" />
+            <ControlRow label="Turbo B button" keys={["A"]} detail="Rapid-fire B" />
+            <ControlRow label="Turbo A button" keys={["S"]} detail="Rapid-fire A" />
             <ControlRow label="Start" keys={["Enter"]} />
             <ControlRow label="Select" keys={["Shift"]} />
             <ControlRow label="Fullscreen" keys={["F"]} />
-            <ControlRow label="Leave the game" keys={["Esc"]} detail="5s countdown timer" />
+            <ControlRow label="Pause / Exit" keys={["Esc"]} />
           </div>
         )}
       </DialogContent>

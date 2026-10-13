@@ -9,13 +9,15 @@ export const getRetroArchInputConfig = () => ({
   input_exit_emulator: "nul",
   input_menu_toggle: "f1",
 
-  // Keyboard mappings
+  // Keyboard mappings: Z & X are standard action buttons; A & S are respective Turbo buttons
   input_player1_up: "up",
   input_player1_down: "down",
   input_player1_left: "left",
   input_player1_right: "right",
-  input_player1_a: "x",
   input_player1_b: "z",
+  input_player1_a: "x",
+  input_player1_y: "a", // Turbo B (respective to Z)
+  input_player1_x: "s", // Turbo A (respective to X)
   input_player1_start: "enter",
   input_player1_select: "shift",
 
@@ -44,4 +46,13 @@ export const getRetroArchInputConfig = () => ({
   // Bumpers
   input_player1_l_btn: "4",
   input_player1_r_btn: "5",
+})
+
+/**
+ * Core-level options for NES emulators (e.g. FCEUmm).
+ * Explicitly enables Turbo buttons for both players and sets rapid-fire delay.
+ */
+export const getRetroArchCoreConfig = () => ({
+  fceumm_turbo_enable: "Both",
+  fceumm_turbo_delay: "3",
 })

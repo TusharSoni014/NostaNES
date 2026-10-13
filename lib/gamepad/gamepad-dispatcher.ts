@@ -2,6 +2,17 @@ import type { GamepadAction } from "./gamepad-types"
 
 type GamepadListenerCallback = (action: GamepadAction) => void
 
+export type GamepadHoldState = {
+  active: boolean
+  remainingSeconds: number
+  progress: number
+}
+
+export type GamepadDispatcherOptions = {
+  onSelectHold?: (state: GamepadHoldState) => void
+  onSelectHoldComplete?: () => void
+}
+
 const AXIS_ENGAGE_THRESHOLD = 0.55
 const AXIS_RELEASE_THRESHOLD = 0.25
 const INITIAL_REPEAT_DELAY_MS = 380 // Initial hold delay before stepping begins
@@ -13,15 +24,19 @@ export class GamepadDispatcher {
   private frameId = 0
   private running = false
   private callback: GamepadListenerCallback
+  private onSelectHold?: (state: GamepadHoldState) => void
+  private onSelectHoldComplete?: () => void
   private buttonPreviousStates = new Map<number, boolean>()
-
-  // Directional navigation state
   private activeDirection: GamepadAction | null = null
   private pressStartTime = 0
   private nextRepeatTime = 0
+  private selectHoldStartTime = 0
+  private selectHoldCompleted = false
 
-  constructor(callback: GamepadListenerCallback) {
+  constructor(callback: GamepadListenerCallback, options?: GamepadDispatcherOptions) {
     this.callback = callback
+    this.onSelectHold = options?.onSelectHold
+    this.onSelectHoldComplete = options?.onSelectHoldComplete
   }
 
   start = (): void => {
@@ -40,6 +55,8 @@ export class GamepadDispatcher {
     this.activeDirection = null
     this.pressStartTime = 0
     this.nextRepeatTime = 0
+    this.selectHoldStartTime = 0
+    this.selectHoldCompleted = false
   }
 
   private tick = (time: number): void => {
@@ -53,7 +70,7 @@ export class GamepadDispatcher {
       return
     }
 
-    this.processButtons(pad)
+    this.processButtons(pad, time)
     this.processAxesAndDpad(pad, time)
 
     this.frameId = requestAnimationFrame(this.tick)
@@ -80,46 +97,67 @@ export class GamepadDispatcher {
     this.buttonPreviousStates.set(btnIndex, isPressed)
   }
 
-  private processButtons = (pad: Gamepad): void => {
-    // 0: A (Confirm), 1: B (Cancel), 2: X (Fullscreen), 3: Y (Controls)
+  private processButtons = (pad: Gamepad, time: number): void => {
     this.checkSinglePress(pad, 0, "CONFIRM")
     this.checkSinglePress(pad, 1, "CANCEL")
     this.checkSinglePress(pad, 2, "TOGGLE_FULLSCREEN")
     this.checkSinglePress(pad, 3, "TOGGLE_CONTROLS")
-
-    // 4: LB (Page Up), 5: RB (Page Down)
     this.checkSinglePress(pad, 4, "PAGE_UP")
     this.checkSinglePress(pad, 5, "PAGE_DOWN")
-
-    // 8: Back/View, 9: Start/Menu, 16: Guide/Home
-    this.checkSinglePress(pad, 8, "MENU")
-    this.checkSinglePress(pad, 9, "MENU")
     this.checkSinglePress(pad, 16, "MENU")
+    this.processSelectHold(pad, time)
+  }
+
+  private processSelectHold = (pad: Gamepad, time: number): void => {
+    if (!this.onSelectHold && !this.onSelectHoldComplete) return
+
+    const isSelectPressed = this.isButtonPressed(pad, 8)
+    const HOLD_DURATION_MS = 5000
+    const VISIBLE_THRESHOLD_MS = 250 // Avoid HUD flash on short in-game select taps
+
+    if (isSelectPressed) {
+      if (this.selectHoldStartTime === 0) {
+        this.selectHoldStartTime = time
+        this.selectHoldCompleted = false
+      }
+
+      if (this.selectHoldCompleted) return
+
+      const elapsed = time - this.selectHoldStartTime
+      const remainingSeconds = Math.max(0, Math.ceil((HOLD_DURATION_MS - elapsed) / 1000))
+      const progress = Math.min(1, elapsed / HOLD_DURATION_MS)
+
+      if (elapsed >= HOLD_DURATION_MS) {
+        this.selectHoldCompleted = true
+        this.onSelectHold?.({ active: false, remainingSeconds: 0, progress: 1 })
+        this.onSelectHoldComplete?.()
+        return
+      }
+
+      if (elapsed >= VISIBLE_THRESHOLD_MS) {
+        this.onSelectHold?.({ active: true, remainingSeconds, progress })
+      }
+    } else if (this.selectHoldStartTime !== 0) {
+      this.selectHoldStartTime = 0
+      this.selectHoldCompleted = false
+      this.onSelectHold?.({ active: false, remainingSeconds: 5, progress: 0 })
+    }
   }
 
   private detectCurrentNav = (pad: Gamepad): GamepadAction | null => {
-    // 1. Digital D-pad buttons take absolute priority over analog sticks
     if (this.isButtonPressed(pad, 12)) return "NAV_UP"
     if (this.isButtonPressed(pad, 13)) return "NAV_DOWN"
     if (this.isButtonPressed(pad, 14)) return "NAV_LEFT"
     if (this.isButtonPressed(pad, 15)) return "NAV_RIGHT"
 
-    // 2. Analog thumbstick with hysteresis and dominant-axis resolution
     const axisX = pad.axes[0] ?? 0
     const axisY = pad.axes[1] ?? 0
     const threshold = this.activeDirection ? AXIS_RELEASE_THRESHOLD : AXIS_ENGAGE_THRESHOLD
-
     const absX = Math.abs(axisX)
     const absY = Math.abs(axisY)
 
-    if (absY >= absX && absY > threshold) {
-      return axisY < 0 ? "NAV_UP" : "NAV_DOWN"
-    }
-
-    if (absX > absY && absX > threshold) {
-      return axisX < 0 ? "NAV_LEFT" : "NAV_RIGHT"
-    }
-
+    if (absY >= absX && absY > threshold) return axisY < 0 ? "NAV_UP" : "NAV_DOWN"
+    if (absX > absY && absX > threshold) return axisX < 0 ? "NAV_LEFT" : "NAV_RIGHT"
     return null
   }
 
