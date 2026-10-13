@@ -59,27 +59,8 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
   const [region, setRegion] = useState("All")
   const [reloadKey, setReloadKey] = useState(0)
 
-  // Auto-refresh library when returning to tab or window focus
+  // Fetch games dynamically on boot time (or on manual retry)
   useEffect(() => {
-    const onRefreshNeeded = () => {
-      if (document.visibilityState === "visible") {
-        setReloadKey((prev) => prev + 1)
-      }
-    }
-    document.addEventListener("visibilitychange", onRefreshNeeded)
-    window.addEventListener("focus", onRefreshNeeded)
-    return () => {
-      document.removeEventListener("visibilitychange", onRefreshNeeded)
-      window.removeEventListener("focus", onRefreshNeeded)
-    }
-  }, [])
-
-  // Fetch games dynamically from server if not pre-populated or if reloaded
-  useEffect(() => {
-    if (initialGames && initialGames.length > 0 && reloadKey === 0) {
-      return
-    }
-
     const controller = new AbortController()
     fetch(`/api/library?t=${Date.now()}`, {
       signal: controller.signal,
@@ -99,7 +80,7 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
       })
 
     return () => controller.abort()
-  }, [initialGames, reloadKey])
+  }, [reloadKey])
 
   useEffect(() => {
     if (failed) playUiSound("error")
@@ -283,95 +264,132 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
         </div>
 
         <main className="flex min-h-0 flex-1 flex-col overflow-hidden py-3">
-          {failed ? (
-            <div className="my-auto px-6 pb-16">
-              <Empty>
-                <EmptyHeader>
-                  <EmptyMedia variant="icon">
-                    <Gamepad2Icon />
-                  </EmptyMedia>
-                  <EmptyTitle>The library did not load</EmptyTitle>
-                  <EmptyDescription>
-                    Could not fetch cartridges from the server.
-                  </EmptyDescription>
-                </EmptyHeader>
-                <div className="mt-4 flex justify-center">
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setFailed(false)
-                      setReloadKey((k) => k + 1)
+          <AnimatePresence mode="wait">
+            {failed ? (
+              <motion.div
+                key="failed"
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.98 }}
+                transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+                className="my-auto px-6 pb-16"
+              >
+                <Empty>
+                  <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                      <Gamepad2Icon />
+                    </EmptyMedia>
+                    <EmptyTitle>The library did not load</EmptyTitle>
+                    <EmptyDescription>
+                      Could not fetch cartridges from the server.
+                    </EmptyDescription>
+                  </EmptyHeader>
+                  <div className="mt-4 flex justify-center">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setFailed(false)
+                        setReloadKey((k) => k + 1)
+                      }}
+                    >
+                      Retry
+                    </Button>
+                  </div>
+                </Empty>
+              </motion.div>
+            ) : games === null ? (
+              <motion.div
+                key="skeleton"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0, scale: 0.98, filter: "blur(4px)" }}
+                transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                className="flex min-h-0 flex-1 overflow-hidden"
+              >
+                <GameListSkeleton />
+              </motion.div>
+            ) : games.length === 0 ? (
+              <motion.div
+                key="empty"
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+                className="my-auto px-6 pb-16"
+              >
+                <Empty>
+                  <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                      <Gamepad2Icon />
+                    </EmptyMedia>
+                    <EmptyTitle>No cartridges yet</EmptyTitle>
+                    <EmptyDescription>
+                      Upload NES ROM files to the R2 bucket and they will appear
+                      automatically on this shelf.
+                    </EmptyDescription>
+                  </EmptyHeader>
+                </Empty>
+              </motion.div>
+            ) : visible.length === 0 ? (
+              <motion.div
+                key="no-matches"
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+                className="my-auto px-6 pb-16"
+              >
+                <Empty>
+                  <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                      <SearchIcon />
+                    </EmptyMedia>
+                    <EmptyTitle>Nothing matches</EmptyTitle>
+                    <EmptyDescription>
+                      Try another title or clear the region filter.
+                    </EmptyDescription>
+                  </EmptyHeader>
+                </Empty>
+              </motion.div>
+            ) : selected ? (
+              <motion.div
+                key="games-list"
+                initial={{ opacity: 0, y: 12, filter: "blur(4px)" }}
+                animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                exit={{ opacity: 0, scale: 0.98 }}
+                transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                className="flex min-h-0 flex-1 flex-col md:flex-row gap-6 lg:gap-8 overflow-hidden px-3 sm:px-8"
+              >
+                {/* Left Column: Scrollable list of games */}
+                <div className="flex min-h-0 flex-1 flex-col">
+                  <GameList
+                    games={visible}
+                    selectedIndex={index}
+                    onSelectIndex={(next) => {
+                      if (next === indexRef.current) return
+                      indexRef.current = next
+                      setIndex(next)
+                      playUiSound("option_selected")
                     }}
-                  >
-                    Retry
-                  </Button>
+                    onLaunch={(next) => {
+                      const game = visible[next]
+                      if (!game) return
+                      playUiSound("game_start")
+                      setPlaying(game)
+                    }}
+                  />
                 </div>
-              </Empty>
-            </div>
-          ) : games === null ? (
-            <div className="flex min-h-0 flex-1 px-4 sm:px-10">
-              <GameListSkeleton />
-            </div>
-          ) : games.length === 0 ? (
-            <div className="my-auto px-6 pb-16">
-              <Empty>
-                <EmptyHeader>
-                  <EmptyMedia variant="icon">
-                    <Gamepad2Icon />
-                  </EmptyMedia>
-                  <EmptyTitle>No cartridges yet</EmptyTitle>
-                  <EmptyDescription>
-                    Upload NES ROM files to the R2 bucket and they will appear
-                    automatically on this shelf.
-                  </EmptyDescription>
-                </EmptyHeader>
-              </Empty>
-            </div>
-          ) : visible.length === 0 ? (
-            <div className="my-auto px-6 pb-16">
-              <Empty>
-                <EmptyHeader>
-                  <EmptyMedia variant="icon">
-                    <SearchIcon />
-                  </EmptyMedia>
-                  <EmptyTitle>Nothing matches</EmptyTitle>
-                  <EmptyDescription>
-                    Try another title or clear the region filter.
-                  </EmptyDescription>
-                </EmptyHeader>
-              </Empty>
-            </div>
-          ) : selected ? (
-            <div className="flex min-h-0 flex-1 flex-col md:flex-row gap-6 lg:gap-8 overflow-hidden px-3 sm:px-8">
-              {/* Left Column: Scrollable list of games */}
-              <div className="flex min-h-0 flex-1 flex-col">
-                <GameList
-                  games={visible}
-                  selectedIndex={index}
-                  onSelectIndex={(next) => {
-                    if (next === indexRef.current) return
-                    indexRef.current = next
-                    setIndex(next)
-                    playUiSound("option_selected")
-                  }}
-                  onLaunch={(next) => {
-                    const game = visible[next]
-                    if (!game) return
-                    playUiSound("game_start")
-                    setPlaying(game)
-                  }}
-                />
-              </div>
 
-              {/* Right Column: Selected game preview and details (Tablet/Desktop) */}
-              <div className="hidden shrink-0 md:flex flex-col justify-center min-h-0 max-h-full">
-                <GameDetailsPanel
-                  game={selected}
-                  onLaunch={launch}
-                />
-              </div>
-            </div>
-          ) : null}
+                {/* Right Column: Selected game preview and details (Tablet/Desktop) */}
+                <div className="hidden shrink-0 md:flex flex-col justify-center min-h-0 max-h-full">
+                  <GameDetailsPanel
+                    game={selected}
+                    onLaunch={launch}
+                  />
+                </div>
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
         </main>
 
         <footer className="flex shrink-0 items-center justify-between gap-3 px-4 pb-5 sm:px-10">
@@ -390,7 +408,9 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
             </span>
             <Separator orientation="vertical" className="hidden h-4 sm:block" />
             <span className="text-xs text-muted-foreground/80">
-              {visible.length} {visible.length === 1 ? "game" : "games"} available
+              {games === null
+                ? "Reading cartridges..."
+                : `${visible.length} ${visible.length === 1 ? "game" : "games"} available`}
             </span>
           </div>
           <div className="ml-auto flex items-center gap-2">
@@ -401,7 +421,7 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
             <Tooltip>
               <TooltipTrigger
                 render={
-                  <Button size="lg" disabled={!selected} onClick={launch} />
+                  <Button size="lg" disabled={!selected || games === null} onClick={launch} />
                 }
               >
                 <PlayIcon data-icon="inline-start" />
