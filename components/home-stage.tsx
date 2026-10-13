@@ -44,9 +44,8 @@ export type HomeStageProps = {
 }
 
 export function HomeStage({ initialGames }: HomeStageProps = {}) {
-  const [games, setGames] = useState<Game[] | null>(
-    initialGames && initialGames.length > 0 ? initialGames : null,
-  )
+  const [fetchedGames, setFetchedGames] = useState<Game[] | null>(null)
+  const games = fetchedGames ?? (initialGames && initialGames.length > 0 ? initialGames : null)
   const [failed, setFailed] = useState(false)
   const [index, setIndex] = useState(0)
   const indexRef = useRef(0)
@@ -60,6 +59,21 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
   const [region, setRegion] = useState("All")
   const [reloadKey, setReloadKey] = useState(0)
 
+  // Auto-refresh library when returning to tab or window focus
+  useEffect(() => {
+    const onRefreshNeeded = () => {
+      if (document.visibilityState === "visible") {
+        setReloadKey((prev) => prev + 1)
+      }
+    }
+    document.addEventListener("visibilitychange", onRefreshNeeded)
+    window.addEventListener("focus", onRefreshNeeded)
+    return () => {
+      document.removeEventListener("visibilitychange", onRefreshNeeded)
+      window.removeEventListener("focus", onRefreshNeeded)
+    }
+  }, [])
+
   // Fetch games dynamically from server if not pre-populated or if reloaded
   useEffect(() => {
     if (initialGames && initialGames.length > 0 && reloadKey === 0) {
@@ -67,7 +81,7 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
     }
 
     const controller = new AbortController()
-    fetch("/api/library", {
+    fetch(`/api/library?t=${Date.now()}`, {
       signal: controller.signal,
       cache: "no-store",
     })
@@ -76,7 +90,7 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
         return response.json() as Promise<{ games: Game[] }>
       })
       .then((data) => {
-        setGames(data.games)
+        setFetchedGames(data.games)
         setFailed(false)
       })
       .catch((error: unknown) => {

@@ -3,7 +3,6 @@ import {
   ListObjectsV2Command,
   type ListObjectsV2CommandOutput,
 } from "@aws-sdk/client-s3"
-import { cacheLife, cacheTag } from "next/cache"
 import { isSafeNesFile, parseRomFile, type Game } from "@/lib/games"
 
 const R2_ENDPOINT =
@@ -87,10 +86,6 @@ export function getR2Client(): S3Client {
  * No static JSON files required; newly uploaded games appear automatically.
  */
 export async function fetchGamesFromBucket(): Promise<Game[]> {
-  "use cache"
-  cacheLife("minutes")
-  cacheTag("games-library")
-
   const client = getR2Client()
   let continuationToken: string | undefined = undefined
   const seen = new Set<string>()

@@ -1,13 +1,15 @@
+import { connection } from "next/server"
 import { fetchGamesFromBucket } from "@/lib/r2"
 
 export async function GET() {
+  await connection()
   try {
     const games = await fetchGamesFromBucket()
     return Response.json(
       { games },
       {
         headers: {
-          "Cache-Control": "public, max-age=30, stale-while-revalidate=60",
+          "Cache-Control": "no-store, no-cache, must-revalidate",
         },
       },
     )
