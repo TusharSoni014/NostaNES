@@ -27,17 +27,75 @@ export function useNostalgistEmulator({
 
   const pause = () => {
     try {
-      instanceRef.current?.pause?.()
-    } catch {
-      // Graceful fallback
+      const emu = instanceRef.current
+      if (!emu) return
+
+      const status = emu.getStatus?.()
+      if (status === "running") {
+        emu.pause()
+      } else if (!status) {
+        emu.pause?.()
+      }
+
+      // Explicitly suspend WebAudio contexts so all ROM sound completely stops
+      try {
+        const al = (emu as unknown as { getEmscriptenAL?: () => { currentCtx?: { audioCtx?: AudioContext } } }).getEmscriptenAL?.()
+        al?.currentCtx?.audioCtx?.suspend?.()
+      } catch {}
+      try {
+        const mod = (emu as unknown as { getEmscriptenModule?: () => { SDL2?: { audio?: { audioCtx?: AudioContext } } } }).getEmscriptenModule?.()
+        mod?.SDL2?.audio?.audioCtx?.suspend?.()
+      } catch {}
+    } catch (err) {
+      console.error("Failed to pause emulator:", err)
     }
   }
 
   const resume = () => {
     try {
-      instanceRef.current?.resume?.()
-    } catch {
-      // Graceful fallback
+      const emu = instanceRef.current
+      if (!emu) return
+
+      // Resume WebAudio contexts
+      try {
+        const al = (emu as unknown as { getEmscriptenAL?: () => { currentCtx?: { audioCtx?: AudioContext } } }).getEmscriptenAL?.()
+        al?.currentCtx?.audioCtx?.resume?.()
+      } catch {}
+      try {
+        const mod = (emu as unknown as { getEmscriptenModule?: () => { SDL2?: { audio?: { audioCtx?: AudioContext } } } }).getEmscriptenModule?.()
+        mod?.SDL2?.audio?.audioCtx?.resume?.()
+      } catch {}
+
+      const status = emu.getStatus?.()
+      if (status === "paused") {
+        emu.resume()
+      } else if (!status) {
+        emu.resume?.()
+      }
+    } catch (err) {
+      console.error("Failed to resume emulator:", err)
+    }
+  }
+
+  const saveState = async (): Promise<Blob | null> => {
+    if (!instanceRef.current) return null
+    try {
+      const result = await instanceRef.current.saveState()
+      return result.state
+    } catch (err) {
+      console.error("Failed to save state:", err)
+      return null
+    }
+  }
+
+  const loadState = async (blob: Blob): Promise<boolean> => {
+    if (!instanceRef.current) return false
+    try {
+      await instanceRef.current.loadState(blob)
+      return true
+    } catch (err) {
+      console.error("Failed to load state:", err)
+      return false
     }
   }
 
@@ -121,5 +179,5 @@ export function useNostalgistEmulator({
     }
   }, [canvasRef, game.file, onPhaseChange])
 
-  return { pause, resume }
+  return { pause, resume, saveState, loadState }
 }

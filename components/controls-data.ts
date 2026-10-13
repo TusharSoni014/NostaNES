@@ -20,6 +20,7 @@ export const GAMEPAD_NES_CONTROLS: ControlItem[] = [
   { label: "Start", keys: ["Menu", "Options"] },
   { label: "Select", keys: ["View", "Share"] },
   { label: "Fullscreen", keys: ["L3"], detail: "Press Left Stick" },
+  { label: "In-Game Menu", keys: ["Select + Start"], detail: "Save, load, controls" },
   { label: "Hold to Exit (5s)", keys: ["Select"], detail: "Hold 5s to leave" },
 ]
 
@@ -36,6 +37,7 @@ export const KEYBOARD_NES_CONTROLS: ControlItem[] = [
   { label: "Turbo A button", keys: ["S"], detail: "Rapid-fire A" },
   { label: "Start", keys: ["Enter"] },
   { label: "Select", keys: ["Shift"] },
+  { label: "In-Game Menu", keys: ["F1"], detail: "Save, load, controls" },
   { label: "Fullscreen", keys: ["F"] },
   { label: "Pause / Exit", keys: ["Esc"] },
 ]

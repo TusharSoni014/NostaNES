@@ -32,6 +32,7 @@ export class GamepadDispatcher {
   private nextRepeatTime = 0
   private selectHoldStartTime = 0
   private selectHoldCompleted = false
+  private selectStartComboActive = false
 
   constructor(callback: GamepadListenerCallback, options?: GamepadDispatcherOptions) {
     this.callback = callback
@@ -57,6 +58,7 @@ export class GamepadDispatcher {
     this.nextRepeatTime = 0
     this.selectHoldStartTime = 0
     this.selectHoldCompleted = false
+    this.selectStartComboActive = false
   }
 
   private tick = (time: number): void => {
@@ -90,6 +92,9 @@ export class GamepadDispatcher {
   }
 
   private processButtons = (pad: Gamepad, time: number): void => {
+    // Simultaneous Select (8) and Start (9) toggles in-game menu
+    const isCombo = this.processSelectStartCombo(pad)
+
     this.checkSinglePress(pad, 0, "CONFIRM")
     this.checkSinglePress(pad, 1, "CANCEL")
     this.checkSinglePress(pad, 3, "TOGGLE_CONTROLS")
@@ -98,11 +103,36 @@ export class GamepadDispatcher {
     // 10: L3 (Left Stick click) - single press toggles fullscreen for gamepad
     this.checkSinglePress(pad, 10, "TOGGLE_FULLSCREEN")
     this.checkSinglePress(pad, 16, "MENU")
-    this.processSelectHold(pad, time)
+
+    if (!isCombo) {
+      this.processSelectHold(pad, time)
+    }
+  }
+
+  private processSelectStartCombo = (pad: Gamepad): boolean => {
+    const isSelectPressed = this.isButtonPressed(pad, 8)
+    const isStartPressed = this.isButtonPressed(pad, 9)
+
+    if (isSelectPressed && isStartPressed) {
+      if (!this.selectStartComboActive) {
+        this.selectStartComboActive = true
+        // Cancel any pending Select hold so exit modal does not trigger
+        this.selectHoldStartTime = 0
+        this.selectHoldCompleted = false
+        this.onSelectHold?.({ active: false, remainingSeconds: 5, progress: 0 })
+        this.callback("IN_GAME_MENU")
+      }
+      return true
+    } else if (!isSelectPressed && !isStartPressed) {
+      this.selectStartComboActive = false
+    }
+    return this.selectStartComboActive
   }
 
   private processSelectHold = (pad: Gamepad, time: number): void => {
     if (!this.onSelectHold && !this.onSelectHoldComplete) return
+    if (this.selectStartComboActive || this.isButtonPressed(pad, 9)) return
+
     const isSelectPressed = this.isButtonPressed(pad, 8)
     const HOLD_DURATION_MS = 5000
 
