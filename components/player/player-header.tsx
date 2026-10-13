@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import { Maximize2Icon, Minimize2Icon, XIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -30,13 +31,22 @@ export const PlayerHeader = ({
         : "bg-black/90",
     )}
   >
-    <div className="flex min-w-0 flex-col gap-0.5">
-      <p className="text-[11px] tracking-[0.22em] text-white/50 uppercase">
-        Now playing
-      </p>
-      <h2 className="truncate text-base font-semibold tracking-tight text-white sm:text-lg">
-        {title}
-      </h2>
+    <div className="flex min-w-0 items-center gap-3">
+      <Image
+        src="/nostanes.png"
+        alt="NostaNES"
+        width={36}
+        height={36}
+        className="h-8 w-auto object-contain shrink-0 select-none"
+      />
+      <div className="flex min-w-0 flex-col gap-0.5">
+        <p className="text-[11px] tracking-[0.22em] text-white/50 uppercase">
+          Now playing
+        </p>
+        <h2 className="truncate text-base font-semibold tracking-tight text-white sm:text-lg">
+          {title}
+        </h2>
+      </div>
     </div>
     <div className="flex items-center gap-2">
       <Tooltip>

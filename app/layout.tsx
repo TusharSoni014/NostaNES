@@ -17,6 +17,10 @@ export const metadata: Metadata = {
   title: "NostaNES",
   description:
     "A PlayStation-style shelf for the NES cartridges in your library.",
+  icons: {
+    icon: "/nostanes.png",
+    apple: "/nostanes.png",
+  },
 };
 
 export const viewport: Viewport = {

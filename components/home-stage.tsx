@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { Gamepad2Icon, PlayIcon, SearchIcon } from "lucide-react"
+import Image from "next/image"
 import { Clock } from "@/components/clock"
 import { ControlsDialog } from "@/components/controls-dialog"
 import { GameDetailsPanel } from "@/components/game-details-panel"
@@ -153,11 +154,16 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
       >
         <header className="flex shrink-0 items-center justify-between gap-4 px-5 pt-6 sm:px-10">
           <div className="flex items-center gap-3">
-            <span className="grid size-9 place-items-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
-              N
-            </span>
+            <Image
+              src="/nostanes.png"
+              alt="NostaNES"
+              width={40}
+              height={40}
+              priority
+              className="h-10 w-auto object-contain shrink-0 select-none"
+            />
             <div className="flex flex-col">
-              <p className="text-sm font-medium tracking-wide">NostaNES</p>
+              <p className="text-sm font-semibold tracking-wide">NostaNES</p>
               <p className="text-xs text-muted-foreground">
                 Nintendo Entertainment System
               </p>

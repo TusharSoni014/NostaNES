@@ -144,6 +144,9 @@ export const useShelfNavigation = ({
       const opts = optionsRef.current
       if (opts.isPlaying || opts.count === 0) return
 
+      // While controls modal is open, the modal handles its own scrolling, tabs, and dismiss
+      if (opts.controlsOpen) return
+
       if (action === "NAV_UP") {
         opts.move(-1)
       } else if (action === "NAV_DOWN") {
@@ -153,9 +156,7 @@ export const useShelfNavigation = ({
       } else if (action === "PAGE_DOWN" && opts.jump) {
         opts.jump(10)
       } else if (action === "CONFIRM") {
-        if (!opts.controlsOpen) opts.launch()
-      } else if (action === "CANCEL") {
-        if (opts.controlsOpen && opts.onToggleControls) opts.onToggleControls()
+        opts.launch()
       } else if (action === "TOGGLE_CONTROLS" && opts.onToggleControls) {
         opts.onToggleControls()
       }
