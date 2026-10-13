@@ -57,6 +57,7 @@ export const PlayerFooter = ({ isFullscreen }: PlayerFooterProps) => (
     <Separator orientation="vertical" className="hidden h-3.5 sm:block" />
     <span className="flex items-center gap-1">
       <Kbd>F</Kbd>
+      <span className="text-[11px] text-muted-foreground/80">(L3)</span>
       Fullscreen
     </span>
     <Separator orientation="vertical" className="hidden h-3.5 sm:block" />

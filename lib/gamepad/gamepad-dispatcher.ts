@@ -82,45 +82,35 @@ export class GamepadDispatcher {
     return typeof btn === "object" ? btn.pressed : Boolean(btn)
   }
 
-  private checkSinglePress = (
-    pad: Gamepad,
-    btnIndex: number,
-    action: GamepadAction,
-  ): void => {
+  private checkSinglePress = (pad: Gamepad, btnIndex: number, action: GamepadAction): void => {
     const isPressed = this.isButtonPressed(pad, btnIndex)
     const wasPressed = this.buttonPreviousStates.get(btnIndex) ?? false
-
-    if (isPressed && !wasPressed) {
-      this.callback(action)
-    }
-
+    if (isPressed && !wasPressed) this.callback(action)
     this.buttonPreviousStates.set(btnIndex, isPressed)
   }
 
   private processButtons = (pad: Gamepad, time: number): void => {
     this.checkSinglePress(pad, 0, "CONFIRM")
     this.checkSinglePress(pad, 1, "CANCEL")
-    this.checkSinglePress(pad, 2, "TOGGLE_FULLSCREEN")
     this.checkSinglePress(pad, 3, "TOGGLE_CONTROLS")
     this.checkSinglePress(pad, 4, "PAGE_UP")
     this.checkSinglePress(pad, 5, "PAGE_DOWN")
+    // 10: L3 (Left Stick click) - single press toggles fullscreen for gamepad
+    this.checkSinglePress(pad, 10, "TOGGLE_FULLSCREEN")
     this.checkSinglePress(pad, 16, "MENU")
     this.processSelectHold(pad, time)
   }
 
   private processSelectHold = (pad: Gamepad, time: number): void => {
     if (!this.onSelectHold && !this.onSelectHoldComplete) return
-
     const isSelectPressed = this.isButtonPressed(pad, 8)
     const HOLD_DURATION_MS = 5000
-    const VISIBLE_THRESHOLD_MS = 250 // Avoid HUD flash on short in-game select taps
 
     if (isSelectPressed) {
       if (this.selectHoldStartTime === 0) {
         this.selectHoldStartTime = time
         this.selectHoldCompleted = false
       }
-
       if (this.selectHoldCompleted) return
 
       const elapsed = time - this.selectHoldStartTime
@@ -133,10 +123,7 @@ export class GamepadDispatcher {
         this.onSelectHoldComplete?.()
         return
       }
-
-      if (elapsed >= VISIBLE_THRESHOLD_MS) {
-        this.onSelectHold?.({ active: true, remainingSeconds, progress })
-      }
+      if (elapsed >= 250) this.onSelectHold?.({ active: true, remainingSeconds, progress })
     } else if (this.selectHoldStartTime !== 0) {
       this.selectHoldStartTime = 0
       this.selectHoldCompleted = false
@@ -184,13 +171,11 @@ export class GamepadDispatcher {
     // Direction continuously held: step at steady pace, then turbo after 2.5s
     if (time >= this.nextRepeatTime) {
       this.callback(currentNav)
-
       const heldDuration = time - this.pressStartTime
       const repeatInterval =
         heldDuration >= FAST_SCROLL_HOLD_THRESHOLD_MS
           ? TURBO_REPEAT_INTERVAL_MS
           : STEADY_REPEAT_INTERVAL_MS
-
       this.nextRepeatTime = time + repeatInterval
     }
   }
