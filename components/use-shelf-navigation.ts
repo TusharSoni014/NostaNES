@@ -67,16 +67,28 @@ export const useShelfNavigation = ({
       if (opts.isPlaying || opts.controlsOpen) return
 
       const target = event.target
-      if (
+      const inToggle =
         target instanceof HTMLElement &&
-        target.closest("input, textarea, [data-slot=toggle-group]")
+        Boolean(target.closest("[data-slot=toggle-group]"))
+      const inTextArea =
+        target instanceof HTMLElement && Boolean(target.closest("textarea"))
+      const inInput =
+        target instanceof HTMLElement && Boolean(target.closest("input"))
+      if (inToggle || inTextArea) return
+      if (
+        inInput &&
+        event.key !== "ArrowUp" &&
+        event.key !== "ArrowDown" &&
+        event.key !== "Enter" &&
+        event.key !== "PageUp" &&
+        event.key !== "PageDown"
       ) {
         return
       }
 
       const onControl =
         target instanceof HTMLElement &&
-        Boolean(target.closest("button, a, input, textarea"))
+        Boolean(target.closest("button, a, textarea"))
 
       const isNavKey =
         event.key === "ArrowDown" ||
@@ -109,7 +121,7 @@ export const useShelfNavigation = ({
         return
       }
 
-      if (event.key === "Enter" && !onControl) {
+      if (event.key === "Enter" && (!onControl || inInput)) {
         event.preventDefault()
         opts.launch()
       } else if (event.key === "PageDown" && opts.jump) {

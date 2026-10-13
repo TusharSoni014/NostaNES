@@ -110,15 +110,21 @@ void main() {
 
 type WaveFieldProps = {
   shift: number
+  onReady?: () => void
 }
 
-export function WaveField({ shift }: WaveFieldProps) {
+export function WaveField({ shift, onReady }: WaveFieldProps) {
   const hostRef = useRef<HTMLDivElement>(null)
   const shiftRef = useRef(shift)
+  const onReadyRef = useRef(onReady)
 
   useEffect(() => {
     shiftRef.current = shift
   }, [shift])
+
+  useEffect(() => {
+    onReadyRef.current = onReady
+  }, [onReady])
 
   useEffect(() => {
     const host = hostRef.current
@@ -126,8 +132,16 @@ export function WaveField({ shift }: WaveFieldProps) {
 
     let stopped = false
     let cleanup = () => {}
+    let notified = false
+    const notifyReady = () => {
+      if (notified || stopped) return
+      notified = true
+      onReadyRef.current?.()
+    }
 
-    ;(async () => {
+    const frame = requestAnimationFrame(() => {
+      if (stopped) return
+      void (async () => {
       const THREE = await import("three")
       if (stopped || !hostRef.current) return
 
@@ -192,6 +206,8 @@ export function WaveField({ shift }: WaveFieldProps) {
 
       let elapsed = uniforms.u_time.value
       let last = performance.now()
+      renderer.render(scene, camera)
+      notifyReady()
       renderer.setAnimationLoop(() => {
         const now = performance.now()
         const dt = Math.min(0.05, (now - last) / 1000)
@@ -216,10 +232,14 @@ export function WaveField({ shift }: WaveFieldProps) {
         renderer.forceContextLoss()
         renderer.domElement.remove()
       }
-    })()
+      })().catch(() => {
+        notifyReady()
+      })
+    })
 
     return () => {
       stopped = true
+      cancelAnimationFrame(frame)
       cleanup()
     }
   }, [])

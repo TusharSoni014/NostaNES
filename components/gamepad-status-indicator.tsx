@@ -1,7 +1,9 @@
 "use client"
 
 import { Gamepad2Icon } from "lucide-react"
+import { useEffect } from "react"
 import { useGamepadStatus } from "@/hooks/use-gamepad-status"
+import { playUiSound } from "@/lib/ui-sounds"
 import { Badge } from "@/components/ui/badge"
 import {
   Tooltip,
@@ -12,6 +14,10 @@ import { motion, AnimatePresence } from "motion/react"
 
 export const GamepadStatusIndicator = () => {
   const { connected, profile } = useGamepadStatus()
+
+  useEffect(() => {
+    if (connected) playUiSound("notification")
+  }, [connected])
 
   // Only render when an actual gamepad is detected
   if (!connected) return null

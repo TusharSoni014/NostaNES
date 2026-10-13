@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import Image from "next/image"
 import { Gamepad2Icon, KeyboardIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -22,6 +22,7 @@ import {
   type ControlItem,
 } from "@/components/controls-data"
 import { GamepadDispatcher } from "@/lib/gamepad/gamepad-dispatcher"
+import { playUiSound } from "@/lib/ui-sounds"
 import { cn } from "@/lib/utils"
 
 type ControlsDialogProps = {
@@ -45,37 +46,55 @@ const ControlRow = ({ label, keys, detail }: ControlItem) => (
 
 export const ControlsDialog = ({ open, onOpenChange }: ControlsDialogProps) => {
   const [tab, setTab] = useState<"gamepad" | "keyboard">("gamepad")
+  const tabRef = useRef(tab)
   const scrollRef = useRef<HTMLDivElement>(null)
+
+  const chooseTab = useCallback((next: "gamepad" | "keyboard") => {
+    if (tabRef.current === next) return
+    tabRef.current = next
+    setTab(next)
+    playUiSound("option_selected")
+  }, [])
 
   // Gamepad navigation for modal: D-Pad / Stick scrolls, LB/RB or Left/Right switches tabs, B/Y closes
   useEffect(() => {
     if (!open) return
 
     const dispatcher = new GamepadDispatcher((action) => {
-      if (action === "NAV_UP") scrollRef.current?.scrollBy({ top: -70, behavior: "smooth" })
-      else if (action === "NAV_DOWN") scrollRef.current?.scrollBy({ top: 70, behavior: "smooth" })
-      else if (action === "NAV_LEFT" || action === "PAGE_UP") setTab("gamepad")
-      else if (action === "NAV_RIGHT" || action === "PAGE_DOWN") setTab("keyboard")
+      if (action === "NAV_UP") {
+        playUiSound("navigation")
+        scrollRef.current?.scrollBy({ top: -70, behavior: "smooth" })
+      } else if (action === "NAV_DOWN") {
+        playUiSound("navigation")
+        scrollRef.current?.scrollBy({ top: 70, behavior: "smooth" })
+      } else if (action === "NAV_LEFT" || action === "PAGE_UP") chooseTab("gamepad")
+      else if (action === "NAV_RIGHT" || action === "PAGE_DOWN") chooseTab("keyboard")
       else if (action === "CANCEL" || action === "TOGGLE_CONTROLS") onOpenChange(false)
     })
 
     dispatcher.start()
     return () => dispatcher.stop()
-  }, [open, onOpenChange])
+  }, [chooseTab, open, onOpenChange])
 
   // Keyboard Left / Right arrow navigation between tabs
   useEffect(() => {
     if (!open) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "ArrowLeft") setTab("gamepad")
-      else if (e.key === "ArrowRight") setTab("keyboard")
+      if (e.key === "ArrowLeft") chooseTab("gamepad")
+      else if (e.key === "ArrowRight") chooseTab("keyboard")
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
-  }, [open])
+  }, [chooseTab, open])
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (next && !open) playUiSound("option_selected")
+        onOpenChange(next)
+      }}
+    >
       <DialogTrigger render={<Button variant="outline" size="lg" />}>
         Controls
       </DialogTrigger>
@@ -102,7 +121,7 @@ export const ControlsDialog = ({ open, onOpenChange }: ControlsDialogProps) => {
           <div className="mt-3 grid grid-cols-2 gap-1 rounded-xl bg-foreground/5 p-1 border border-foreground/10">
             <button
               type="button"
-              onClick={() => setTab("gamepad")}
+              onClick={() => chooseTab("gamepad")}
               className={cn(
                 "flex items-center justify-center gap-2 rounded-lg py-1.5 text-xs font-medium transition-all",
                 tab === "gamepad"
@@ -115,7 +134,7 @@ export const ControlsDialog = ({ open, onOpenChange }: ControlsDialogProps) => {
             </button>
             <button
               type="button"
-              onClick={() => setTab("keyboard")}
+              onClick={() => chooseTab("keyboard")}
               className={cn(
                 "flex items-center justify-center gap-2 rounded-lg py-1.5 text-xs font-medium transition-all",
                 tab === "keyboard"

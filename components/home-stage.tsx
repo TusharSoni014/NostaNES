@@ -1,8 +1,9 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Gamepad2Icon, PlayIcon, SearchIcon } from "lucide-react"
 import Image from "next/image"
+import { BootScreen } from "@/components/boot-screen"
 import { Clock } from "@/components/clock"
 import { ControlsDialog } from "@/components/controls-dialog"
 import { GameDetailsPanel } from "@/components/game-details-panel"
@@ -35,6 +36,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { motion, AnimatePresence } from "motion/react"
+import { enableUiSounds, playUiSound } from "@/lib/ui-sounds"
 import type { Game } from "@/lib/games"
 
 export type HomeStageProps = {
@@ -47,7 +49,12 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
   )
   const [failed, setFailed] = useState(false)
   const [index, setIndex] = useState(0)
+  const indexRef = useRef(0)
   const [playing, setPlaying] = useState<Game | null>(null)
+  const [shaderReady, setShaderReady] = useState(false)
+  const [presented, setPresented] = useState(false)
+  const [bootMounted, setBootMounted] = useState(true)
+  const [entrance, setEntrance] = useState(true)
   const [controlsOpen, setControlsOpen] = useState(false)
   const [query, setQuery] = useState("")
   const [region, setRegion] = useState("All")
@@ -80,6 +87,23 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
     return () => controller.abort()
   }, [initialGames, reloadKey])
 
+  useEffect(() => {
+    if (failed) playUiSound("error")
+  }, [failed])
+
+  useEffect(() => {
+    const id = window.setTimeout(() => setShaderReady(true), 8000)
+    return () => window.clearTimeout(id)
+  }, [])
+
+  useEffect(() => {
+    if (!presented) return
+    const trimmed = query.trim()
+    if (!trimmed) return
+    const id = window.setTimeout(() => playUiSound("option_selected"), 450)
+    return () => window.clearTimeout(id)
+  }, [presented, query])
+
   const regions = useMemo(() => {
     const found = new Set<string>()
     for (const game of games ?? []) found.add(game.region)
@@ -101,29 +125,38 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
 
   const move = useCallback(
     (direction: -1 | 1) => {
-      setIndex((current) => {
-        const next = current + direction
-        if (next < 0 || next > count - 1) return current
-        return next
-      })
+      const current = indexRef.current
+      const next = current + direction
+      if (next < 0 || next > count - 1) return
+      indexRef.current = next
+      setIndex(next)
+      playUiSound("navigation")
     },
     [count],
   )
 
   const jump = useCallback(
     (step: number) => {
-      setIndex((current) => {
-        const next = Math.max(0, Math.min(count - 1, current + step))
-        return next
-      })
+      const current = indexRef.current
+      const next = Math.max(0, Math.min(count - 1, current + step))
+      if (next === current) return
+      indexRef.current = next
+      setIndex(next)
+      playUiSound("navigation")
     },
     [count],
   )
 
   const launch = useCallback(() => {
     if (!selected) return
+    playUiSound("game_start")
     setPlaying(selected)
   }, [selected])
+
+  const revealShelf = useCallback(() => {
+    enableUiSounds()
+    setPresented(true)
+  }, [])
 
   const toggleControls = useCallback(() => {
     setControlsOpen((prev) => !prev)
@@ -132,7 +165,7 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
   // Hook handles Keyboard, Gamepad (Xbox/PlayStation/generic), and mouse wheel
   useShelfNavigation({
     count,
-    isPlaying: Boolean(playing),
+    isPlaying: Boolean(playing) || !presented,
     controlsOpen,
     move,
     jump,
@@ -142,15 +175,31 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
 
   return (
     <div className="relative flex h-dvh flex-col overflow-hidden">
-      <WaveField shift={count === 0 ? 0 : (index % 4) / 3} />
+      <WaveField
+        shift={count === 0 ? 0 : (index % 4) / 3}
+        onReady={() => setShaderReady(true)}
+      />
 
       <motion.div
-        animate={{
-          opacity: playing ? 0 : 1,
-          scale: playing ? 0.96 : 1,
+        initial={{ opacity: 0, scale: 0.6 }}
+        animate={
+          !presented
+            ? { opacity: 0, scale: 0.6 }
+            : playing
+              ? { opacity: 0, scale: 0.96 }
+              : { opacity: 1, scale: 1 }
+        }
+        transition={{
+          duration: !presented ? 0 : entrance ? 0.9 : 0.25,
+          ease: [0.16, 1, 0.3, 1],
         }}
-        transition={{ duration: 0.25, ease: "easeOut" }}
-        className="relative z-10 flex min-h-0 flex-1 flex-col will-change-[opacity,transform]"
+        onAnimationComplete={() => {
+          if (presented) setEntrance(false)
+        }}
+        aria-hidden={!presented}
+        className={`relative z-10 flex min-h-0 flex-1 origin-center flex-col will-change-[opacity,transform] ${
+          presented ? "" : "pointer-events-none"
+        }`}
       >
         <header className="flex shrink-0 items-center justify-between gap-4 px-5 pt-6 sm:px-10">
           <div className="flex items-center gap-3">
@@ -190,6 +239,7 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
                 placeholder="Search cartridges"
                 onChange={(event) => {
                   setQuery(event.target.value)
+                  indexRef.current = 0
                   setIndex(0)
                 }}
               />
@@ -201,8 +251,12 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
             spacing={1}
             value={[region]}
             onValueChange={(next) => {
-              setRegion(next.at(-1) ?? "All")
+              const value = next.at(-1) ?? "All"
+              if (value === region) return
+              setRegion(value)
+              indexRef.current = 0
               setIndex(0)
+              playUiSound("option_selected")
             }}
             className="max-w-full flex-wrap"
           >
@@ -280,10 +334,17 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
                 <GameList
                   games={visible}
                   selectedIndex={index}
-                  onSelectIndex={setIndex}
+                  onSelectIndex={(next) => {
+                    if (next === indexRef.current) return
+                    indexRef.current = next
+                    setIndex(next)
+                    playUiSound("option_selected")
+                  }}
                   onLaunch={(next) => {
                     const game = visible[next]
-                    if (game) setPlaying(game)
+                    if (!game) return
+                    playUiSound("game_start")
+                    setPlaying(game)
                   }}
                 />
               </div>
@@ -292,7 +353,7 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
               <div className="hidden shrink-0 md:flex flex-col justify-center min-h-0 max-h-full">
                 <GameDetailsPanel
                   game={selected}
-                  onLaunch={() => setPlaying(selected)}
+                  onLaunch={launch}
                 />
               </div>
             </div>
@@ -343,6 +404,14 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
           <PlayerStage game={playing} onExit={() => setPlaying(null)} />
         ) : null}
       </AnimatePresence>
+
+      {bootMounted ? (
+        <BootScreen
+          shaderReady={shaderReady}
+          onReveal={revealShelf}
+          onHidden={() => setBootMounted(false)}
+        />
+      ) : null}
     </div>
   )
 }

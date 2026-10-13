@@ -9,6 +9,7 @@ import { PlayerOverlay } from "@/components/player/player-overlay"
 import { useNostalgistEmulator } from "@/components/player/use-nostalgist-emulator"
 import { GamepadDispatcher, type GamepadHoldState } from "@/lib/gamepad/gamepad-dispatcher"
 import { motion } from "motion/react"
+import { playUiSound } from "@/lib/ui-sounds"
 import { cn } from "@/lib/utils"
 import type { Game } from "@/lib/games"
 
@@ -29,6 +30,14 @@ export const PlayerStage = ({ game, onExit }: PlayerStageProps) => {
     remainingSeconds: 5,
     progress: 0,
   })
+
+  useEffect(() => {
+    if (phase === "error") playUiSound("error")
+  }, [phase])
+
+  useEffect(() => {
+    if (confirmingExit) playUiSound("game_paused")
+  }, [confirmingExit])
 
   const { pause, resume } = useNostalgistEmulator({
     game,
