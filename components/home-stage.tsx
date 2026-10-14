@@ -37,7 +37,8 @@ import {
 } from "@/components/ui/tooltip"
 import { motion, AnimatePresence } from "motion/react"
 import { enableUiSounds, playUiSound } from "@/lib/ui-sounds"
-import type { Game } from "@/lib/games"
+import { type Game, type GameGroup, groupGames } from "@/lib/games"
+import { VersionSelectDialog } from "@/components/version-select-dialog"
 
 export type HomeStageProps = {
   initialGames?: Game[]
@@ -58,6 +59,7 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
   const [query, setQuery] = useState("")
   const [region, setRegion] = useState("All")
   const [reloadKey, setReloadKey] = useState(0)
+  const [versionSelectGroup, setVersionSelectGroup] = useState<GameGroup | null>(null)
 
   // Fetch games dynamically on boot time (or on manual retry)
   useEffect(() => {
@@ -99,21 +101,29 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
     return () => window.clearTimeout(id)
   }, [presented, query])
 
-  const regions = useMemo(() => {
-    const found = new Set<string>()
-    for (const game of games ?? []) found.add(game.region)
-    return ["All", ...[...found].sort()]
+  const groupedGames = useMemo(() => {
+    if (!games) return null
+    return groupGames(games)
   }, [games])
 
+  const regions = useMemo(() => {
+    const found = new Set<string>()
+    for (const group of groupedGames ?? []) {
+      for (const r of group.regions) found.add(r)
+    }
+    return ["All", ...[...found].sort()]
+  }, [groupedGames])
+
   const visible = useMemo(() => {
-    if (!games) return []
+    if (!groupedGames) return []
     const needle = query.trim().toLowerCase()
-    return games.filter((game) => {
-      const regionMatches = region === "All" || game.region === region
-      const text = `${game.title} ${game.tags.join(" ")}`.toLowerCase()
+    return groupedGames.filter((group) => {
+      const regionMatches = region === "All" || group.regions.includes(region)
+      const versionFiles = group.versions.map((v) => `${v.file} ${v.tags.join(" ")}`).join(" ")
+      const text = `${group.title} ${group.tags.join(" ")} ${versionFiles}`.toLowerCase()
       return regionMatches && (needle.length === 0 || text.includes(needle))
     })
-  }, [games, query, region])
+  }, [groupedGames, query, region])
 
   const count = visible.length
   const selected = visible[index] ?? null
@@ -142,11 +152,22 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
     [count],
   )
 
-  const launch = useCallback(() => {
-    if (!selected) return
-    playUiSound("game_start")
-    setPlaying(selected)
-  }, [selected])
+  const launch = useCallback(
+    (targetIndex?: number) => {
+      const target = targetIndex !== undefined ? visible[targetIndex] : selected
+      if (!target) return
+
+      if (target.versions && target.versions.length > 1) {
+        playUiSound("option_selected")
+        setVersionSelectGroup(target)
+        return
+      }
+
+      playUiSound("game_start")
+      setPlaying(target.versions[0] ?? target)
+    },
+    [visible, selected],
+  )
 
   const revealShelf = useCallback(() => {
     enableUiSounds()
@@ -161,7 +182,7 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
   useShelfNavigation({
     count,
     isPlaying: Boolean(playing) || !presented,
-    controlsOpen,
+    controlsOpen: controlsOpen || Boolean(versionSelectGroup),
     move,
     jump,
     launch,
@@ -173,6 +194,22 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
       <WaveField
         shift={count === 0 ? 0 : (index % 4) / 3}
         onReady={() => setShaderReady(true)}
+      />
+
+      {/* Console Transition Foundation:
+          Prevents WebGL shader light burst during game launch, version selection, and exit.
+          Holds a dark console base behind the crossfading layers so background waves never bleed through. */}
+      <motion.div
+        initial={false}
+        animate={{
+          opacity: playing ? 1 : 0,
+        }}
+        transition={{
+          duration: playing ? 0.25 : 0.45,
+          delay: playing ? 0 : 0.15,
+          ease: "easeOut",
+        }}
+        className="pointer-events-none fixed inset-0 z-10 bg-[#020712]"
       />
 
       <motion.div
@@ -192,7 +229,7 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
           if (presented) setEntrance(false)
         }}
         aria-hidden={!presented}
-        className={`relative z-10 flex min-h-0 flex-1 origin-center flex-col will-change-[opacity,transform] ${
+        className={`relative z-20 flex min-h-0 flex-1 origin-center flex-col will-change-[opacity,transform] ${
           presented ? "" : "pointer-events-none"
         }`}
       >
@@ -371,12 +408,7 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
                       setIndex(next)
                       playUiSound("option_selected")
                     }}
-                    onLaunch={(next) => {
-                      const game = visible[next]
-                      if (!game) return
-                      playUiSound("game_start")
-                      setPlaying(game)
-                    }}
+                    onLaunch={(next) => launch(next)}
                   />
                 </div>
 
@@ -384,7 +416,7 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
                 <div className="hidden shrink-0 md:flex flex-col justify-center min-h-0 max-h-full">
                   <GameDetailsPanel
                     game={selected}
-                    onLaunch={launch}
+                    onLaunch={() => launch()}
                   />
                 </div>
               </motion.div>
@@ -421,7 +453,7 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
             <Tooltip>
               <TooltipTrigger
                 render={
-                  <Button size="lg" disabled={!selected || games === null} onClick={launch} />
+                  <Button size="lg" disabled={!selected || games === null} onClick={() => launch()} />
                 }
               >
                 <PlayIcon data-icon="inline-start" />
@@ -433,9 +465,25 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
         </footer>
       </motion.div>
 
+      <VersionSelectDialog
+        group={versionSelectGroup}
+        open={Boolean(versionSelectGroup)}
+        onOpenChange={(openState) => {
+          if (!openState) setVersionSelectGroup(null)
+        }}
+        onSelectVersion={(version) => {
+          setVersionSelectGroup(null)
+          setPlaying(version)
+        }}
+      />
+
       <AnimatePresence>
         {playing ? (
-          <PlayerStage game={playing} onExit={() => setPlaying(null)} />
+          <PlayerStage
+            key={playing.file}
+            game={playing}
+            onExit={() => setPlaying(null)}
+          />
         ) : null}
       </AnimatePresence>
 

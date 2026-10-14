@@ -11,6 +11,7 @@ type InGameMenuExitPanelProps = {
   game: Game
   onRequestExit: () => void
   onResume: () => void
+  onCancel?: () => void
   isFocused?: boolean
   onNavigateLeft?: () => void
 }
@@ -22,18 +23,20 @@ export const InGameMenuExitPanel = ({
   game,
   onRequestExit,
   onResume,
+  onCancel,
   isFocused = false,
   onNavigateLeft,
 }: InGameMenuExitPanelProps) => {
   const [selectedBtn, setSelectedBtn] = useState<ExitOption>("cancel")
+  const handleCancel = onCancel ?? onResume
 
   useMenuNavigation<ExitOption>({
     enabled: isFocused,
     items: EXIT_OPTIONS,
     activeItem: selectedBtn,
     onSelect: setSelectedBtn,
-    onConfirm: (item) => (item === "exit" ? onRequestExit() : onResume()),
-    onCancel: onResume,
+    onConfirm: (item) => (item === "exit" ? onRequestExit() : handleCancel()),
+    onCancel: handleCancel,
     onNavigateLeft: (item) => (item === "exit" ? setSelectedBtn("cancel") : onNavigateLeft?.()),
     onNavigateRight: () => setSelectedBtn("exit"),
   })
@@ -52,7 +55,7 @@ export const InGameMenuExitPanel = ({
       <div className="flex items-center gap-3">
         <Button
           variant={isFocused && selectedBtn === "cancel" ? "default" : "outline"}
-          onClick={onResume}
+          onClick={handleCancel}
           className={cn(isFocused && selectedBtn === "cancel" && "ring-2 ring-blue-400")}
         >
           Cancel

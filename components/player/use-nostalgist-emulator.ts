@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useCallback, useEffect, useRef } from "react"
 import type { Nostalgist } from "nostalgist"
 import { preventScreenSleep } from "@/lib/display/wake-lock"
 import {
@@ -85,16 +85,36 @@ export function useNostalgistEmulator({
     }
   }
 
+  const controllerRef = useRef<AbortController | null>(null)
+  const readyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const cancelWakeLockRef = useRef<(() => void) | null>(null)
+  const stoppedRef = useRef(false)
+
+  const unload = useCallback(() => {
+    stoppedRef.current = true
+    if (readyTimerRef.current) clearTimeout(readyTimerRef.current)
+    if (cancelWakeLockRef.current) cancelWakeLockRef.current()
+    if (controllerRef.current) controllerRef.current.abort()
+    const emu = instanceRef.current
+    if (emu) {
+      setAudioContextState(emu, "close")
+      try {
+        emu.exit()
+      } catch {}
+      instanceRef.current = null
+    }
+  }, [])
+
   useEffect(() => {
     onPhaseChange("loading")
     const canvas = canvasRef.current
     const frame = canvas?.parentElement
     if (!canvas || !frame) return
 
+    stoppedRef.current = false
     const controller = new AbortController()
-    let stopped = false
-    let readyTimer: ReturnType<typeof setTimeout> | null = null
-    const cancelWakeLock = preventScreenSleep()
+    controllerRef.current = controller
+    cancelWakeLockRef.current = preventScreenSleep()
     const loadStartTime = performance.now()
 
     const rect = frame.getBoundingClientRect()
@@ -106,7 +126,7 @@ export function useNostalgistEmulator({
     ;(async () => {
       try {
         const { Nostalgist } = await import("nostalgist")
-        if (stopped) return
+        if (stoppedRef.current) return
 
         const rom = new URL(
           `/api/rom?file=${encodeURIComponent(game.file)}`,
@@ -128,14 +148,14 @@ export function useNostalgistEmulator({
           retroarchConfig: getRetroArchInputConfig(),
           retroarchCoreConfig: getRetroArchCoreConfig(),
           onLaunch() {
-            if (stopped) return
+            if (stoppedRef.current) return
 
             // Even when the game is already loaded/cached, keep loader visible for at least 1s
             const elapsed = performance.now() - loadStartTime
             const delayRemaining = Math.max(0, MIN_LOADER_DURATION_MS - elapsed)
 
-            readyTimer = setTimeout(() => {
-              if (!stopped) {
+            readyTimerRef.current = setTimeout(() => {
+              if (!stoppedRef.current) {
                 onPhaseChange("ready")
                 canvas.focus()
               }
@@ -143,7 +163,7 @@ export function useNostalgistEmulator({
           },
         })
 
-        if (stopped) {
+        if (stoppedRef.current) {
           setAudioContextState(emulator, "close")
           try {
             emulator.exit()
@@ -152,7 +172,7 @@ export function useNostalgistEmulator({
         }
         instanceRef.current = emulator
       } catch (error) {
-        if (!stopped && !controller.signal.aborted) {
+        if (!stoppedRef.current && !controller.signal.aborted) {
           console.error(error)
           onPhaseChange("error")
         }
@@ -160,20 +180,9 @@ export function useNostalgistEmulator({
     })()
 
     return () => {
-      stopped = true
-      if (readyTimer) clearTimeout(readyTimer)
-      cancelWakeLock()
-      controller.abort()
-      const emu = instanceRef.current
-      if (emu) {
-        setAudioContextState(emu, "close")
-        try {
-          emu.exit()
-        } catch {}
-        instanceRef.current = null
-      }
+      unload()
     }
-  }, [canvasRef, game.file, onPhaseChange, reloadKey])
+  }, [canvasRef, game.file, onPhaseChange, reloadKey, unload])
 
-  return { pause, resume, saveState, loadState }
+  return { pause, resume, saveState, loadState, unload }
 }

@@ -17,13 +17,7 @@ import { useMenuNavigation } from "@/hooks/use-menu-navigation"
 import { playUiSound } from "@/lib/ui-sounds"
 
 const MENU_TABS: readonly InGameMenuTab[] = [
-  "resume",
-  "save",
-  "load",
-  "controls",
-  "cheats",
-  "reset",
-  "exit",
+  "resume", "save", "load", "controls", "cheats", "reset", "exit",
 ] as const
 
 export const InGameMenu = ({
@@ -34,9 +28,20 @@ export const InGameMenu = ({
   onResetGame,
   onSaveState,
   onLoadState,
+  onReloadControls,
 }: InGameMenuProps) => {
   const [activeTab, setActiveTab] = useState<InGameMenuTab>("resume")
   const [focusPane, setFocusPane] = useState<"sidebar" | "content">("sidebar")
+  const [prevOpen, setPrevOpen] = useState(open)
+
+  // Reset tab selection and pane focus back to initial screen whenever menu closes
+  if (open !== prevOpen) {
+    setPrevOpen(open)
+    if (!open) {
+      setActiveTab("resume")
+      setFocusPane("sidebar")
+    }
+  }
 
   const handleSelectTab = useCallback(
     (tab: InGameMenuTab) => {
@@ -140,6 +145,7 @@ export const InGameMenu = ({
                     isFocused={focusPane === "content"}
                     onCancel={() => setFocusPane("sidebar")}
                     onNavigateLeft={() => setFocusPane("sidebar")}
+                    onControlsSaved={onReloadControls}
                   />
                 ) : activeTab === "cheats" ? (
                   <InGameMenuCheatsPanel />
@@ -156,6 +162,7 @@ export const InGameMenu = ({
                     game={game}
                     onRequestExit={onRequestExit}
                     onResume={onResume}
+                    onCancel={() => setFocusPane("sidebar")}
                     isFocused={focusPane === "content"}
                     onNavigateLeft={() => setFocusPane("sidebar")}
                   />
@@ -168,26 +175,14 @@ export const InGameMenu = ({
         {/* Global Navigation Hints Footer */}
         <div className="shrink-0 flex items-center justify-between border-t border-white/10 px-6 py-2.5 bg-black/40 text-xs text-white/60 select-none">
           <div className="flex items-center gap-2">
-            <span className="flex items-center gap-1">
-              <Kbd className="text-[10px]">D-Pad ▲▼</Kbd>
-              <span>Navigate</span>
-            </span>
+            <span className="flex items-center gap-1"><Kbd className="text-[10px]">D-Pad ▲▼</Kbd><span>Navigate</span></span>
             <span className="text-white/20">•</span>
-            <span className="flex items-center gap-1">
-              <Kbd className="text-[10px]">◄ ►</Kbd>
-              <span>Switch Pane</span>
-            </span>
+            <span className="flex items-center gap-1"><Kbd className="text-[10px]">◄ ►</Kbd><span>Switch Pane</span></span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="flex items-center gap-1">
-              <Kbd className="text-[10px]">A / Enter</Kbd>
-              <span>Select</span>
-            </span>
+            <span className="flex items-center gap-1"><Kbd className="text-[10px]">A / Enter</Kbd><span>Select</span></span>
             <span className="text-white/20">•</span>
-            <span className="flex items-center gap-1">
-              <Kbd className="text-[10px]">B / Esc</Kbd>
-              <span>Back / Resume</span>
-            </span>
+            <span className="flex items-center gap-1"><Kbd className="text-[10px]">B / Esc</Kbd><span>Back / Resume</span></span>
           </div>
         </div>
       </motion.div>

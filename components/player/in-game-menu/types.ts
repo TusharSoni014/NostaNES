@@ -17,4 +17,5 @@ export type InGameMenuProps = {
   onResetGame?: () => void
   onSaveState: (slot: number) => Promise<boolean>
   onLoadState: (slot: number) => Promise<boolean>
+  onReloadControls?: () => void
 }

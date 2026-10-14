@@ -15,6 +15,11 @@ export type Game = {
   year?: number
 }
 
+export type GameGroup = Game & {
+  versions: Game[]
+  regions: string[]
+}
+
 const REGION_LABELS: Record<string, string> = {
   U: "USA",
   USA: "USA",
@@ -124,4 +129,58 @@ export function coverPalette(title: string) {
   }
 
   return palettes[(hash >>> 0) % palettes.length]
+}
+
+function getRegionPriority(region: string): number {
+  if (region === "USA") return 1
+  if (region === "World") return 2
+  if (region.includes("USA")) return 3
+  if (region.includes("Europe")) return 4
+  if (region.includes("Japan")) return 5
+  return 6
+}
+
+export function groupGames(games: Game[]): GameGroup[] {
+  const groupsMap = new Map<string, Game[]>()
+
+  for (const game of games) {
+    const key = game.title.trim().toLowerCase()
+    const existing = groupsMap.get(key)
+    if (existing) {
+      existing.push(game)
+    } else {
+      groupsMap.set(key, [game])
+    }
+  }
+
+  const result: GameGroup[] = []
+
+  for (const versions of groupsMap.values()) {
+    // Sort versions: regional priority > verified/clean over beta/bad > alphabetical
+    versions.sort((a, b) => {
+      const prioA = getRegionPriority(a.region)
+      const prioB = getRegionPriority(b.region)
+      if (prioA !== prioB) return prioA - prioB
+
+      const aHasBadOrBeta = a.tags.some((t) => /beta|bad|dump|hack/i.test(t))
+      const bHasBadOrBeta = b.tags.some((t) => /beta|bad|dump|hack/i.test(t))
+      if (aHasBadOrBeta !== bHasBadOrBeta) return aHasBadOrBeta ? 1 : -1
+
+      return a.file.localeCompare(b.file)
+    })
+
+    const primary = versions[0]
+    const regions = Array.from(new Set(versions.map((v) => v.region)))
+    const year = primary.year ?? versions.find((v) => v.year)?.year
+
+    result.push({
+      ...primary,
+      year,
+      versions,
+      regions,
+    })
+  }
+
+  result.sort((a, b) => a.title.localeCompare(b.title))
+  return result
 }

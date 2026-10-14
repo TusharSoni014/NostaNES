@@ -3,10 +3,10 @@
 import { useEffect, useRef } from "react"
 import { Gamepad2Icon } from "lucide-react"
 import { cn } from "@/lib/utils"
-import type { Game } from "@/lib/games"
+import type { Game, GameGroup } from "@/lib/games"
 
 type GameListProps = {
-  games: Game[]
+  games: (Game | GameGroup)[]
   selectedIndex: number
   onSelectIndex: (index: number) => void
   onLaunch: (index: number) => void
@@ -136,13 +136,27 @@ export const GameList = ({
                       : "text-white/40 group-hover:text-white/60",
                   )}
                 >
-                  {game.file}
+                  {"versions" in game && game.versions.length > 1
+                    ? `${game.versions.length} versions available`
+                    : game.file}
                 </span>
               </div>
             </div>
 
             {/* Right: Region & Year Badges */}
             <div className="flex shrink-0 items-center gap-1.5">
+              {"versions" in game && game.versions.length > 1 ? (
+                <span
+                  className={cn(
+                    "rounded-full px-2 py-0.5 text-xs border font-semibold transition-colors",
+                    isSelected
+                      ? "border-zinc-800 bg-zinc-950 text-sky-400"
+                      : "border-sky-400/30 bg-sky-500/10 text-sky-300",
+                  )}
+                >
+                  {game.versions.length} Ver
+                </span>
+              ) : null}
               <span
                 className={cn(
                   "rounded-full px-2.5 py-0.5 text-xs border font-medium transition-colors",

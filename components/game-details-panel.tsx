@@ -6,10 +6,10 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Kbd } from "@/components/ui/kbd"
 import { Separator } from "@/components/ui/separator"
-import type { Game } from "@/lib/games"
+import type { Game, GameGroup } from "@/lib/games"
 
 type GameDetailsPanelProps = {
-  game: Game
+  game: Game | GameGroup
   onLaunch: () => void
 }
 
@@ -27,6 +27,14 @@ export const GameDetailsPanel = ({ game, onLaunch }: GameDetailsPanelProps) => (
         <Badge variant="outline" className="text-[11px] py-0 px-2">
           {game.region}
         </Badge>
+        {"versions" in game && game.versions.length > 1 ? (
+          <Badge
+            variant="outline"
+            className="text-[11px] py-0 px-2 border-sky-400/40 bg-sky-500/10 text-sky-300 font-semibold"
+          >
+            {game.versions.length} Releases
+          </Badge>
+        ) : null}
         {game.year ? (
           <Badge variant="secondary" className="text-[11px] py-0 px-2">
             {game.year}
@@ -42,7 +50,9 @@ export const GameDetailsPanel = ({ game, onLaunch }: GameDetailsPanelProps) => (
       </h3>
 
       <p className="font-mono text-[11px] text-muted-foreground truncate" title={game.file}>
-        {game.file}
+        {"versions" in game && game.versions.length > 1
+          ? `${game.versions.length} versions (${game.regions.join(", ")})`
+          : game.file}
       </p>
 
       {game.tags.length > 0 ? (
@@ -68,11 +78,15 @@ export const GameDetailsPanel = ({ game, onLaunch }: GameDetailsPanelProps) => (
         onClick={onLaunch}
       >
         <PlayIcon className="size-3.5 fill-current" />
-        Start Game
+        {"versions" in game && game.versions.length > 1
+          ? `Choose Version (${game.versions.length})`
+          : "Start Game"}
         <Kbd className="ml-auto text-[11px]">Enter</Kbd>
       </Button>
       <p className="text-center text-[10px] text-muted-foreground">
-        Press <Kbd className="text-[9px]">Enter</Kbd> or click to play
+        {"versions" in game && game.versions.length > 1
+          ? "Press Enter to select version"
+          : "Press Enter or click to play"}
       </p>
     </div>
   </div>

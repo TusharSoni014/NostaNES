@@ -38,13 +38,10 @@ export const PlayerStage = ({ game, onExit }: PlayerStageProps) => {
 
   useEffect(() => {
     if (phase === "error") playUiSound("error")
-  }, [phase])
+    else if (confirmingExit) playUiSound("game_paused")
+  }, [phase, confirmingExit])
 
-  useEffect(() => {
-    if (confirmingExit) playUiSound("game_paused")
-  }, [confirmingExit])
-
-  const { pause, resume, saveState, loadState } = useNostalgistEmulator({
+  const { pause, resume, saveState, loadState, unload } = useNostalgistEmulator({
     game,
     canvasRef,
     onPhaseChange: setPhase,
@@ -52,6 +49,7 @@ export const PlayerStage = ({ game, onExit }: PlayerStageProps) => {
   })
 
   const { handleSaveState, handleLoadState } = useSaveLoadState(game.file, saveState, loadState)
+  const pendingRestoreRef = useRef<Blob | null>(null)
 
   const handleResetGame = useCallback(() => {
     setInGameMenuOpen(false)
@@ -60,13 +58,30 @@ export const PlayerStage = ({ game, onExit }: PlayerStageProps) => {
     playUiSound("game_start")
   }, [])
 
+  const handleReloadControls = useCallback(async () => {
+    try {
+      const blob = await saveState()
+      if (blob) pendingRestoreRef.current = blob
+    } catch {}
+    setRomKey((prev) => prev + 1)
+  }, [saveState])
+
   useEffect(() => {
-    const onFullscreenChange = () => setIsFullscreen(Boolean(document.fullscreenElement))
-    document.addEventListener("fullscreenchange", onFullscreenChange)
-    if (typeof document !== "undefined" && !document.fullscreenElement) {
-      stageRef.current?.requestFullscreen().catch(() => {})
+    if (phase === "ready" && pendingRestoreRef.current) {
+      const blob = pendingRestoreRef.current
+      pendingRestoreRef.current = null
+      loadState(blob).catch(() => {})
     }
-    return () => document.removeEventListener("fullscreenchange", onFullscreenChange)
+  }, [phase, loadState])
+
+  useEffect(() => {
+    const onFs = () => setIsFullscreen(Boolean(document.fullscreenElement))
+    document.addEventListener("fullscreenchange", onFs)
+    if (!document.fullscreenElement) stageRef.current?.requestFullscreen().catch(() => {})
+    return () => {
+      document.removeEventListener("fullscreenchange", onFs)
+      if (document.fullscreenElement) document.exitFullscreen().catch(() => {})
+    }
   }, [])
 
   const toggleFullscreen = useCallback(() => {
@@ -86,11 +101,8 @@ export const PlayerStage = ({ game, onExit }: PlayerStageProps) => {
   }, [resume])
 
   const toggleInGameMenu = useCallback(() => {
-    if (inGameMenuOpen) {
-      closeInGameMenu()
-    } else {
-      openInGameMenu()
-    }
+    if (inGameMenuOpen) closeInGameMenu()
+    else openInGameMenu()
   }, [inGameMenuOpen, closeInGameMenu, openInGameMenu])
 
   const handleRequestExit = useCallback(() => {
@@ -104,9 +116,13 @@ export const PlayerStage = ({ game, onExit }: PlayerStageProps) => {
   }, [closeInGameMenu])
 
   const handleConfirmExit = useCallback(() => {
+    unload()
+    setInGameMenuOpen(false)
+    setConfirmingExit(false)
     if (document.fullscreenElement) document.exitFullscreen().catch(() => {})
+    playUiSound("navigation")
     onExit()
-  }, [onExit])
+  }, [unload, onExit])
 
   usePlayerInput({
     inGameMenuOpen,
@@ -128,19 +144,11 @@ export const PlayerStage = ({ game, onExit }: PlayerStageProps) => {
       transition={{ duration: 0.25, ease: "easeOut" }}
       className="fixed inset-0 z-40 flex flex-col bg-black will-change-opacity select-none"
     >
-      <GamepadExitHud
-        active={exitHud.active}
-        remainingSeconds={exitHud.remainingSeconds}
-        progress={exitHud.progress}
-      />
-
-      <ExitConfirmDialog
-        open={confirmingExit}
-        onResume={handleResume}
-        onConfirmExit={handleConfirmExit}
-      />
+      <GamepadExitHud active={exitHud.active} remainingSeconds={exitHud.remainingSeconds} progress={exitHud.progress} />
+      <ExitConfirmDialog open={confirmingExit} onResume={handleResume} onConfirmExit={handleConfirmExit} />
 
       <InGameMenu
+        key={inGameMenuOpen ? "open" : "closed"}
         open={inGameMenuOpen}
         game={game}
         onResume={handleResume}
@@ -148,6 +156,7 @@ export const PlayerStage = ({ game, onExit }: PlayerStageProps) => {
         onResetGame={handleResetGame}
         onSaveState={handleSaveState}
         onLoadState={handleLoadState}
+        onReloadControls={handleReloadControls}
       />
 
       <PlayerHeader

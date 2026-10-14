@@ -89,13 +89,8 @@ export const ControlsDialog = ({ open, onOpenChange }: ControlsDialogProps) => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "ArrowLeft") chooseTab("gamepad")
       else if (e.key === "ArrowRight") chooseTab("keyboard")
-      else if (e.key === "ArrowUp") {
-        e.preventDefault()
-        scrollBody(-70)
-      } else if (e.key === "ArrowDown") {
-        e.preventDefault()
-        scrollBody(70)
-      }
+      else if (e.key === "ArrowUp") { e.preventDefault(); scrollBody(-70) }
+      else if (e.key === "ArrowDown") { e.preventDefault(); scrollBody(70) }
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
@@ -188,15 +183,9 @@ export const ControlsDialog = ({ open, onOpenChange }: ControlsDialogProps) => {
 
         <div className="shrink-0 flex items-center justify-between border-t border-border/50 px-5 py-2.5 bg-muted/20 text-xs text-muted-foreground select-none">
           <div className="flex items-center gap-2">
-            <span className="flex items-center gap-1">
-              <Kbd className="text-[10px]">LB/RB</Kbd>
-              <span>Tabs</span>
-            </span>
+            <span className="flex items-center gap-1"><Kbd className="text-[10px]">LB/RB</Kbd><span>Tabs</span></span>
             <span className="text-muted-foreground/40">•</span>
-            <span className="flex items-center gap-1">
-              <Kbd className="text-[10px]">D-Pad ↑↓</Kbd>
-              <span>Scroll</span>
-            </span>
+            <span className="flex items-center gap-1"><Kbd className="text-[10px]">D-Pad ↑↓</Kbd><span>Scroll</span></span>
           </div>
           <div className="flex items-center gap-1.5">
             <Kbd className="text-[10px]">B / Y</Kbd>

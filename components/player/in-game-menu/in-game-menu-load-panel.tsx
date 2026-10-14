@@ -147,13 +147,9 @@ export const InGameMenuLoadPanel = ({
                 <div className="flex items-center gap-2">
                   <span className="font-mono text-sm font-bold text-blue-400">SLOT {slot}</span>
                   {existing ? (
-                    <span className="text-[10px] rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30 px-2 py-0.5">
-                      Ready to Load
-                    </span>
+                    <span className="text-[10px] rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30 px-2 py-0.5">Ready to Load</span>
                   ) : (
-                    <span className="text-[10px] rounded-full bg-white/5 text-white/40 border border-white/10 px-2 py-0.5">
-                      Empty
-                    </span>
+                    <span className="text-[10px] rounded-full bg-white/5 text-white/40 border border-white/10 px-2 py-0.5">Empty</span>
                   )}
                 </div>
 
@@ -189,17 +185,8 @@ export const InGameMenuLoadPanel = ({
                   }}
                   className="gap-2 min-w-28"
                 >
-                  {isLoading ? (
-                    <>
-                      <Loader2Icon className="size-3.5 animate-spin" />
-                      <span>Loading...</span>
-                    </>
-                  ) : (
-                    <>
-                      <UploadIcon className="size-3.5" />
-                      <span>Load State</span>
-                    </>
-                  )}
+                  {isLoading ? <Loader2Icon className="size-3.5 animate-spin" /> : <UploadIcon className="size-3.5" />}
+                  <span>{isLoading ? "Loading..." : "Load State"}</span>
                 </Button>
               </div>
             </div>

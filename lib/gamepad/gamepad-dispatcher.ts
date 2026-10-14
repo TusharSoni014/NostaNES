@@ -41,6 +41,14 @@ export class GamepadDispatcher {
   start = (): void => {
     if (this.running) return
     this.running = true
+    const pads = navigator.getGamepads?.() ?? []
+    const pad = Array.from(pads).find((p): p is Gamepad => Boolean(p && p.connected))
+    if (pad) {
+      pad.buttons.forEach((btn, idx) => {
+        const isPressed = typeof btn === "object" ? btn.pressed : Boolean(btn)
+        if (isPressed) this.buttonPreviousStates.set(idx, true)
+      })
+    }
     this.tick(performance.now())
   }
 
