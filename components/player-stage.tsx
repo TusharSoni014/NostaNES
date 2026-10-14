@@ -12,7 +12,7 @@ import { useNostalgistEmulator } from "@/components/player/use-nostalgist-emulat
 import { useSaveLoadState } from "@/components/player/use-save-load-state"
 import { usePlayerInput } from "@/components/player/use-player-input"
 import { useKeyboardControls } from "@/components/player/use-keyboard-controls"
-import { installGamepadRemapping } from "@/lib/gamepad/gamepad-remapper"
+import { useGamepadControls } from "@/components/player/use-gamepad-controls"
 import { getSavedShader, saveShader, type GameShader } from "@/lib/storage/shader-storage"
 import type { GamepadHoldState } from "@/lib/gamepad/gamepad-dispatcher"
 import { motion } from "motion/react"
@@ -54,9 +54,13 @@ export const PlayerStage = ({ game, onExit }: PlayerStageProps) => {
     isPaused: inGameMenuOpen || confirmingExit,
   })
 
-  useEffect(() => installGamepadRemapping(), [])
-
   useKeyboardControls({
+    enabled: phase === "ready" && !inGameMenuOpen && !confirmingExit,
+    pressDown,
+    pressUp,
+  })
+
+  useGamepadControls({
     enabled: phase === "ready" && !inGameMenuOpen && !confirmingExit,
     pressDown,
     pressUp,

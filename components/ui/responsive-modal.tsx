@@ -55,6 +55,20 @@ export function ResponsiveModal({
     return () => window.removeEventListener("keydown", onKeyDown)
   }, [open, isMobile, requestChange])
 
+  // Accessibility: blur background elements on open, restore focus on close
+  React.useEffect(() => {
+    if (!open) return
+    const prevActive = document.activeElement as HTMLElement | null
+    if (prevActive && typeof prevActive.blur === "function") {
+      prevActive.blur()
+    }
+    return () => {
+      if (prevActive && typeof prevActive.focus === "function") {
+        prevActive.focus()
+      }
+    }
+  }, [open])
+
   if (isMobile) {
     return (
       <Drawer open={open} onOpenChange={requestChange} showSwipeHandle>
@@ -106,6 +120,7 @@ export function ResponsiveModal({
           <motion.div
             role="dialog"
             aria-modal="true"
+            tabIndex={-1}
             initial={{ opacity: 0, scale: 0.94, y: 16 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{
@@ -116,7 +131,7 @@ export function ResponsiveModal({
             }}
             transition={{ type: "spring", damping: 28, stiffness: 380, mass: 0.85 }}
             className={cn(
-              "relative z-50 w-full max-w-lg rounded-2xl border border-blue-500/30 bg-[#040817]/95 p-6 text-white shadow-[0_32px_96px_rgba(0,10,35,0.95)] ring-1 ring-blue-400/20 backdrop-blur-3xl",
+              "relative z-50 w-full max-w-lg rounded-2xl border border-blue-500/30 bg-[#040817]/95 p-6 text-white shadow-[0_32px_96px_rgba(0,10,35,0.95)] ring-1 ring-blue-400/20 backdrop-blur-3xl focus:outline-none",
               className,
             )}
           >

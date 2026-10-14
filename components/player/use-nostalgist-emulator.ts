@@ -27,8 +27,10 @@ function setAudioContextState(emu: Nostalgist | null, state: "suspend" | "resume
       getEmscriptenAL?: () => { currentCtx?: { audioCtx?: AudioContext } }
       getEmscriptenModule?: () => { SDL2?: { audio?: { audioCtx?: AudioContext } } }
     }
-    target.getEmscriptenAL?.()?.currentCtx?.audioCtx?.[state]?.()
-    target.getEmscriptenModule?.()?.SDL2?.audio?.audioCtx?.[state]?.()
+    const alP = target.getEmscriptenAL?.()?.currentCtx?.audioCtx?.[state]?.()
+    if (alP && typeof alP.catch === "function") alP.catch(() => {})
+    const sdlP = target.getEmscriptenModule?.()?.SDL2?.audio?.audioCtx?.[state]?.()
+    if (sdlP && typeof sdlP.catch === "function") sdlP.catch(() => {})
   } catch {}
 }
 

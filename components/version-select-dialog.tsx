@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { CheckIcon, PlayIcon } from "lucide-react"
 import { ResponsiveModal } from "@/components/ui/responsive-modal"
 import { Badge } from "@/components/ui/badge"
@@ -26,24 +26,32 @@ export function VersionSelectDialog({
 }: VersionSelectDialogProps) {
   // Preserve last group during close transition so modal animates out cleanly
   const [cachedGroup, setCachedGroup] = useState<GameGroup | null>(group)
-  if (group && group !== cachedGroup) {
-    setCachedGroup(group)
-  }
+  if (group && group !== cachedGroup) setCachedGroup(group)
   const activeGroup = group ?? cachedGroup
 
   const versions = activeGroup?.versions ?? []
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const itemRefs = useRef<(HTMLDivElement | null)[]>([])
+  const listboxRef = useRef<HTMLDivElement>(null)
   const [isLaunching, setIsLaunching] = useState(false)
   const [prevOpen, setPrevOpen] = useState(open)
 
   if (open !== prevOpen) {
     setPrevOpen(open)
-    if (open) setIsLaunching(false)
+    if (open) {
+      setIsLaunching(false)
+      setSelectedId(group?.versions[0]?.id ?? null)
+    }
   }
 
-  const selected =
-    (selectedId ? versions.find((v) => v.id === selectedId) : null) ?? versions[0] ?? null
+  useEffect(() => {
+    if (open) {
+      if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
+      listboxRef.current?.focus()
+    }
+  }, [open])
+
+  const selected = (selectedId ? versions.find((v) => v.id === selectedId) : null) ?? versions[0] ?? null
 
   const dismiss = () => {
     playUiSound("back_cancel")
@@ -65,9 +73,7 @@ export function VersionSelectDialog({
       setSelectedId(ver.id)
       itemRefs.current[idx]?.scrollIntoView({ block: "nearest", behavior: "smooth" })
     },
-    onConfirm: (ver) => {
-      if (ver) handleConfirm(ver)
-    },
+    onConfirm: (ver) => { if (ver) handleConfirm(ver) },
     onCancel: dismiss,
   })
 
@@ -81,24 +87,15 @@ export function VersionSelectDialog({
       exitToBlack={isLaunching}
       title={
         <div className="flex items-center justify-between gap-3 pr-2">
-          <span className="truncate text-base sm:text-lg font-bold text-white tracking-tight">
-            {activeGroup.title}
-          </span>
-          <span className="text-xs text-white/50 font-normal shrink-0">
-            {versions.length} versions
-          </span>
+          <span className="truncate text-base sm:text-lg font-bold text-white tracking-tight">{activeGroup.title}</span>
+          <span className="text-xs text-white/50 font-normal shrink-0">{versions.length} versions</span>
         </div>
       }
       description="Choose a release version to play"
       className="max-w-md"
       footer={
         <div className="flex w-full items-center justify-between gap-2 select-none">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={dismiss}
-            className="text-xs text-white/60 hover:text-white gap-1"
-          >
+          <Button variant="ghost" size="sm" onClick={dismiss} className="text-xs text-white/60 hover:text-white gap-1">
             Cancel <Kbd className="text-[10px] bg-white/10">Esc / B</Kbd>
           </Button>
 
@@ -116,8 +113,17 @@ export function VersionSelectDialog({
       }
     >
       <div
+        ref={listboxRef}
+        tabIndex={0}
         role="listbox"
         aria-label="Available editions"
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && selected) {
+            e.preventDefault()
+            e.stopPropagation()
+            handleConfirm(selected)
+          }
+        }}
         className="flex max-h-[46vh] flex-col gap-2 overflow-y-auto p-1 focus:outline-none [scrollbar-gutter:stable]"
       >
         {versions.map((ver, idx) => {
@@ -125,9 +131,8 @@ export function VersionSelectDialog({
           return (
             <div
               key={ver.id}
-              ref={(el) => {
-                itemRefs.current[idx] = el
-              }}
+              tabIndex={-1}
+              ref={(el) => { itemRefs.current[idx] = el }}
               role="option"
               aria-selected={isCurrent}
               onClick={() => {

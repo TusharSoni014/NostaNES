@@ -105,10 +105,15 @@ export function useMenuNavigation<T>({
       if (!opts.enabled) return
 
       const target = event.target
+      const inModal =
+        target instanceof HTMLElement &&
+        Boolean(target.closest("[role=dialog], [role=menu]"))
       const inInput =
         target instanceof HTMLElement &&
         Boolean(target.closest("input, textarea, [data-slot=toggle-group]"))
-      if (inInput) return
+
+      // If an input is focused inside the modal, allow typing; ignore outside inputs
+      if (inInput && inModal) return
 
       const isVertical = event.key === "ArrowUp" || event.key === "ArrowDown"
       const isHorizontal = event.key === "ArrowLeft" || event.key === "ArrowRight"
@@ -144,6 +149,7 @@ export function useMenuNavigation<T>({
 
       if (event.key === "Enter") {
         event.preventDefault()
+        event.stopPropagation()
         const idx = opts.items.indexOf(opts.activeItem)
         opts.onConfirm?.(opts.activeItem, idx)
       } else if (event.key === "Escape") {

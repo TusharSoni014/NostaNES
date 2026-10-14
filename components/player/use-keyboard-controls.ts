@@ -8,6 +8,8 @@ import {
 } from "@/lib/storage/controls-storage"
 import { normalizeKeyboardEvent } from "./in-game-menu/controls-helpers"
 
+import { NES_TO_RETROARCH_ACTION } from "./use-gamepad-controls"
+
 type UseKeyboardControlsOptions = {
   enabled: boolean
   pressDown: (action: string) => void
@@ -51,10 +53,11 @@ export function useKeyboardControls({
         e.stopPropagation()
         e.stopImmediatePropagation()
 
+        const raAction = NES_TO_RETROARCH_ACTION[boundAction]
         if (e.type === "keydown") {
-          if (!e.repeat) onDown(boundAction)
+          if (!e.repeat) onDown(raAction)
         } else if (e.type === "keyup") {
-          onUp(boundAction)
+          onUp(raAction)
         }
         return
       }
@@ -69,8 +72,8 @@ export function useKeyboardControls({
 
     const handleBlur = () => {
       const { pressUp: onUp } = handlersRef.current
-      for (const action of Object.keys(DEFAULT_KEYBOARD_CONTROLS)) {
-        onUp(action)
+      for (const action of Object.keys(DEFAULT_KEYBOARD_CONTROLS) as NesActionKey[]) {
+        onUp(NES_TO_RETROARCH_ACTION[action])
       }
     }
 
