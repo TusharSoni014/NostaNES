@@ -56,36 +56,53 @@ export const ControlsDialog = ({ open, onOpenChange }: ControlsDialogProps) => {
     playUiSound("option_selected")
   }, [])
 
+  const scrollBody = useCallback((amount: number) => {
+    const el = scrollRef.current
+    if (!el) return
+    const canScrollUp = amount < 0 && el.scrollTop > 0
+    const canScrollDown = amount > 0 && el.scrollTop + el.clientHeight < el.scrollHeight - 2
+    if (canScrollUp || canScrollDown) {
+      playUiSound("navigation")
+      el.scrollBy({ top: amount, behavior: "smooth" })
+    }
+  }, [])
+
   // Gamepad navigation for modal: D-Pad / Stick scrolls, LB/RB or Left/Right switches tabs, B/Y closes
   useEffect(() => {
     if (!open) return
 
     const dispatcher = new GamepadDispatcher((action) => {
-      if (action === "NAV_UP") {
-        playUiSound("navigation")
-        scrollRef.current?.scrollBy({ top: -70, behavior: "smooth" })
-      } else if (action === "NAV_DOWN") {
-        playUiSound("navigation")
-        scrollRef.current?.scrollBy({ top: 70, behavior: "smooth" })
-      } else if (action === "NAV_LEFT" || action === "PAGE_UP") chooseTab("gamepad")
+      if (action === "NAV_UP") scrollBody(-70)
+      else if (action === "NAV_DOWN") scrollBody(70)
+      else if (action === "NAV_LEFT" || action === "PAGE_UP") chooseTab("gamepad")
       else if (action === "NAV_RIGHT" || action === "PAGE_DOWN") chooseTab("keyboard")
       else if (action === "CANCEL" || action === "TOGGLE_CONTROLS") onOpenChange(false)
     })
 
     dispatcher.start()
     return () => dispatcher.stop()
-  }, [chooseTab, open, onOpenChange])
+  }, [chooseTab, open, onOpenChange, scrollBody])
 
-  // Keyboard Left / Right arrow navigation between tabs
+  // Keyboard navigation for dialog
   useEffect(() => {
     if (!open) return
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "ArrowLeft") chooseTab("gamepad")
       else if (e.key === "ArrowRight") chooseTab("keyboard")
+      else if (e.key === "ArrowUp") {
+        e.preventDefault()
+        scrollBody(-70)
+      } else if (e.key === "ArrowDown") {
+        e.preventDefault()
+        scrollBody(70)
+      }
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
-  }, [chooseTab, open])
+  }, [chooseTab, open, scrollBody])
+
+  const libraryControls = tab === "gamepad" ? GAMEPAD_LIBRARY_CONTROLS : KEYBOARD_LIBRARY_CONTROLS
+  const nesControls = tab === "gamepad" ? GAMEPAD_NES_CONTROLS : KEYBOARD_NES_CONTROLS
 
   return (
     <Dialog
@@ -99,7 +116,6 @@ export const ControlsDialog = ({ open, onOpenChange }: ControlsDialogProps) => {
         Controls
       </DialogTrigger>
       <DialogContent className="max-w-md max-h-[90dvh] flex flex-col p-0 gap-0 overflow-hidden sm:max-w-md ring-1 ring-white/10 shadow-2xl">
-        {/* Modal Header & Tabs (Pinned at top) */}
         <div className="shrink-0 p-5 pb-3 border-b border-border/50">
           <DialogHeader>
             <div className="flex items-center gap-2.5">
@@ -117,7 +133,6 @@ export const ControlsDialog = ({ open, onOpenChange }: ControlsDialogProps) => {
             </DialogDescription>
           </DialogHeader>
 
-          {/* Tab Switcher */}
           <div className="mt-3 grid grid-cols-2 gap-1 rounded-xl bg-foreground/5 p-1 border border-foreground/10">
             <button
               type="button"
@@ -148,51 +163,29 @@ export const ControlsDialog = ({ open, onOpenChange }: ControlsDialogProps) => {
           </div>
         </div>
 
-        {/* Scrollable Content Body (Rest is scrollable within max-h-[90dvh]) */}
         <div
           ref={scrollRef}
           className="flex-1 min-h-0 overflow-y-auto px-5 py-3.5 overscroll-contain focus:outline-none"
         >
-          {tab === "gamepad" ? (
-            <div className="flex flex-col gap-2">
-              <p className="text-[11px] font-semibold text-primary uppercase tracking-wider">
-                Library Navigation
-              </p>
-              {GAMEPAD_LIBRARY_CONTROLS.map((ctrl) => (
-                <ControlRow key={ctrl.label} {...ctrl} />
-              ))}
+          <div className="flex flex-col gap-2">
+            <p className="text-[11px] font-semibold text-primary uppercase tracking-wider">
+              Library Navigation
+            </p>
+            {libraryControls.map((ctrl) => (
+              <ControlRow key={ctrl.label} {...ctrl} />
+            ))}
 
-              <Separator className="my-1" />
+            <Separator className="my-1" />
 
-              <p className="text-[11px] font-semibold text-primary uppercase tracking-wider">
-                In-Game NES Layout
-              </p>
-              {GAMEPAD_NES_CONTROLS.map((ctrl) => (
-                <ControlRow key={ctrl.label} {...ctrl} />
-              ))}
-            </div>
-          ) : (
-            <div className="flex flex-col gap-2">
-              <p className="text-[11px] font-semibold text-primary uppercase tracking-wider">
-                Library Navigation
-              </p>
-              {KEYBOARD_LIBRARY_CONTROLS.map((ctrl) => (
-                <ControlRow key={ctrl.label} {...ctrl} />
-              ))}
-
-              <Separator className="my-1" />
-
-              <p className="text-[11px] font-semibold text-primary uppercase tracking-wider">
-                In-Game NES Layout
-              </p>
-              {KEYBOARD_NES_CONTROLS.map((ctrl) => (
-                <ControlRow key={ctrl.label} {...ctrl} />
-              ))}
-            </div>
-          )}
+            <p className="text-[11px] font-semibold text-primary uppercase tracking-wider">
+              In-Game NES Layout
+            </p>
+            {nesControls.map((ctrl) => (
+              <ControlRow key={ctrl.label} {...ctrl} />
+            ))}
+          </div>
         </div>
 
-        {/* Gamepad & Keyboard Navigation Hints */}
         <div className="shrink-0 flex items-center justify-between border-t border-border/50 px-5 py-2.5 bg-muted/20 text-xs text-muted-foreground select-none">
           <div className="flex items-center gap-2">
             <span className="flex items-center gap-1">

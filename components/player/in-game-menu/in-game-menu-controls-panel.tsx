@@ -1,18 +1,14 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { CheckCircle2Icon, RotateCcwIcon, SaveIcon, SlidersIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Kbd } from "@/components/ui/kbd"
-import {
-  ACTION_LABELS,
-  getCustomControls,
-  resetCustomControls,
-  saveCustomControls,
-  type CustomControlsConfig,
-  type NesActionKey,
-} from "@/lib/storage/controls-storage"
+import { ACTION_LABELS, type NesActionKey } from "@/lib/storage/controls-storage"
 import { playUiSound } from "@/lib/ui-sounds"
+import { useMenuNavigation } from "@/hooks/use-menu-navigation"
+import { InGameMenuControlRow } from "./in-game-menu-control-row"
+import { useControlRebinding } from "./use-control-rebinding"
+import { cn } from "@/lib/utils"
 
 const ACTION_KEYS: NesActionKey[] = [
   "up",
@@ -27,87 +23,64 @@ const ACTION_KEYS: NesActionKey[] = [
   "start",
 ]
 
-export const InGameMenuControlsPanel = () => {
-  const [config, setConfig] = useState<CustomControlsConfig>(getCustomControls())
+const PANEL_ITEMS = [...ACTION_KEYS, "reset_btn", "save_btn"] as const
+type PanelItem = (typeof PANEL_ITEMS)[number]
+
+type InGameMenuControlsPanelProps = {
+  isFocused?: boolean
+  onCancel?: () => void
+  onNavigateLeft?: () => void
+}
+
+export const InGameMenuControlsPanel = ({
+  isFocused = false,
+  onCancel,
+  onNavigateLeft,
+}: InGameMenuControlsPanelProps) => {
   const [activeTab, setActiveTab] = useState<"keyboard" | "gamepad">("keyboard")
-  const [listeningKey, setListeningKey] = useState<NesActionKey | null>(null)
-  const [savedNotice, setSavedNotice] = useState(false)
+  const [selectedItem, setSelectedItem] = useState<PanelItem>("up")
+  const listRef = useRef<HTMLDivElement>(null)
 
-  // Listen for keyboard input when rebinding
+  const { config, listeningKey, setListeningKey, savedNotice, handleSave, handleReset } =
+    useControlRebinding(activeTab)
+
+  // Auto-scroll to selected control
   useEffect(() => {
-    if (!listeningKey || activeTab !== "keyboard") return
+    if (!isFocused) return
+    const el = listRef.current?.querySelector(`[data-control-row="${selectedItem}"]`)
+    el?.scrollIntoView({ block: "nearest", behavior: "smooth" })
+  }, [selectedItem, isFocused])
 
-    const handleKeyDown = (e: KeyboardEvent) => {
-      e.preventDefault()
-      e.stopPropagation()
-
-      const keyName = e.key.toLowerCase()
-      setConfig((prev) => ({
-        ...prev,
-        keyboard: {
-          ...prev.keyboard,
-          [listeningKey]: keyName,
-        },
-      }))
-      setListeningKey(null)
-      playUiSound("option_selected")
-    }
-
-    window.addEventListener("keydown", handleKeyDown, true)
-    return () => window.removeEventListener("keydown", handleKeyDown, true)
-  }, [activeTab, listeningKey])
-
-  // Listen for gamepad input when rebinding
-  useEffect(() => {
-    if (!listeningKey || activeTab !== "gamepad") return
-
-    let animId = 0
-    const pollGamepad = () => {
-      const pads = navigator.getGamepads?.() ?? []
-      const pad = Array.from(pads).find((p): p is Gamepad => Boolean(p && p.connected))
-
-      if (pad) {
-        for (let i = 0; i < pad.buttons.length; i++) {
-          const btn = pad.buttons[i]
-          const isPressed = typeof btn === "object" ? btn.pressed : Boolean(btn)
-          if (isPressed) {
-            setConfig((prev) => ({
-              ...prev,
-              gamepad: {
-                ...prev.gamepad,
-                [listeningKey]: String(i),
-              },
-            }))
-            setListeningKey(null)
-            playUiSound("option_selected")
-            return
-          }
-        }
-      }
-      animId = requestAnimationFrame(pollGamepad)
-    }
-
-    animId = requestAnimationFrame(pollGamepad)
-    return () => cancelAnimationFrame(animId)
-  }, [activeTab, listeningKey])
-
-  const handleSave = () => {
-    saveCustomControls(config)
-    setSavedNotice(true)
-    playUiSound("game_start")
-    window.setTimeout(() => setSavedNotice(false), 3000)
+  const toggleTab = () => {
+    setActiveTab((prev) => (prev === "keyboard" ? "gamepad" : "keyboard"))
+    playUiSound("option_selected")
   }
 
-  const handleReset = () => {
-    const defaults = resetCustomControls()
-    setConfig(defaults)
-    setSavedNotice(true)
-    playUiSound("navigation")
-    window.setTimeout(() => setSavedNotice(false), 3000)
-  }
+  // Full gamepad navigation inside the controls panel
+  useMenuNavigation<PanelItem>({
+    enabled: isFocused && !listeningKey,
+    items: PANEL_ITEMS,
+    activeItem: selectedItem,
+    onSelect: (item) => setSelectedItem(item),
+    onConfirm: (item) => {
+      if (item === "reset_btn") handleReset()
+      else if (item === "save_btn") handleSave()
+      else setListeningKey(item as NesActionKey)
+    },
+    onCancel: () => {
+      if (listeningKey) setListeningKey(null)
+      else onCancel?.()
+    },
+    onNavigateLeft: () => {
+      if (!listeningKey) onNavigateLeft?.()
+    },
+    onNavigateRight: toggleTab,
+    onPageUp: toggleTab,
+    onPageDown: toggleTab,
+  })
 
   return (
-    <div className="flex flex-col gap-4 flex-1 min-w-0 max-h-[70vh] overflow-y-auto pr-1">
+    <div className="flex flex-col gap-4 flex-1 min-w-0">
       <div className="flex items-center justify-between gap-3">
         <div>
           <h3 className="text-lg font-bold text-white flex items-center gap-2">
@@ -115,7 +88,7 @@ export const InGameMenuControlsPanel = () => {
             Customize Controls
           </h3>
           <p className="text-xs text-muted-foreground">
-            Remap controls and save them to browser local storage.
+            Remap controls for this game and save them to browser storage.
           </p>
         </div>
 
@@ -138,61 +111,63 @@ export const InGameMenuControlsPanel = () => {
       </div>
 
       {savedNotice ? (
-        <div className="flex items-center gap-2 rounded-xl border border-blue-500/30 bg-blue-500/10 px-4 py-2.5 text-xs text-blue-200">
+        <div className="flex items-center gap-2 rounded-xl border border-blue-500/30 bg-blue-500/10 px-4 py-2 text-xs text-blue-200">
           <CheckCircle2Icon className="size-4 shrink-0 text-blue-400" />
-          <span>Controls saved to browser local storage!</span>
+          <span>Controls saved to browser storage!</span>
         </div>
       ) : null}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-        {ACTION_KEYS.map((action) => {
-          const { label, desc } = ACTION_LABELS[action]
-          const isListening = listeningKey === action
-          const val =
-            activeTab === "keyboard" ? config.keyboard[action] : config.gamepad[action]
+      <div ref={listRef} className="flex-1 max-h-[52vh] overflow-y-auto pr-1">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          {ACTION_KEYS.map((action) => {
+            const { label, desc } = ACTION_LABELS[action]
+            const isListening = listeningKey === action
+            const val = activeTab === "keyboard" ? config.keyboard[action] : config.gamepad[action]
+            const isSelected = isFocused && selectedItem === action
 
-          return (
-            <div
-              key={action}
-              className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-3 hover:border-white/20 hover:bg-white/[0.06] transition-colors"
-            >
-              <div className="flex flex-col min-w-0">
-                <span className="text-xs font-semibold text-white">{label}</span>
-                <span className="text-[10px] text-muted-foreground truncate">{desc}</span>
-              </div>
-
-              <Button
-                variant={isListening ? "default" : "outline"}
-                size="sm"
+            return (
+              <InGameMenuControlRow
+                key={action}
+                action={action}
+                label={label}
+                desc={desc}
+                val={val}
+                isListening={isListening}
+                isSelected={isSelected}
                 onClick={() => setListeningKey(isListening ? null : action)}
-                className="h-8 px-2.5 min-w-20 font-mono text-xs"
-              >
-                {isListening ? (
-                  <span className="animate-pulse text-amber-300">Press input...</span>
-                ) : (
-                  <Kbd className="uppercase">{val}</Kbd>
-                )}
-              </Button>
-            </div>
-          )
-        })}
-      </div>
+              />
+            )
+          })}
+        </div>
 
-      <div className="mt-2 flex items-center justify-between gap-3 border-t border-white/10 pt-3">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleReset}
-          className="text-white/60 hover:text-white gap-2"
-        >
-          <RotateCcwIcon className="size-3.5" />
-          <span>Reset Defaults</span>
-        </Button>
+        <div className="mt-4 flex items-center justify-between gap-3 border-t border-white/10 pt-3">
+          <Button
+            variant={isFocused && selectedItem === "reset_btn" ? "default" : "ghost"}
+            size="sm"
+            data-control-row="reset_btn"
+            onClick={handleReset}
+            className={cn(
+              "gap-2",
+              isFocused && selectedItem === "reset_btn" && "ring-2 ring-blue-400",
+            )}
+          >
+            <RotateCcwIcon className="size-3.5" />
+            <span>Reset Defaults</span>
+          </Button>
 
-        <Button size="sm" onClick={handleSave} className="gap-2">
-          <SaveIcon className="size-3.5" />
-          <span>Save to Browser Storage</span>
-        </Button>
+          <Button
+            size="sm"
+            data-control-row="save_btn"
+            onClick={handleSave}
+            className={cn(
+              "gap-2",
+              isFocused && selectedItem === "save_btn" && "ring-2 ring-blue-400 bg-blue-600",
+            )}
+          >
+            <SaveIcon className="size-3.5" />
+            <span>Save to Storage</span>
+          </Button>
+        </div>
       </div>
     </div>
   )

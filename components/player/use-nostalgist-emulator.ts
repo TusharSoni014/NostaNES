@@ -13,15 +13,29 @@ type UseNostalgistOptions = {
   game: Game
   canvasRef: React.RefObject<HTMLCanvasElement | null>
   onPhaseChange: (phase: "loading" | "ready" | "error") => void
+  reloadKey?: number
 }
 
 // Guarantee NES loader displays for at least one second
 const MIN_LOADER_DURATION_MS = 1000
 
+function setAudioContextState(emu: Nostalgist | null, state: "suspend" | "resume" | "close") {
+  if (!emu) return
+  try {
+    const al = (emu as unknown as { getEmscriptenAL?: () => { currentCtx?: { audioCtx?: AudioContext } } }).getEmscriptenAL?.()
+    al?.currentCtx?.audioCtx?.[state]?.()
+  } catch {}
+  try {
+    const mod = (emu as unknown as { getEmscriptenModule?: () => { SDL2?: { audio?: { audioCtx?: AudioContext } } } }).getEmscriptenModule?.()
+    mod?.SDL2?.audio?.audioCtx?.[state]?.()
+  } catch {}
+}
+
 export function useNostalgistEmulator({
   game,
   canvasRef,
   onPhaseChange,
+  reloadKey = 0,
 }: UseNostalgistOptions) {
   const instanceRef = useRef<Nostalgist | null>(null)
 
@@ -29,23 +43,9 @@ export function useNostalgistEmulator({
     try {
       const emu = instanceRef.current
       if (!emu) return
-
-      const status = emu.getStatus?.()
-      if (status === "running") {
-        emu.pause()
-      } else if (!status) {
-        emu.pause?.()
-      }
-
-      // Explicitly suspend WebAudio contexts so all ROM sound completely stops
-      try {
-        const al = (emu as unknown as { getEmscriptenAL?: () => { currentCtx?: { audioCtx?: AudioContext } } }).getEmscriptenAL?.()
-        al?.currentCtx?.audioCtx?.suspend?.()
-      } catch {}
-      try {
-        const mod = (emu as unknown as { getEmscriptenModule?: () => { SDL2?: { audio?: { audioCtx?: AudioContext } } } }).getEmscriptenModule?.()
-        mod?.SDL2?.audio?.audioCtx?.suspend?.()
-      } catch {}
+      if (emu.getStatus?.() === "running") emu.pause()
+      else emu.pause?.()
+      setAudioContextState(emu, "suspend")
     } catch (err) {
       console.error("Failed to pause emulator:", err)
     }
@@ -55,23 +55,9 @@ export function useNostalgistEmulator({
     try {
       const emu = instanceRef.current
       if (!emu) return
-
-      // Resume WebAudio contexts
-      try {
-        const al = (emu as unknown as { getEmscriptenAL?: () => { currentCtx?: { audioCtx?: AudioContext } } }).getEmscriptenAL?.()
-        al?.currentCtx?.audioCtx?.resume?.()
-      } catch {}
-      try {
-        const mod = (emu as unknown as { getEmscriptenModule?: () => { SDL2?: { audio?: { audioCtx?: AudioContext } } } }).getEmscriptenModule?.()
-        mod?.SDL2?.audio?.audioCtx?.resume?.()
-      } catch {}
-
-      const status = emu.getStatus?.()
-      if (status === "paused") {
-        emu.resume()
-      } else if (!status) {
-        emu.resume?.()
-      }
+      setAudioContextState(emu, "resume")
+      if (emu.getStatus?.() === "paused") emu.resume()
+      else emu.resume?.()
     } catch (err) {
       console.error("Failed to resume emulator:", err)
     }
@@ -100,6 +86,7 @@ export function useNostalgistEmulator({
   }
 
   useEffect(() => {
+    onPhaseChange("loading")
     const canvas = canvasRef.current
     const frame = canvas?.parentElement
     if (!canvas || !frame) return
@@ -157,7 +144,10 @@ export function useNostalgistEmulator({
         })
 
         if (stopped) {
-          emulator.exit({ removeCanvas: false })
+          setAudioContextState(emulator, "close")
+          try {
+            emulator.exit()
+          } catch {}
           return
         }
         instanceRef.current = emulator
@@ -174,10 +164,16 @@ export function useNostalgistEmulator({
       if (readyTimer) clearTimeout(readyTimer)
       cancelWakeLock()
       controller.abort()
-      instanceRef.current?.exit({ removeCanvas: false })
-      instanceRef.current = null
+      const emu = instanceRef.current
+      if (emu) {
+        setAudioContextState(emu, "close")
+        try {
+          emu.exit()
+        } catch {}
+        instanceRef.current = null
+      }
     }
-  }, [canvasRef, game.file, onPhaseChange])
+  }, [canvasRef, game.file, onPhaseChange, reloadKey])
 
   return { pause, resume, saveState, loadState }
 }

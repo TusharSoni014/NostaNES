@@ -6,6 +6,7 @@ export type InGameMenuTab =
   | "load"
   | "controls"
   | "cheats"
+  | "reset"
   | "exit"
 
 export type InGameMenuProps = {
@@ -13,6 +14,7 @@ export type InGameMenuProps = {
   game: Game
   onResume: () => void
   onRequestExit: () => void
+  onResetGame?: () => void
   onSaveState: (slot: number) => Promise<boolean>
   onLoadState: (slot: number) => Promise<boolean>
 }

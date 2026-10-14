@@ -5,6 +5,7 @@ import {
   Gamepad2Icon,
   LogOutIcon,
   PlayIcon,
+  RotateCcwIcon,
   UploadIcon,
   Wand2Icon,
 } from "lucide-react"
@@ -50,6 +51,12 @@ const MENU_ITEMS: MenuItem[] = [
     icon: Wand2Icon,
   },
   {
+    id: "reset",
+    label: "Reset Game",
+    subtitle: "Restart ROM from beginning",
+    icon: RotateCcwIcon,
+  },
+  {
     id: "exit",
     label: "Exit Game",
     subtitle: "Leave to cartridge shelf",
@@ -60,11 +67,13 @@ const MENU_ITEMS: MenuItem[] = [
 type InGameMenuSidebarProps = {
   activeTab: InGameMenuTab
   onSelectTab: (tab: InGameMenuTab) => void
+  isFocused?: boolean
 }
 
 export const InGameMenuSidebar = ({
   activeTab,
   onSelectTab,
+  isFocused = true,
 }: InGameMenuSidebarProps) => {
   return (
     <nav
@@ -85,9 +94,12 @@ export const InGameMenuSidebar = ({
             onClick={() => onSelectTab(item.id)}
             className={cn(
               "group relative flex items-center gap-3.5 rounded-2xl border px-4 py-3 text-left transition-all duration-200 outline-none",
-              isActive
-                ? "border-blue-400/80 bg-blue-600/20 text-white shadow-[0_0_24px_rgba(59,130,246,0.3)] ring-1 ring-blue-400/50"
-                : "border-white/10 bg-white/[0.03] text-white/70 hover:border-white/20 hover:bg-white/[0.06] hover:text-white",
+              isActive && isFocused
+                ? "border-blue-400 bg-blue-600/25 text-white shadow-[0_0_24px_rgba(59,130,246,0.35)] ring-1 ring-blue-400/60"
+                : isActive
+                  ? "border-blue-400/40 bg-blue-600/10 text-white/90 ring-1 ring-blue-400/20"
+                  : "border-white/10 bg-white/[0.03] text-white/70 hover:border-white/20 hover:bg-white/[0.06] hover:text-white",
+              item.id === "reset" && !isActive && "text-amber-400/80 hover:text-amber-300 hover:border-amber-500/30",
               item.id === "exit" && !isActive && "text-rose-400/80 hover:text-rose-300 hover:border-rose-500/30",
             )}
           >
@@ -97,6 +109,7 @@ export const InGameMenuSidebar = ({
                 isActive
                   ? "bg-blue-500 text-white shadow-lg"
                   : "bg-white/5 text-white/60 group-hover:bg-white/10 group-hover:text-white",
+                item.id === "reset" && !isActive && "bg-amber-500/10 text-amber-400",
                 item.id === "exit" && !isActive && "bg-rose-500/10 text-rose-400",
               )}
             >

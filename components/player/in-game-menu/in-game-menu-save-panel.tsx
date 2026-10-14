@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { CheckCircle2Icon, DownloadIcon, HardDriveIcon, Loader2Icon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -9,21 +9,37 @@ import {
 } from "@/lib/storage/save-state-storage"
 import { playUiSound } from "@/lib/ui-sounds"
 import type { Game } from "@/lib/games"
+import { useMenuNavigation } from "@/hooks/use-menu-navigation"
+import { cn } from "@/lib/utils"
 
 type InGameMenuSavePanelProps = {
   game: Game
   onSaveState: (slot: number) => Promise<boolean>
+  isFocused?: boolean
+  onCancel?: () => void
+  onNavigateLeft?: () => void
 }
 
-const SLOTS = [1, 2, 3]
+const SLOTS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
 export const InGameMenuSavePanel = ({
   game,
   onSaveState,
+  isFocused = false,
+  onCancel,
+  onNavigateLeft,
 }: InGameMenuSavePanelProps) => {
   const [saves, setSaves] = useState<SavedStateRecord[]>([])
+  const [selectedSlot, setSelectedSlot] = useState<number>(1)
   const [savingSlot, setSavingSlot] = useState<number | null>(null)
   const [statusMessage, setStatusMessage] = useState<string | null>(null)
+  const listRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!isFocused) return
+    const el = listRef.current?.querySelector(`[data-slot-card="${selectedSlot}"]`)
+    el?.scrollIntoView({ block: "nearest", behavior: "smooth" })
+  }, [selectedSlot, isFocused])
 
   const reloadSaves = useCallback(async () => {
     try {
@@ -69,6 +85,16 @@ export const InGameMenuSavePanel = ({
     }
   }
 
+  useMenuNavigation<number>({
+    enabled: isFocused,
+    items: SLOTS,
+    activeItem: selectedSlot,
+    onSelect: (slot) => setSelectedSlot(slot),
+    onConfirm: (slot) => handleSave(slot),
+    onCancel,
+    onNavigateLeft,
+  })
+
   const getSaveForSlot = (slot: number) => saves.find((s) => s.slot === slot)
 
   return (
@@ -90,15 +116,26 @@ export const InGameMenuSavePanel = ({
         </div>
       ) : null}
 
-      <div className="flex flex-col gap-3">
+      <div ref={listRef} className="flex flex-col gap-3 max-h-[60vh] overflow-y-auto pr-1.5 focus:outline-none">
         {SLOTS.map((slot) => {
           const existing = getSaveForSlot(slot)
           const isSaving = savingSlot === slot
+          const isSelected = isFocused && selectedSlot === slot
 
           return (
             <div
               key={slot}
-              className="flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition-colors hover:border-white/20 hover:bg-white/[0.05]"
+              data-slot-card={slot}
+              onClick={() => {
+                setSelectedSlot(slot)
+                handleSave(slot)
+              }}
+              className={cn(
+                "flex items-center justify-between gap-4 rounded-2xl border p-4 transition-all cursor-pointer",
+                isSelected
+                  ? "border-blue-400 bg-blue-600/20 shadow-[0_0_24px_rgba(59,130,246,0.3)] ring-1 ring-blue-400"
+                  : "border-white/10 bg-white/[0.03] hover:border-white/20 hover:bg-white/[0.05]",
+              )}
             >
               <div className="flex flex-col gap-1 min-w-0">
                 <div className="flex items-center gap-2">

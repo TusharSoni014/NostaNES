@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react"
 import { GamepadDispatcher } from "@/lib/gamepad/gamepad-dispatcher"
+import { GAMEPAD_TIMING } from "@/lib/gamepad/gamepad-timing"
 
 type ShelfNavigationOptions = {
   count: number
@@ -12,10 +13,6 @@ type ShelfNavigationOptions = {
   launch: () => void
   onToggleControls?: () => void
 }
-
-const KEY_STEADY_INTERVAL_MS = 160
-const KEY_TURBO_INTERVAL_MS = 70
-const KEY_FAST_HOLD_THRESHOLD_MS = 2500
 
 /**
  * Handles keyboard arrows, Enter, Gamepad (Xbox/PlayStation/generic), and mouse wheel
@@ -67,22 +64,12 @@ export const useShelfNavigation = ({
       if (opts.isPlaying || opts.controlsOpen) return
 
       const target = event.target
-      const inToggle =
+      const inForm =
         target instanceof HTMLElement &&
-        Boolean(target.closest("[data-slot=toggle-group]"))
-      const inTextArea =
-        target instanceof HTMLElement && Boolean(target.closest("textarea"))
+        Boolean(target.closest("input, textarea, [data-slot=toggle-group]"))
       const inInput =
         target instanceof HTMLElement && Boolean(target.closest("input"))
-      if (inToggle || inTextArea) return
-      if (
-        inInput &&
-        event.key !== "ArrowUp" &&
-        event.key !== "ArrowDown" &&
-        event.key !== "Enter" &&
-        event.key !== "PageUp" &&
-        event.key !== "PageDown"
-      ) {
+      if (inForm && !["ArrowUp", "ArrowDown", "Enter", "PageUp", "PageDown"].includes(event.key)) {
         return
       }
 
@@ -103,9 +90,9 @@ export const useShelfNavigation = ({
         if (event.repeat) {
           const holdDuration = now - keyHoldStartRef.current
           const interval =
-            holdDuration >= KEY_FAST_HOLD_THRESHOLD_MS
-              ? KEY_TURBO_INTERVAL_MS
-              : KEY_STEADY_INTERVAL_MS
+            holdDuration >= GAMEPAD_TIMING.FAST_SCROLL_HOLD_THRESHOLD_MS
+              ? GAMEPAD_TIMING.TURBO_REPEAT_INTERVAL_MS
+              : GAMEPAD_TIMING.STEADY_REPEAT_INTERVAL_MS
 
           if (now - lastKeyTimeRef.current < interval) {
             return

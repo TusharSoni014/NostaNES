@@ -8,6 +8,8 @@ export type GamepadHoldState = {
   progress: number
 }
 
+import { GAMEPAD_TIMING } from "./gamepad-timing"
+
 export type GamepadDispatcherOptions = {
   onSelectHold?: (state: GamepadHoldState) => void
   onSelectHoldComplete?: () => void
@@ -15,10 +17,6 @@ export type GamepadDispatcherOptions = {
 
 const AXIS_ENGAGE_THRESHOLD = 0.55
 const AXIS_RELEASE_THRESHOLD = 0.25
-const INITIAL_REPEAT_DELAY_MS = 380 // Initial hold delay before stepping begins
-const STEADY_REPEAT_INTERVAL_MS = 160 // Console-grade steady stepping (~6 items/sec)
-const FAST_SCROLL_HOLD_THRESHOLD_MS = 2500 // Hold 2.5s to unlock turbo scrubbing
-const TURBO_REPEAT_INTERVAL_MS = 70 // Turbo scrubbing interval
 
 export class GamepadDispatcher {
   private frameId = 0
@@ -193,7 +191,7 @@ export class GamepadDispatcher {
     if (this.activeDirection !== currentNav) {
       this.activeDirection = currentNav
       this.pressStartTime = time
-      this.nextRepeatTime = time + INITIAL_REPEAT_DELAY_MS
+      this.nextRepeatTime = time + GAMEPAD_TIMING.INITIAL_REPEAT_DELAY_MS
       this.callback(currentNav)
       return
     }
@@ -203,9 +201,9 @@ export class GamepadDispatcher {
       this.callback(currentNav)
       const heldDuration = time - this.pressStartTime
       const repeatInterval =
-        heldDuration >= FAST_SCROLL_HOLD_THRESHOLD_MS
-          ? TURBO_REPEAT_INTERVAL_MS
-          : STEADY_REPEAT_INTERVAL_MS
+        heldDuration >= GAMEPAD_TIMING.FAST_SCROLL_HOLD_THRESHOLD_MS
+          ? GAMEPAD_TIMING.TURBO_REPEAT_INTERVAL_MS
+          : GAMEPAD_TIMING.STEADY_REPEAT_INTERVAL_MS
       this.nextRepeatTime = time + repeatInterval
     }
   }

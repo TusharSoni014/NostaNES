@@ -9,7 +9,8 @@ import { PlayerHeader } from "@/components/player/player-header"
 import { PlayerOverlay } from "@/components/player/player-overlay"
 import { useNostalgistEmulator } from "@/components/player/use-nostalgist-emulator"
 import { useSaveLoadState } from "@/components/player/use-save-load-state"
-import { GamepadDispatcher, type GamepadHoldState } from "@/lib/gamepad/gamepad-dispatcher"
+import { usePlayerInput } from "@/components/player/use-player-input"
+import type { GamepadHoldState } from "@/lib/gamepad/gamepad-dispatcher"
 import { motion } from "motion/react"
 import { playUiSound } from "@/lib/ui-sounds"
 import { cn } from "@/lib/utils"
@@ -28,6 +29,7 @@ export const PlayerStage = ({ game, onExit }: PlayerStageProps) => {
   const [isFullscreen, setIsFullscreen] = useState(true)
   const [confirmingExit, setConfirmingExit] = useState(false)
   const [inGameMenuOpen, setInGameMenuOpen] = useState(false)
+  const [romKey, setRomKey] = useState(0)
   const [exitHud, setExitHud] = useState<GamepadHoldState>({
     active: false,
     remainingSeconds: 5,
@@ -46,9 +48,17 @@ export const PlayerStage = ({ game, onExit }: PlayerStageProps) => {
     game,
     canvasRef,
     onPhaseChange: setPhase,
+    reloadKey: romKey,
   })
 
   const { handleSaveState, handleLoadState } = useSaveLoadState(game.file, saveState, loadState)
+
+  const handleResetGame = useCallback(() => {
+    setInGameMenuOpen(false)
+    setPhase("loading")
+    setRomKey((prev) => prev + 1)
+    playUiSound("game_start")
+  }, [])
 
   useEffect(() => {
     const onFullscreenChange = () => setIsFullscreen(Boolean(document.fullscreenElement))
@@ -98,88 +108,16 @@ export const PlayerStage = ({ game, onExit }: PlayerStageProps) => {
     onExit()
   }, [onExit])
 
-  // Keyboard navigation & F1 menu toggle
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "F1") {
-        e.preventDefault()
-        e.stopPropagation()
-        toggleInGameMenu()
-      } else if (e.key === "Escape") {
-        e.preventDefault()
-        e.stopPropagation()
-        if (inGameMenuOpen) handleResume()
-        else if (confirmingExit) handleResume()
-        else handleRequestExit()
-      } else if ((e.key === "f" || e.key === "F") && !confirmingExit && !inGameMenuOpen) {
-        if (e.target instanceof HTMLElement && e.target.closest("input, textarea")) return
-        e.preventDefault()
-        toggleFullscreen()
-      } else if (e.key === "Enter" && confirmingExit) {
-        e.preventDefault()
-        handleConfirmExit()
-      }
-    }
-
-    window.addEventListener("keydown", onKey, true)
-    return () => window.removeEventListener("keydown", onKey, true)
-  }, [confirmingExit, inGameMenuOpen, handleConfirmExit, handleRequestExit, handleResume, toggleFullscreen, toggleInGameMenu])
-
-  const playerActionsRef = useRef({
-    confirmingExit,
+  usePlayerInput({
     inGameMenuOpen,
-    handleConfirmExit,
+    confirmingExit,
+    toggleInGameMenu,
     handleResume,
     handleRequestExit,
+    handleConfirmExit,
     toggleFullscreen,
-    toggleInGameMenu,
+    setExitHud,
   })
-
-  useEffect(() => {
-    playerActionsRef.current = {
-      confirmingExit,
-      inGameMenuOpen,
-      handleConfirmExit,
-      handleResume,
-      handleRequestExit,
-      toggleFullscreen,
-      toggleInGameMenu,
-    }
-  })
-
-  // Gamepad dispatcher
-  useEffect(() => {
-    const dispatcher = new GamepadDispatcher(
-      (action) => {
-        const actions = playerActionsRef.current
-        if (action === "IN_GAME_MENU") {
-          actions.toggleInGameMenu()
-          return
-        }
-        if (actions.inGameMenuOpen) return
-        if (actions.confirmingExit) {
-          if (action === "CONFIRM") actions.handleConfirmExit()
-          else if (action === "CANCEL") actions.handleResume()
-          return
-        }
-        if (action === "MENU") actions.handleRequestExit()
-        else if (action === "TOGGLE_FULLSCREEN") actions.toggleFullscreen()
-      },
-      {
-        onSelectHold: (holdState) => {
-          if (!playerActionsRef.current.confirmingExit && !playerActionsRef.current.inGameMenuOpen) {
-            setExitHud(holdState)
-          }
-        },
-        onSelectHoldComplete: () => {
-          playerActionsRef.current.handleConfirmExit()
-        },
-      },
-    )
-
-    dispatcher.start()
-    return () => dispatcher.stop()
-  }, [])
 
   return (
     <motion.div
@@ -207,6 +145,7 @@ export const PlayerStage = ({ game, onExit }: PlayerStageProps) => {
         game={game}
         onResume={handleResume}
         onRequestExit={handleConfirmExit}
+        onResetGame={handleResetGame}
         onSaveState={handleSaveState}
         onLoadState={handleLoadState}
       />
@@ -227,6 +166,7 @@ export const PlayerStage = ({ game, onExit }: PlayerStageProps) => {
           )}
         >
           <canvas
+            key={romKey}
             ref={canvasRef}
             tabIndex={-1}
             className="size-full rounded-none [image-rendering:pixelated] outline-none"
