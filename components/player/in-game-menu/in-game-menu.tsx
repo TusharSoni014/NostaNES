@@ -31,6 +31,7 @@ export const InGameMenu = ({
   onLoadState,
   activeShader = "none",
   onSelectShader,
+  cheats,
 }: InGameMenuProps) => {
   const [activeTab, setActiveTab] = useState<InGameMenuTab>("resume")
   const [focusPane, setFocusPane] = useState<"sidebar" | "content">("sidebar")
@@ -93,10 +94,10 @@ export const InGameMenu = ({
         role="dialog"
         aria-modal="true"
         aria-label="In-Game Menu"
-        initial={{ opacity: 0, scale: 0.98 }}
+        initial={{ opacity: 0, scale: 0.985 }}
         animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.98 }}
-        transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+        exit={{ opacity: 0, scale: 0.985 }}
+        transition={{ duration: 0.14, ease: [0.16, 1, 0.3, 1] }}
         className="fixed inset-0 z-50 flex flex-col bg-[#030716]/92 backdrop-blur-2xl text-white select-none overflow-hidden"
       >
         <div className="absolute -top-32 left-1/2 -translate-x-1/2 size-[600px] rounded-full bg-blue-600/15 blur-[120px] pointer-events-none" />
@@ -114,10 +115,10 @@ export const InGameMenu = ({
             <AnimatePresence mode="wait">
               <motion.div
                 key={activeTab}
-                initial={{ opacity: 0, y: 14, filter: "blur(6px)" }}
-                animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-                exit={{ opacity: 0, y: -14, filter: "blur(6px)" }}
-                transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.12, ease: [0.16, 1, 0.3, 1] }}
                 className="flex min-h-0 flex-1 flex-col h-full w-full"
               >
                 {activeTab === "resume" ? (
@@ -152,7 +153,13 @@ export const InGameMenu = ({
                     onNavigateLeft={backToSidebar}
                   />
                 ) : activeTab === "cheats" ? (
-                  <InGameMenuCheatsPanel />
+                  <InGameMenuCheatsPanel
+                    game={game}
+                    cheats={cheats}
+                    isFocused={focusPane === "content"}
+                    onCancel={backToSidebar}
+                    onNavigateLeft={backToSidebar}
+                  />
                 ) : activeTab === "reset" ? (
                   <InGameMenuResetPanel
                     game={game} onResetGame={onResetGame}

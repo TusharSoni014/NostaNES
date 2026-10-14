@@ -54,7 +54,7 @@ const MENU_ITEMS: MenuItem[] = [
   {
     id: "cheats",
     label: "Cheats",
-    subtitle: "Game Genie codes (coming soon)",
+    subtitle: "Libretro NES cheat files",
     icon: Wand2Icon,
   },
   {

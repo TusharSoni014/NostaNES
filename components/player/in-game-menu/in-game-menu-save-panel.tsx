@@ -7,6 +7,7 @@ import {
   listGameSaves,
   type SavedStateRecord,
 } from "@/lib/storage/save-state-storage"
+import { scrollNearestIntoView } from "@/lib/motion/scroll-into-view"
 import { playUiSound } from "@/lib/ui-sounds"
 import type { Game } from "@/lib/games"
 import { useMenuNavigation } from "@/hooks/use-menu-navigation"
@@ -38,7 +39,7 @@ export const InGameMenuSavePanel = ({
   useEffect(() => {
     if (!isFocused) return
     const el = listRef.current?.querySelector(`[data-slot-card="${selectedSlot}"]`)
-    el?.scrollIntoView({ block: "nearest", behavior: "smooth" })
+    if (el instanceof HTMLElement) return scrollNearestIntoView(el)
   }, [selectedSlot, isFocused])
 
   const reloadSaves = useCallback(async () => {

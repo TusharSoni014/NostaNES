@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Kbd } from "@/components/ui/kbd"
 import { useMenuNavigation } from "@/hooks/use-menu-navigation"
 import { cn } from "@/lib/utils"
+import { scrollNearestIntoView } from "@/lib/motion/scroll-into-view"
 import { playUiSound } from "@/lib/ui-sounds"
 import type { Game, GameGroup } from "@/lib/games"
 
@@ -71,7 +72,8 @@ export function VersionSelectDialog({
     activeItem: selected,
     onSelect: (ver, idx) => {
       setSelectedId(ver.id)
-      itemRefs.current[idx]?.scrollIntoView({ block: "nearest", behavior: "smooth" })
+      const row = itemRefs.current[idx]
+      if (row) scrollNearestIntoView(row)
     },
     onConfirm: (ver) => { if (ver) handleConfirm(ver) },
     onCancel: dismiss,

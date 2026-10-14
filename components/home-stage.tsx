@@ -36,6 +36,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { motion, AnimatePresence } from "motion/react"
+import { useLibrary } from "@/hooks/use-library"
 import { enableUiSounds, playUiSound } from "@/lib/ui-sounds"
 import { type Game, type GameGroup, groupGames } from "@/lib/games"
 import { VersionSelectDialog } from "@/components/version-select-dialog"
@@ -45,9 +46,9 @@ export type HomeStageProps = {
 }
 
 export function HomeStage({ initialGames }: HomeStageProps = {}) {
-  const [fetchedGames, setFetchedGames] = useState<Game[] | null>(null)
-  const games = fetchedGames ?? (initialGames && initialGames.length > 0 ? initialGames : null)
-  const [failed, setFailed] = useState(false)
+  const library = useLibrary(initialGames)
+  const games = library.data ?? null
+  const failed = library.isError && !library.isFetching
   const [index, setIndex] = useState(0)
   const indexRef = useRef(0)
   const [playing, setPlaying] = useState<Game | null>(null)
@@ -58,31 +59,7 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
   const [controlsOpen, setControlsOpen] = useState(false)
   const [query, setQuery] = useState("")
   const [region, setRegion] = useState("All")
-  const [reloadKey, setReloadKey] = useState(0)
   const [versionSelectGroup, setVersionSelectGroup] = useState<GameGroup | null>(null)
-
-  // Fetch games dynamically on boot time (or on manual retry)
-  useEffect(() => {
-    const controller = new AbortController()
-    fetch(`/api/library?t=${Date.now()}`, {
-      signal: controller.signal,
-      cache: "no-store",
-    })
-      .then((response) => {
-        if (!response.ok) throw new Error("Failed to load library from server")
-        return response.json() as Promise<{ games: Game[] }>
-      })
-      .then((data) => {
-        setFetchedGames(data.games)
-        setFailed(false)
-      })
-      .catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === "AbortError") return
-        setFailed(true)
-      })
-
-    return () => controller.abort()
-  }, [reloadKey])
 
   useEffect(() => {
     if (failed) playUiSound("error")
@@ -325,8 +302,7 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
                     <Button
                       variant="outline"
                       onClick={() => {
-                        setFailed(false)
-                        setReloadKey((k) => k + 1)
+                        void library.refetch()
                       }}
                     >
                       Retry

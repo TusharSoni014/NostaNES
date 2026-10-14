@@ -49,7 +49,10 @@ export const PlayerStage = ({ game, onExit }: PlayerStageProps) => {
     else if (confirmingExit) playUiSound("game_paused")
   }, [phase, confirmingExit])
 
-  const { pause, resume, saveState, loadState, unload, pressDown, pressUp } = useNostalgistEmulator({
+  const {
+    pause, resume, saveState, loadState, unload, pressDown, pressUp,
+    loadCheats, enableCheat, disableCheat, clearCheats, getCheats,
+  } = useNostalgistEmulator({
     game, canvasRef, onPhaseChange: setPhase, reloadKey: romKey,
     isPaused: inGameMenuOpen || confirmingExit,
   })
@@ -147,6 +150,7 @@ export const PlayerStage = ({ game, onExit }: PlayerStageProps) => {
         onResetGame={handleResetGame}
         onSaveState={handleSaveState} onLoadState={handleLoadState}
         activeShader={activeShader} onSelectShader={handleSelectShader}
+        cheats={{ loadCheats, enableCheat, disableCheat, clearCheats, getCheats }}
       />
 
       <PlayerHeader

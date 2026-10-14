@@ -5,6 +5,7 @@ import { CheckCircle2Icon, RotateCcwIcon, SaveIcon, SlidersIcon } from "lucide-r
 import { Button } from "@/components/ui/button"
 import { Kbd } from "@/components/ui/kbd"
 import { ACTION_LABELS, type NesActionKey } from "@/lib/storage/controls-storage"
+import { scrollNearestIntoView } from "@/lib/motion/scroll-into-view"
 import { playUiSound } from "@/lib/ui-sounds"
 import { useMenuNavigation } from "@/hooks/use-menu-navigation"
 import { InGameMenuControlRow } from "./in-game-menu-control-row"
@@ -44,7 +45,7 @@ export const InGameMenuControlsPanel = ({
   useEffect(() => {
     if (!isFocused) return
     const el = listRef.current?.querySelector(`[data-control-row="${selectedItem}"]`)
-    el?.scrollIntoView({ block: "nearest", behavior: "smooth" })
+    if (el instanceof HTMLElement) return scrollNearestIntoView(el)
   }, [selectedItem, isFocused])
 
   const setTab = (tab: "keyboard" | "gamepad") => {

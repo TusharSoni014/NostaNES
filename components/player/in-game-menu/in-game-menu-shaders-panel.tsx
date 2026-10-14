@@ -11,6 +11,7 @@ import {
   SHADER_OPTIONS,
 } from "@/lib/storage/shader-storage";
 import { useMenuNavigation } from "@/hooks/use-menu-navigation";
+import { scrollNearestIntoView } from "@/lib/motion/scroll-into-view";
 import { playUiSound } from "@/lib/ui-sounds";
 import { cn } from "@/lib/utils";
 
@@ -46,10 +47,8 @@ export function InGameMenuShadersPanel({
     activeItem: currentOption,
     onSelect: (opt, idx) => {
       setSelectedId(opt.id);
-      itemRefs.current[idx]?.scrollIntoView({
-        block: "nearest",
-        behavior: "smooth",
-      });
+      const row = itemRefs.current[idx];
+      if (row) scrollNearestIntoView(row);
     },
     onConfirm: (opt) => handleApply(opt),
     onCancel,

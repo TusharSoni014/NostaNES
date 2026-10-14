@@ -5,7 +5,10 @@ import type { Nostalgist } from "nostalgist"
 import { preventScreenSleep } from "@/lib/display/wake-lock"
 import { ensureSafeResizeObserver } from "@/lib/display/safe-resize-observer"
 import { getRetroArchCoreConfig, getRetroArchInputConfig } from "@/lib/gamepad/retroarch-gamepad-config"
+import { applyCheatSession } from "@/lib/cheats/apply-cheat-session"
+import type { AppliedCheat, EmulatorCheatControls } from "@/lib/cheats/emulator-cheats"
 import type { Game } from "@/lib/games"
+import { getCheatSession } from "@/lib/storage/cheat-storage"
 
 type UseNostalgistOptions = {
   game: Game
@@ -90,6 +93,32 @@ export function useNostalgistEmulator({
     try { instanceRef.current?.pressUp?.(action as any) } catch {}
   }, [])
 
+  const loadCheats = useCallback(async (content: string) => {
+    const emu = instanceRef.current
+    if (!emu) return false
+    try {
+      return await emu.loadCheats(content)
+    } catch {
+      return false
+    }
+  }, [])
+
+  const enableCheat = useCallback((index: number) => {
+    try { return instanceRef.current?.enableCheat(index) ?? false } catch { return false }
+  }, [])
+
+  const disableCheat = useCallback((index: number) => {
+    try { return instanceRef.current?.disableCheat(index) ?? false } catch { return false }
+  }, [])
+
+  const clearCheats = useCallback(() => {
+    try { return instanceRef.current?.clearCheats() ?? false } catch { return false }
+  }, [])
+
+  const getCheats = useCallback((): AppliedCheat[] => {
+    try { return instanceRef.current?.getCheats() ?? [] } catch { return [] }
+  }, [])
+
   const controllerRef = useRef<AbortController | null>(null)
   const readyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const cancelWakeLockRef = useRef<(() => void) | null>(null)
@@ -152,23 +181,40 @@ export function useNostalgistEmulator({
             if (stoppedRef.current) return
             instanceRef.current = emu
 
-            if (isPausedRef.current) {
-              try {
-                emu.pause()
-                setAudioContextState(emu, "suspend")
-              } catch {}
-            }
-
-            const isInitial = reloadKey === 0
-            const elapsed = performance.now() - loadStartTime
-            const delayRemaining = isInitial ? Math.max(0, MIN_LOADER_DURATION_MS - elapsed) : 0
-
-            readyTimerRef.current = setTimeout(() => {
-              if (!stoppedRef.current) {
-                onPhaseChange("ready")
-                if (!isPausedRef.current) canvas.focus()
+            void (async () => {
+              const saved = getCheatSession(game.file)
+              if (saved && !stoppedRef.current) {
+                const controls: EmulatorCheatControls = {
+                  loadCheats: (content) => emu.loadCheats(content),
+                  enableCheat: (index) => Boolean(emu.enableCheat(index)),
+                  disableCheat: (index) => Boolean(emu.disableCheat(index)),
+                  clearCheats: () => Boolean(emu.clearCheats()),
+                  getCheats: () => emu.getCheats() ?? [],
+                }
+                try {
+                  await applyCheatSession(controls, saved.text, saved.rows)
+                } catch {}
               }
-            }, delayRemaining)
+              if (stoppedRef.current) return
+
+              if (isPausedRef.current) {
+                try {
+                  emu.pause()
+                  setAudioContextState(emu, "suspend")
+                } catch {}
+              }
+
+              const isInitial = reloadKey === 0
+              const elapsed = performance.now() - loadStartTime
+              const delayRemaining = isInitial ? Math.max(0, MIN_LOADER_DURATION_MS - elapsed) : 0
+
+              readyTimerRef.current = setTimeout(() => {
+                if (!stoppedRef.current) {
+                  onPhaseChange("ready")
+                  if (!isPausedRef.current) canvas.focus()
+                }
+              }, delayRemaining)
+            })()
           },
         })
 
@@ -193,5 +239,8 @@ export function useNostalgistEmulator({
     }
   }, [canvasRef, game.file, onPhaseChange, reloadKey, unload])
 
-  return { pause, resume, saveState, loadState, unload, pressDown, pressUp }
+  return {
+    pause, resume, saveState, loadState, unload, pressDown, pressUp,
+    loadCheats, enableCheat, disableCheat, clearCheats, getCheats,
+  }
 }

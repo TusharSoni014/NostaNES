@@ -1,3 +1,4 @@
+import type { EmulatorCheatControls } from "@/lib/cheats/emulator-cheats"
 import type { Game } from "@/lib/games"
 import type { GameShader } from "@/lib/storage/shader-storage"
 
@@ -21,4 +22,5 @@ export type InGameMenuProps = {
   onLoadState: (slot: number) => Promise<boolean>
   activeShader?: GameShader
   onSelectShader?: (shader: GameShader) => void
+  cheats: EmulatorCheatControls
 }
