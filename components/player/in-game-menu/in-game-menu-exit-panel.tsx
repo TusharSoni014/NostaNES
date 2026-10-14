@@ -42,7 +42,7 @@ export const InGameMenuExitPanel = ({
   })
 
   return (
-    <div className="flex flex-col items-center justify-center text-center p-8 flex-1 min-h-0">
+    <div className="flex flex-col items-center justify-center text-center p-8 flex-1 h-full w-full min-h-0">
       <div className="flex size-14 items-center justify-center rounded-2xl bg-rose-500/10 text-rose-400 mb-4 border border-rose-500/20">
         <LogOutIcon className="size-7" />
       </div>

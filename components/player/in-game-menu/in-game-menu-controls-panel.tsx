@@ -26,23 +26,19 @@ type InGameMenuControlsPanelProps = {
   isFocused?: boolean
   onCancel?: () => void
   onNavigateLeft?: () => void
-  onControlsSaved?: () => void
-  onControlsChanged?: () => void
 }
 
 export const InGameMenuControlsPanel = ({
   isFocused = false,
   onCancel,
   onNavigateLeft,
-  onControlsSaved,
-  onControlsChanged,
 }: InGameMenuControlsPanelProps) => {
   const [activeTab, setActiveTab] = useState<"keyboard" | "gamepad">("keyboard")
   const [selectedItem, setSelectedItem] = useState<PanelItem>("up")
   const listRef = useRef<HTMLDivElement>(null)
 
   const { config, listeningKey, setListeningKey, savedNotice, handleSave, handleReset } =
-    useControlRebinding(activeTab, onControlsSaved, onControlsChanged)
+    useControlRebinding(activeTab)
 
   // Auto-scroll selected row into view
   useEffect(() => {

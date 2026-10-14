@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge"
 
 export const InGameMenuCheatsPanel = () => {
   return (
-    <div className="flex flex-col items-center justify-center text-center p-8 border border-white/10 rounded-2xl bg-white/[0.02] flex-1 min-h-[300px]">
+    <div className="flex flex-col items-center justify-center text-center p-8 border border-white/10 rounded-2xl bg-white/[0.02] flex-1 h-full w-full min-h-0">
       <div className="flex size-14 items-center justify-center rounded-2xl bg-blue-500/10 text-blue-400 border border-blue-500/20 mb-4">
         <Wand2Icon className="size-7" />
       </div>

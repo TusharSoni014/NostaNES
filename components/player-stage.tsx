@@ -11,6 +11,8 @@ import { ShaderOverlay } from "@/components/player/shader-overlay"
 import { useNostalgistEmulator } from "@/components/player/use-nostalgist-emulator"
 import { useSaveLoadState } from "@/components/player/use-save-load-state"
 import { usePlayerInput } from "@/components/player/use-player-input"
+import { useKeyboardControls } from "@/components/player/use-keyboard-controls"
+import { installGamepadRemapping } from "@/lib/gamepad/gamepad-remapper"
 import { getSavedShader, saveShader, type GameShader } from "@/lib/storage/shader-storage"
 import type { GamepadHoldState } from "@/lib/gamepad/gamepad-dispatcher"
 import { motion } from "motion/react"
@@ -47,18 +49,20 @@ export const PlayerStage = ({ game, onExit }: PlayerStageProps) => {
     else if (confirmingExit) playUiSound("game_paused")
   }, [phase, confirmingExit])
 
-  const { pause, resume, saveState, loadState, unload } = useNostalgistEmulator({
+  const { pause, resume, saveState, loadState, unload, pressDown, pressUp } = useNostalgistEmulator({
     game, canvasRef, onPhaseChange: setPhase, reloadKey: romKey,
     isPaused: inGameMenuOpen || confirmingExit,
   })
 
-  const { handleSaveState, handleLoadState } = useSaveLoadState(game.file, saveState, loadState)
-  const pendingRestoreRef = useRef<Blob | null>(null)
-  const controlsDirtyRef = useRef(false)
+  useEffect(() => installGamepadRemapping(), [])
 
-  const handleControlsChanged = useCallback(() => {
-    controlsDirtyRef.current = true
-  }, [])
+  useKeyboardControls({
+    enabled: phase === "ready" && !inGameMenuOpen && !confirmingExit,
+    pressDown,
+    pressUp,
+  })
+
+  const { handleSaveState, handleLoadState } = useSaveLoadState(game.file, saveState, loadState)
 
   const handleResetGame = useCallback(() => {
     setInGameMenuOpen(false)
@@ -66,23 +70,6 @@ export const PlayerStage = ({ game, onExit }: PlayerStageProps) => {
     setRomKey((prev) => prev + 1)
     playUiSound("game_start")
   }, [])
-
-  const handleReloadControls = useCallback(async () => {
-    controlsDirtyRef.current = false
-    try {
-      const blob = await saveState()
-      if (blob) pendingRestoreRef.current = blob
-    } catch {}
-    setRomKey((prev) => prev + 1)
-  }, [saveState])
-
-  useEffect(() => {
-    if (phase === "ready" && pendingRestoreRef.current) {
-      const blob = pendingRestoreRef.current
-      pendingRestoreRef.current = null
-      loadState(blob).catch(() => {})
-    }
-  }, [phase, loadState])
 
   useEffect(() => {
     const onFs = () => setIsFullscreen(Boolean(document.fullscreenElement))
@@ -107,13 +94,9 @@ export const PlayerStage = ({ game, onExit }: PlayerStageProps) => {
 
   const closeInGameMenu = useCallback(() => {
     setInGameMenuOpen(false)
-    if (controlsDirtyRef.current) {
-      handleReloadControls()
-    } else {
-      resume()
-    }
+    resume()
     playUiSound("back_cancel")
-  }, [resume, handleReloadControls])
+  }, [resume])
 
   const toggleInGameMenu = useCallback(() => {
     if (inGameMenuOpen) closeInGameMenu()
@@ -157,8 +140,7 @@ export const PlayerStage = ({ game, onExit }: PlayerStageProps) => {
         key={inGameMenuOpen ? "open" : "closed"}
         open={inGameMenuOpen} game={game}
         onResume={handleResume} onRequestExit={handleConfirmExit}
-        onResetGame={handleResetGame} onReloadControls={handleReloadControls}
-        onControlsChanged={handleControlsChanged}
+        onResetGame={handleResetGame}
         onSaveState={handleSaveState} onLoadState={handleLoadState}
         activeShader={activeShader} onSelectShader={handleSelectShader}
       />

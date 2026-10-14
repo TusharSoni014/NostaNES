@@ -1,14 +1,9 @@
-import { getCustomControls } from "@/lib/storage/controls-storage"
-
 /**
  * Provides comprehensive RetroArch input configuration for web gamepads and keyboards.
  * Fully supports Xbox, PlayStation, Nintendo, and standard USB/Bluetooth gamepads out of the box,
- * and incorporates user custom control bindings from browser localStorage.
+ * and sets up canonical baseline mappings for live in-memory input translation.
  */
-export const getRetroArchInputConfig = () => {
-  const custom = getCustomControls()
-
-  return {
+export const getRetroArchInputConfig = () => ({
     video_smooth: false,
     video_force_aspect: true,
     audio_enable: true,
@@ -37,44 +32,42 @@ export const getRetroArchInputConfig = () => {
     input_save_state: "nul",
     input_save_state_btn: "nul",
 
-    // Keyboard mappings: default Z & X are standard action buttons; A & S are Turbo buttons
-    input_player1_up: custom.keyboard.up,
-    input_player1_down: custom.keyboard.down,
-    input_player1_left: custom.keyboard.left,
-    input_player1_right: custom.keyboard.right,
-    input_player1_b: custom.keyboard.b,
-    input_player1_a: custom.keyboard.a,
-    input_player1_y: custom.keyboard.turboB,
-    input_player1_x: custom.keyboard.turboA,
-    input_player1_start: custom.keyboard.start,
-    input_player1_select: custom.keyboard.select,
+    // Canonical keyboard mappings: Z & X are B & A; A & S are Turbo B & A
+    input_player1_up: "up",
+    input_player1_down: "down",
+    input_player1_left: "left",
+    input_player1_right: "right",
+    input_player1_b: "z",
+    input_player1_a: "x",
+    input_player1_y: "a",
+    input_player1_x: "s",
+    input_player1_start: "enter",
+    input_player1_select: "shift",
 
-    // Gamepad / Joypad mappings (W3C Standard Gamepad Specification)
+    // Canonical gamepad mappings (W3C Standard Gamepad Specification)
     input_player1_joypad_index: 0,
-    // 1 = Left analog stick also controls the D-Pad
     input_player1_analog_dpad_mode: 1,
 
-    // NES Action buttons
-    input_player1_b_btn: custom.gamepad.b,
-    input_player1_a_btn: custom.gamepad.a,
-    input_player1_y_btn: custom.gamepad.turboB,
-    input_player1_x_btn: custom.gamepad.turboA,
+    // NES Action buttons (0 = B, 1 = A, 2 = Turbo B, 3 = Turbo A)
+    input_player1_b_btn: "0",
+    input_player1_a_btn: "1",
+    input_player1_y_btn: "2",
+    input_player1_x_btn: "3",
 
     // Menu / Select
-    input_player1_select_btn: custom.gamepad.select,
-    input_player1_start_btn: custom.gamepad.start,
+    input_player1_select_btn: "8",
+    input_player1_start_btn: "9",
 
     // D-Pad buttons
-    input_player1_up_btn: custom.gamepad.up,
-    input_player1_down_btn: custom.gamepad.down,
-    input_player1_left_btn: custom.gamepad.left,
-    input_player1_right_btn: custom.gamepad.right,
+    input_player1_up_btn: "12",
+    input_player1_down_btn: "13",
+    input_player1_left_btn: "14",
+    input_player1_right_btn: "15",
 
     // Bumpers
     input_player1_l_btn: "4",
     input_player1_r_btn: "5",
-  }
-}
+})
 
 /**
  * Core-level options for NES emulators (e.g. FCEUmm).

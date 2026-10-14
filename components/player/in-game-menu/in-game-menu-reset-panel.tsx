@@ -42,7 +42,7 @@ export const InGameMenuResetPanel = ({
   })
 
   return (
-    <div className="flex flex-col items-center justify-center text-center p-8 flex-1 min-h-0">
+    <div className="flex flex-col items-center justify-center text-center p-8 flex-1 h-full w-full min-h-0">
       <div className="flex size-14 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-400 mb-4 border border-amber-500/20">
         <RotateCcwIcon className="size-7" />
       </div>

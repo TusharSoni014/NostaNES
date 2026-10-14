@@ -29,8 +29,6 @@ export const InGameMenu = ({
   onResetGame,
   onSaveState,
   onLoadState,
-  onReloadControls,
-  onControlsChanged,
   activeShader = "none",
   onSelectShader,
 }: InGameMenuProps) => {
@@ -105,14 +103,14 @@ export const InGameMenu = ({
 
         <InGameMenuHeader gameTitle={game.title} onResume={onResume} />
 
-        <div className="flex min-h-0 flex-1 flex-col md:flex-row gap-6 p-4 sm:p-8 max-w-6xl mx-auto w-full overflow-hidden">
+        <div className="flex min-h-0 flex-1 flex-col md:flex-row gap-6 p-4 sm:p-6 md:p-8 max-w-7xl mx-auto w-full overflow-hidden">
           <InGameMenuSidebar
             activeTab={activeTab}
             onSelectTab={handleSelectTab}
             isFocused={focusPane === "sidebar"}
           />
 
-          <main className="flex min-h-0 flex-1 flex-col rounded-2xl border border-white/10 bg-white/[0.02] p-5 sm:p-6 backdrop-blur-md overflow-hidden relative">
+          <main className="flex min-h-0 flex-1 flex-col rounded-2xl border border-white/10 bg-white/[0.02] p-5 sm:p-6 backdrop-blur-md overflow-hidden relative h-full">
             <AnimatePresence mode="wait">
               <motion.div
                 key={activeTab}
@@ -120,10 +118,10 @@ export const InGameMenu = ({
                 animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
                 exit={{ opacity: 0, y: -14, filter: "blur(6px)" }}
                 transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-                className="flex min-h-0 flex-1 flex-col"
+                className="flex min-h-0 flex-1 flex-col h-full w-full"
               >
                 {activeTab === "resume" ? (
-                  <div className="flex flex-col items-center justify-center text-center p-8 flex-1 min-h-0">
+                  <div className="flex flex-col items-center justify-center text-center p-8 flex-1 h-full w-full min-h-0">
                     <h3 className="text-xl font-bold text-white mb-2">Game Paused</h3>
                     <p className="text-sm text-muted-foreground mb-6 max-w-sm">
                       Ready to jump back into {game.title}? Press Resume or hit F1 / Select+Start.
@@ -149,9 +147,9 @@ export const InGameMenu = ({
                   />
                 ) : activeTab === "controls" ? (
                   <InGameMenuControlsPanel
-                    isFocused={focusPane === "content"} onCancel={backToSidebar} onNavigateLeft={backToSidebar}
-                    onControlsSaved={onReloadControls}
-                    onControlsChanged={onControlsChanged}
+                    isFocused={focusPane === "content"}
+                    onCancel={backToSidebar}
+                    onNavigateLeft={backToSidebar}
                   />
                 ) : activeTab === "cheats" ? (
                   <InGameMenuCheatsPanel />

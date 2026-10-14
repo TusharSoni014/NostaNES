@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
 import {
   getCustomControls,
   resetCustomControls,
@@ -10,22 +10,12 @@ import {
 } from "@/lib/storage/controls-storage"
 import { playUiSound } from "@/lib/ui-sounds"
 import { normalizeKeyboardEvent } from "./controls-helpers"
+import { getRawGamepads } from "@/lib/gamepad/gamepad-remapper"
 
-export function useControlRebinding(
-  activeTab: "keyboard" | "gamepad",
-  onControlsSaved?: () => void,
-  onControlsChanged?: () => void,
-) {
+export function useControlRebinding(activeTab: "keyboard" | "gamepad") {
   const [config, setConfig] = useState<CustomControlsConfig>(getCustomControls())
   const [listeningKey, setListeningKey] = useState<NesActionKey | null>(null)
   const [savedNotice, setSavedNotice] = useState(false)
-  const onSavedRef = useRef(onControlsSaved)
-  const onChangedRef = useRef(onControlsChanged)
-
-  useEffect(() => {
-    onSavedRef.current = onControlsSaved
-    onChangedRef.current = onControlsChanged
-  }, [onControlsSaved, onControlsChanged])
 
   // Listen for keyboard input when rebinding
   useEffect(() => {
@@ -53,7 +43,6 @@ export function useControlRebinding(
         const newConfig: CustomControlsConfig = { ...config, keyboard: nextKb }
         setConfig(newConfig)
         saveCustomControls(newConfig)
-        onChangedRef.current?.()
         setListeningKey(null)
         setSavedNotice(true)
         playUiSound("option_selected")
@@ -83,7 +72,6 @@ export function useControlRebinding(
       const newConfig: CustomControlsConfig = { ...config, gamepad: nextPad }
       setConfig(newConfig)
       saveCustomControls(newConfig)
-      onChangedRef.current?.()
       setListeningKey(null)
       setSavedNotice(true)
       playUiSound("option_selected")
@@ -91,7 +79,7 @@ export function useControlRebinding(
     }
 
     const poll = () => {
-      const pads = navigator.getGamepads?.() ?? []
+      const pads = getRawGamepads()
       const pad = Array.from(pads).find((p): p is Gamepad => Boolean(p?.connected))
 
       if (pad) {
@@ -148,7 +136,6 @@ export function useControlRebinding(
 
   const handleSave = () => {
     saveCustomControls(config)
-    onSavedRef.current?.()
     setSavedNotice(true)
     playUiSound("game_start")
     window.setTimeout(() => setSavedNotice(false), 3000)
@@ -157,7 +144,6 @@ export function useControlRebinding(
   const handleReset = () => {
     const defaults = resetCustomControls()
     setConfig(defaults)
-    onChangedRef.current?.()
     setSavedNotice(true)
     playUiSound("navigation")
     window.setTimeout(() => setSavedNotice(false), 3000)

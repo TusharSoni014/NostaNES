@@ -137,7 +137,7 @@ export function InGameMenuShadersPanel({
       </div>
 
       {/* Footer action bar */}
-      <div className="mt-auto flex items-center justify-between pt-3 border-t border-white/10 text-xs text-white/60">
+      <div className="shrink-0 mt-auto flex items-center justify-between pt-3 border-t border-white/10 text-xs text-white/60">
         <span>Press <Kbd className="text-[10px]">A / Enter</Kbd> to activate shader</span>
         <Button
           size="sm"

@@ -89,23 +89,20 @@ export const InGameMenuLoadPanel = ({
   }
 
   useMenuNavigation<number>({
-    enabled: isFocused,
-    items: SLOTS,
-    activeItem: selectedSlot,
+    enabled: isFocused, items: SLOTS, activeItem: selectedSlot,
     onSelect: (slot) => setSelectedSlot(slot),
     onConfirm: (slot) => {
       const existing = saves.find((s) => s.slot === slot)
       if (existing) handleLoad(slot)
     },
-    onCancel,
-    onNavigateLeft,
+    onCancel, onNavigateLeft,
   })
 
   const getSaveForSlot = (slot: number) => saves.find((s) => s.slot === slot)
 
   return (
-    <div className="flex flex-col gap-4 flex-1 min-w-0">
-      <div className="flex flex-col gap-1">
+    <div className="flex flex-col flex-1 h-full min-h-0 w-full min-w-0 gap-4">
+      <div className="shrink-0 flex flex-col gap-1">
         <h3 className="text-lg font-bold text-white flex items-center gap-2">
           <HardDriveDownloadIcon className="size-5 text-blue-400" />
           Load Game State
@@ -116,13 +113,13 @@ export const InGameMenuLoadPanel = ({
       </div>
 
       {statusMessage ? (
-        <div className="flex items-center gap-2 rounded-xl border border-blue-500/30 bg-blue-500/10 px-4 py-2 text-xs text-blue-200">
+        <div className="shrink-0 flex items-center gap-2 rounded-xl border border-blue-500/30 bg-blue-500/10 px-4 py-2 text-xs text-blue-200">
           <CheckCircle2Icon className="size-4 shrink-0 text-blue-400" />
           <span>{statusMessage}</span>
         </div>
       ) : null}
 
-      <div ref={listRef} className="flex flex-col gap-3 max-h-[60vh] overflow-y-auto pr-1.5 focus:outline-none">
+      <div ref={listRef} className="flex-1 min-h-0 flex flex-col gap-3 overflow-y-auto pr-1.5 focus:outline-none">
         {SLOTS.map((slot) => {
           const existing = getSaveForSlot(slot)
           const isLoading = loadingSlot === slot

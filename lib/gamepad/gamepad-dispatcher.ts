@@ -9,6 +9,7 @@ export type GamepadHoldState = {
 }
 
 import { GAMEPAD_TIMING } from "./gamepad-timing"
+import { getRawGamepads } from "./gamepad-remapper"
 
 export type GamepadDispatcherOptions = {
   onSelectHold?: (state: GamepadHoldState) => void
@@ -41,7 +42,7 @@ export class GamepadDispatcher {
   start = (): void => {
     if (this.running) return
     this.running = true
-    const pads = navigator.getGamepads?.() ?? []
+    const pads = getRawGamepads()
     const pad = Array.from(pads).find((p): p is Gamepad => Boolean(p && p.connected))
     if (pad) {
       pad.buttons.forEach((btn, idx) => {
@@ -70,7 +71,7 @@ export class GamepadDispatcher {
   private tick = (time: number): void => {
     if (!this.running) return
 
-    const pads = navigator.getGamepads?.() ?? []
+    const pads = getRawGamepads()
     const pad = Array.from(pads).find((p): p is Gamepad => Boolean(p && p.connected))
 
     if (!pad) {

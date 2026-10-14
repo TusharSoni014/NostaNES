@@ -82,6 +82,14 @@ export function useNostalgistEmulator({
     }
   }
 
+  const pressDown = useCallback((action: string) => {
+    try { instanceRef.current?.pressDown?.(action as any) } catch {}
+  }, [])
+
+  const pressUp = useCallback((action: string) => {
+    try { instanceRef.current?.pressUp?.(action as any) } catch {}
+  }, [])
+
   const controllerRef = useRef<AbortController | null>(null)
   const readyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const cancelWakeLockRef = useRef<(() => void) | null>(null)
@@ -184,5 +192,5 @@ export function useNostalgistEmulator({
     }
   }, [canvasRef, game.file, onPhaseChange, reloadKey, unload])
 
-  return { pause, resume, saveState, loadState, unload }
+  return { pause, resume, saveState, loadState, unload, pressDown, pressUp }
 }
