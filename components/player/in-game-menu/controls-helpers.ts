@@ -26,10 +26,12 @@ export const GAMEPAD_BUTTON_LABELS: Record<string, GamepadButtonInfo> = {
 }
 
 export function getGamepadButtonName(btnCode: string): string {
+  if (!btnCode) return "None"
   return GAMEPAD_BUTTON_LABELS[btnCode]?.label ?? `Btn ${btnCode}`
 }
 
 export function getKeyboardKeyName(key: string): string {
+  if (!key) return "None"
   const k = key.toLowerCase()
   const names: Record<string, string> = {
     up: "↑ Arrow Up",

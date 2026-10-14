@@ -7,7 +7,6 @@ import {
   type NesActionKey,
 } from "@/lib/storage/controls-storage"
 import { normalizeKeyboardEvent } from "./in-game-menu/controls-helpers"
-
 import { NES_TO_RETROARCH_ACTION } from "./use-gamepad-controls"
 
 type UseKeyboardControlsOptions = {
@@ -24,6 +23,7 @@ export function useKeyboardControls({
   pressUp,
 }: UseKeyboardControlsOptions) {
   const handlersRef = useRef({ enabled, pressDown, pressUp })
+  const activeActionsRef = useRef<Set<string>>(new Set())
 
   useEffect(() => {
     handlersRef.current = { enabled, pressDown, pressUp }
@@ -31,6 +31,10 @@ export function useKeyboardControls({
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
+      // Critical: Synthetic events dispatched programmatically by Nostalgist
+      // must pass directly to the RetroArch canvas without being re-intercepted
+      if (!e.isTrusted) return
+
       const { enabled: isEnabled, pressDown: onDown, pressUp: onUp } = handlersRef.current
       if (!isEnabled) return
 
@@ -46,23 +50,28 @@ export function useKeyboardControls({
       )
 
       if (boundAction) {
-        const canonical = DEFAULT_KEYBOARD_CONTROLS[boundAction]
-        if (norm.retroarchKey === canonical) return
-
+        // Prevent browser default behavior & prevent the raw physical key from
+        // reaching RetroArch directly (eliminates double-key conflict)
         e.preventDefault()
         e.stopPropagation()
         e.stopImmediatePropagation()
 
         const raAction = NES_TO_RETROARCH_ACTION[boundAction]
         if (e.type === "keydown") {
-          if (!e.repeat) onDown(raAction)
+          if (!activeActionsRef.current.has(raAction)) {
+            activeActionsRef.current.add(raAction)
+            onDown(raAction)
+          }
         } else if (e.type === "keyup") {
-          onUp(raAction)
+          if (activeActionsRef.current.has(raAction)) {
+            activeActionsRef.current.delete(raAction)
+            onUp(raAction)
+          }
         }
         return
       }
 
-      // If user unmapped this canonical key from its default action, block it
+      // If user unmapped this canonical key from its default action, stop raw event
       if (CANONICAL_KEYS.has(norm.retroarchKey)) {
         e.preventDefault()
         e.stopPropagation()
@@ -70,21 +79,23 @@ export function useKeyboardControls({
       }
     }
 
-    const handleBlur = () => {
+    const releaseAll = () => {
       const { pressUp: onUp } = handlersRef.current
-      for (const action of Object.keys(DEFAULT_KEYBOARD_CONTROLS) as NesActionKey[]) {
-        onUp(NES_TO_RETROARCH_ACTION[action])
+      for (const action of activeActionsRef.current) {
+        onUp(action)
       }
+      activeActionsRef.current.clear()
     }
 
     window.addEventListener("keydown", handleKey, true)
     window.addEventListener("keyup", handleKey, true)
-    window.addEventListener("blur", handleBlur)
+    window.addEventListener("blur", releaseAll)
 
     return () => {
       window.removeEventListener("keydown", handleKey, true)
       window.removeEventListener("keyup", handleKey, true)
-      window.removeEventListener("blur", handleBlur)
+      window.removeEventListener("blur", releaseAll)
+      releaseAll()
     }
   }, [])
 }

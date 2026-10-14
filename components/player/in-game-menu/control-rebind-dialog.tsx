@@ -73,7 +73,7 @@ export function ControlRebindDialog({
                 : "Press any key on your keyboard..."}
             </p>
             <p className="text-[11px] text-white/40">
-              Input is detected and assigned instantly
+              Assigned only to this action. Anything else using it is cleared.
             </p>
           </div>
 

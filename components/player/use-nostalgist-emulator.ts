@@ -3,10 +3,8 @@
 import { useCallback, useEffect, useRef } from "react"
 import type { Nostalgist } from "nostalgist"
 import { preventScreenSleep } from "@/lib/display/wake-lock"
-import {
-  getRetroArchCoreConfig,
-  getRetroArchInputConfig,
-} from "@/lib/gamepad/retroarch-gamepad-config"
+import { ensureSafeResizeObserver } from "@/lib/display/safe-resize-observer"
+import { getRetroArchCoreConfig, getRetroArchInputConfig } from "@/lib/gamepad/retroarch-gamepad-config"
 import type { Game } from "@/lib/games"
 
 type UseNostalgistOptions = {
@@ -113,6 +111,7 @@ export function useNostalgistEmulator({
   }, [])
 
   useEffect(() => {
+    ensureSafeResizeObserver()
     onPhaseChange("loading")
     const canvas = canvasRef.current
     const frame = canvas?.parentElement

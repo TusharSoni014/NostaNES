@@ -44,9 +44,13 @@ export const getRetroArchInputConfig = () => ({
     input_player1_start: "enter",
     input_player1_select: "shift",
 
-    // Disable internal RetroArch joypad button bindings to let our unified
-    // live-remapping engine drive actions without conflicts or double-input
-    input_player1_joypad_index: -1,
+    // Slot 0 is required. -1 is read as an unsigned pad index and traps in
+    // gamepadEventHandlerFunc (index out of bounds) when a pad connects on boot.
+    // Buttons and axes stay unbound, and autoconfig stays off, so that slot
+    // does not also apply RetroArch's default layout on top of our mapping.
+    input_autodetect_enable: false,
+    input_player1_joypad_index: 0,
+    input_player1_analog_dpad_mode: 0,
     input_player1_b_btn: "nul",
     input_player1_a_btn: "nul",
     input_player1_y_btn: "nul",
@@ -59,6 +63,10 @@ export const getRetroArchInputConfig = () => ({
     input_player1_right_btn: "nul",
     input_player1_l_btn: "nul",
     input_player1_r_btn: "nul",
+    input_player1_l_x_plus_axis: "nul",
+    input_player1_l_x_minus_axis: "nul",
+    input_player1_l_y_plus_axis: "nul",
+    input_player1_l_y_minus_axis: "nul",
 })
 
 /**

@@ -77,23 +77,32 @@ export function useGamepadControls({
 
       const currentActions = new Set<string>()
       const custom = getCustomControls().gamepad
+      const claimed = new Set<string>()
 
-      // 1. Check mapped buttons
-      for (const [actionKey, physicalCode] of Object.entries(custom)) {
-        const btnIdx = parseInt(physicalCode, 10)
-        if (!isNaN(btnIdx) && pad.buttons[btnIdx]?.pressed) {
+      const activate = (code: string) => {
+        if (!code || claimed.has(code)) return
+        claimed.add(code)
+        for (const [actionKey, physicalCode] of Object.entries(custom)) {
+          if (physicalCode !== code) continue
           const raAction = NES_TO_RETROARCH_ACTION[actionKey as NesActionKey]
           if (raAction) currentActions.add(raAction)
+          return
         }
       }
 
-      // 2. Map analog stick to directional D-Pad as fallback
+      for (const physicalCode of Object.values(custom)) {
+        if (!physicalCode) continue
+        const btnIdx = parseInt(physicalCode, 10)
+        if (!isNaN(btnIdx) && pad.buttons[btnIdx]?.pressed) activate(physicalCode)
+      }
+
+      // Stick axes share the D-pad codes the rebind screen writes (12–15).
       const axisX = pad.axes[0] ?? 0
       const axisY = pad.axes[1] ?? 0
-      if (axisY < -0.55) currentActions.add("up")
-      if (axisY > 0.55) currentActions.add("down")
-      if (axisX < -0.55) currentActions.add("left")
-      if (axisX > 0.55) currentActions.add("right")
+      if (axisY < -0.55) activate("12")
+      else if (axisY > 0.55) activate("13")
+      if (axisX < -0.55) activate("14")
+      else if (axisX > 0.55) activate("15")
 
       // 3. Dispatch pressDown for newly activated actions
       for (const action of currentActions) {

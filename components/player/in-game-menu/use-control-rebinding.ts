@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import {
+  assignControlInput,
   getCustomControls,
   resetCustomControls,
   saveCustomControls,
@@ -22,8 +23,10 @@ export function useControlRebinding(activeTab: "keyboard" | "gamepad") {
     if (!listeningKey || activeTab !== "keyboard") return
 
     const onKey = (e: KeyboardEvent) => {
+      if (e.repeat) return
       e.preventDefault()
       e.stopPropagation()
+      e.stopImmediatePropagation()
 
       if (e.key === "Escape") {
         setListeningKey(null)
@@ -33,14 +36,10 @@ export function useControlRebinding(activeTab: "keyboard" | "gamepad") {
 
       const normalized = normalizeKeyboardEvent(e)
       if (normalized) {
-        const nextKb = { ...config.keyboard }
-        const conflict = (Object.keys(nextKb) as NesActionKey[]).find(
-          (k) => k !== listeningKey && nextKb[k] === normalized.retroarchKey,
-        )
-        if (conflict) nextKb[conflict] = config.keyboard[listeningKey]
-        nextKb[listeningKey] = normalized.retroarchKey
-
-        const newConfig: CustomControlsConfig = { ...config, keyboard: nextKb }
+        const newConfig: CustomControlsConfig = {
+          ...config,
+          keyboard: assignControlInput(config.keyboard, listeningKey, normalized.retroarchKey),
+        }
         setConfig(newConfig)
         saveCustomControls(newConfig)
         setListeningKey(null)
@@ -62,14 +61,10 @@ export function useControlRebinding(activeTab: "keyboard" | "gamepad") {
     let heldAtStart: Set<number> | null = null
 
     const commitGamepadBind = (code: string) => {
-      const nextPad = { ...config.gamepad }
-      const conflict = (Object.keys(nextPad) as NesActionKey[]).find(
-        (k) => k !== listeningKey && nextPad[k] === code,
-      )
-      if (conflict) nextPad[conflict] = config.gamepad[listeningKey]
-      nextPad[listeningKey] = code
-
-      const newConfig: CustomControlsConfig = { ...config, gamepad: nextPad }
+      const newConfig: CustomControlsConfig = {
+        ...config,
+        gamepad: assignControlInput(config.gamepad, listeningKey, code),
+      }
       setConfig(newConfig)
       saveCustomControls(newConfig)
       setListeningKey(null)
