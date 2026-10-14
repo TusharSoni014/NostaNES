@@ -19,7 +19,7 @@ export const GAMEPAD_NES_CONTROLS: ControlItem[] = [
   { label: "Turbo A (Rapid-fire)", keys: ["Y", "△"], detail: "Turbo A" },
   { label: "Start", keys: ["Menu", "Options"] },
   { label: "Select", keys: ["View", "Share"] },
-  { label: "Fullscreen", keys: ["L3"], detail: "Press Left Stick" },
+  { label: "Fullscreen", keys: ["R3"], detail: "Press Right Stick" },
   { label: "In-Game Menu", keys: ["Select + Start"], detail: "Save, load, controls" },
   { label: "Hold to Exit (5s)", keys: ["Select"], detail: "Hold 5s to leave" },
 ]

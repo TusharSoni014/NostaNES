@@ -27,6 +27,7 @@ type InGameMenuControlsPanelProps = {
   onCancel?: () => void
   onNavigateLeft?: () => void
   onControlsSaved?: () => void
+  onControlsChanged?: () => void
 }
 
 export const InGameMenuControlsPanel = ({
@@ -34,13 +35,14 @@ export const InGameMenuControlsPanel = ({
   onCancel,
   onNavigateLeft,
   onControlsSaved,
+  onControlsChanged,
 }: InGameMenuControlsPanelProps) => {
   const [activeTab, setActiveTab] = useState<"keyboard" | "gamepad">("keyboard")
   const [selectedItem, setSelectedItem] = useState<PanelItem>("up")
   const listRef = useRef<HTMLDivElement>(null)
 
   const { config, listeningKey, setListeningKey, savedNotice, handleSave, handleReset } =
-    useControlRebinding(activeTab, onControlsSaved)
+    useControlRebinding(activeTab, onControlsSaved, onControlsChanged)
 
   // Auto-scroll selected row into view
   useEffect(() => {
@@ -76,15 +78,15 @@ export const InGameMenuControlsPanel = ({
   })
 
   return (
-    <div className="flex flex-col gap-3.5 flex-1 min-w-0">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-3">
+    <div className="flex flex-col flex-1 h-full min-h-0 w-full min-w-0 gap-3.5">
+      <div className="shrink-0 flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-3">
         <div>
           <h3 className="text-base font-bold text-white flex items-center gap-2">
             <SlidersIcon className="size-4 text-blue-400" />
             Remap Controls
           </h3>
           <p className="text-xs text-white/60">
-            Customize controls for this game. Changes apply immediately upon save.
+            Customize controls for this game. Changes save automatically & apply to gameplay.
           </p>
         </div>
 
@@ -111,13 +113,13 @@ export const InGameMenuControlsPanel = ({
       </div>
 
       {savedNotice ? (
-        <div className="flex items-center gap-2 rounded-xl border border-blue-500/40 bg-blue-500/10 px-4 py-2 text-xs text-blue-200">
-          <CheckCircle2Icon className="size-4 shrink-0 text-blue-400" />
-          <span>Controls saved and applied to gameplay!</span>
+        <div className="shrink-0 flex items-center gap-2 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 text-xs text-emerald-200">
+          <CheckCircle2Icon className="size-4 shrink-0 text-emerald-400" />
+          <span>Controls saved & applied to active game profile!</span>
         </div>
       ) : null}
 
-      <div ref={listRef} className="flex-1 max-h-[50vh] overflow-y-auto pr-1 flex flex-col gap-3">
+      <div ref={listRef} className="flex-1 min-h-0 overflow-y-auto pr-1 flex flex-col gap-3 focus:outline-none">
         {ACTION_CATEGORIES.map((cat) => (
           <div key={cat.name} className="flex flex-col gap-1.5">
             <h4 className="text-[11px] font-semibold text-blue-400 uppercase tracking-wider px-1">
@@ -146,35 +148,35 @@ export const InGameMenuControlsPanel = ({
             </div>
           </div>
         ))}
+      </div>
 
-        <div className="mt-2 flex items-center justify-between gap-3 border-t border-white/10 pt-3">
-          <Button
-            variant="ghost"
-            size="sm"
-            data-control-row="reset_btn"
-            onClick={handleReset}
-            className={cn(
-              "gap-2 text-xs",
-              isFocused && selectedItem === "reset_btn" && "ring-2 ring-blue-400 bg-white/10",
-            )}
-          >
-            <RotateCcwIcon className="size-3.5" />
-            <span>Reset Defaults</span>
-          </Button>
+      <div className="shrink-0 flex items-center justify-between gap-3 border-t border-white/10 pt-3">
+        <Button
+          variant="ghost"
+          size="sm"
+          data-control-row="reset_btn"
+          onClick={handleReset}
+          className={cn(
+            "gap-2 text-xs",
+            isFocused && selectedItem === "reset_btn" && "ring-2 ring-blue-400 bg-white/10",
+          )}
+        >
+          <RotateCcwIcon className="size-3.5" />
+          <span>Reset Defaults</span>
+        </Button>
 
-          <Button
-            size="sm"
-            data-control-row="save_btn"
-            onClick={handleSave}
-            className={cn(
-              "gap-2 text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white shadow-md",
-              isFocused && selectedItem === "save_btn" && "ring-2 ring-blue-300 ring-offset-2 ring-offset-zinc-950",
-            )}
-          >
-            <SaveIcon className="size-3.5" />
-            <span>Save & Apply Controls</span>
-          </Button>
-        </div>
+        <Button
+          size="sm"
+          data-control-row="save_btn"
+          onClick={handleSave}
+          className={cn(
+            "gap-2 text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white shadow-md",
+            isFocused && selectedItem === "save_btn" && "ring-2 ring-blue-300 ring-offset-2 ring-offset-zinc-950",
+          )}
+        >
+          <SaveIcon className="size-3.5" />
+          <span>Save & Apply Controls</span>
+        </Button>
       </div>
 
       <ControlRebindDialog

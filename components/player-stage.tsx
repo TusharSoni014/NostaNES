@@ -7,9 +7,11 @@ import { InGameMenu } from "@/components/player/in-game-menu/in-game-menu"
 import { PlayerFooter } from "@/components/player/player-footer"
 import { PlayerHeader } from "@/components/player/player-header"
 import { PlayerOverlay } from "@/components/player/player-overlay"
+import { ShaderOverlay } from "@/components/player/shader-overlay"
 import { useNostalgistEmulator } from "@/components/player/use-nostalgist-emulator"
 import { useSaveLoadState } from "@/components/player/use-save-load-state"
 import { usePlayerInput } from "@/components/player/use-player-input"
+import { getSavedShader, saveShader, type GameShader } from "@/lib/storage/shader-storage"
 import type { GamepadHoldState } from "@/lib/gamepad/gamepad-dispatcher"
 import { motion } from "motion/react"
 import { playUiSound } from "@/lib/ui-sounds"
@@ -29,12 +31,16 @@ export const PlayerStage = ({ game, onExit }: PlayerStageProps) => {
   const [isFullscreen, setIsFullscreen] = useState(true)
   const [confirmingExit, setConfirmingExit] = useState(false)
   const [inGameMenuOpen, setInGameMenuOpen] = useState(false)
+  const [activeShader, setActiveShader] = useState<GameShader>(getSavedShader)
   const [romKey, setRomKey] = useState(0)
   const [exitHud, setExitHud] = useState<GamepadHoldState>({
-    active: false,
-    remainingSeconds: 5,
-    progress: 0,
+    active: false, remainingSeconds: 5, progress: 0,
   })
+
+  const handleSelectShader = useCallback((shader: GameShader) => {
+    setActiveShader(shader)
+    saveShader(shader)
+  }, [])
 
   useEffect(() => {
     if (phase === "error") playUiSound("error")
@@ -42,14 +48,17 @@ export const PlayerStage = ({ game, onExit }: PlayerStageProps) => {
   }, [phase, confirmingExit])
 
   const { pause, resume, saveState, loadState, unload } = useNostalgistEmulator({
-    game,
-    canvasRef,
-    onPhaseChange: setPhase,
-    reloadKey: romKey,
+    game, canvasRef, onPhaseChange: setPhase, reloadKey: romKey,
+    isPaused: inGameMenuOpen || confirmingExit,
   })
 
   const { handleSaveState, handleLoadState } = useSaveLoadState(game.file, saveState, loadState)
   const pendingRestoreRef = useRef<Blob | null>(null)
+  const controlsDirtyRef = useRef(false)
+
+  const handleControlsChanged = useCallback(() => {
+    controlsDirtyRef.current = true
+  }, [])
 
   const handleResetGame = useCallback(() => {
     setInGameMenuOpen(false)
@@ -59,6 +68,7 @@ export const PlayerStage = ({ game, onExit }: PlayerStageProps) => {
   }, [])
 
   const handleReloadControls = useCallback(async () => {
+    controlsDirtyRef.current = false
     try {
       const blob = await saveState()
       if (blob) pendingRestoreRef.current = blob
@@ -97,9 +107,13 @@ export const PlayerStage = ({ game, onExit }: PlayerStageProps) => {
 
   const closeInGameMenu = useCallback(() => {
     setInGameMenuOpen(false)
-    resume()
+    if (controlsDirtyRef.current) {
+      handleReloadControls()
+    } else {
+      resume()
+    }
     playUiSound("back_cancel")
-  }, [resume])
+  }, [resume, handleReloadControls])
 
   const toggleInGameMenu = useCallback(() => {
     if (inGameMenuOpen) closeInGameMenu()
@@ -126,22 +140,13 @@ export const PlayerStage = ({ game, onExit }: PlayerStageProps) => {
   }, [unload, onExit])
 
   usePlayerInput({
-    inGameMenuOpen,
-    confirmingExit,
-    toggleInGameMenu,
-    handleResume,
-    handleRequestExit,
-    handleConfirmExit,
-    toggleFullscreen,
-    setExitHud,
+    inGameMenuOpen, confirmingExit, toggleInGameMenu, handleResume,
+    handleRequestExit, handleConfirmExit, toggleFullscreen, setExitHud,
   })
 
   return (
     <motion.div
-      ref={stageRef}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
+      ref={stageRef} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       transition={{ duration: 0.25, ease: "easeOut" }}
       className="fixed inset-0 z-40 flex flex-col bg-black will-change-opacity select-none"
     >
@@ -150,21 +155,17 @@ export const PlayerStage = ({ game, onExit }: PlayerStageProps) => {
 
       <InGameMenu
         key={inGameMenuOpen ? "open" : "closed"}
-        open={inGameMenuOpen}
-        game={game}
-        onResume={handleResume}
-        onRequestExit={handleConfirmExit}
-        onResetGame={handleResetGame}
-        onSaveState={handleSaveState}
-        onLoadState={handleLoadState}
-        onReloadControls={handleReloadControls}
+        open={inGameMenuOpen} game={game}
+        onResume={handleResume} onRequestExit={handleConfirmExit}
+        onResetGame={handleResetGame} onReloadControls={handleReloadControls}
+        onControlsChanged={handleControlsChanged}
+        onSaveState={handleSaveState} onLoadState={handleLoadState}
+        activeShader={activeShader} onSelectShader={handleSelectShader}
       />
 
       <PlayerHeader
-        title={game.title}
-        isFullscreen={isFullscreen}
-        onToggleFullscreen={toggleFullscreen}
-        onRequestExit={handleRequestExit}
+        title={game.title} isFullscreen={isFullscreen}
+        onToggleFullscreen={toggleFullscreen} onRequestExit={handleRequestExit}
       />
 
       {/* Game Stage: Unrounded, zero-lag, arcade CRT 4:3 display */}
@@ -176,12 +177,13 @@ export const PlayerStage = ({ game, onExit }: PlayerStageProps) => {
           )}
         >
           <canvas
-            key={romKey}
-            ref={canvasRef}
-            tabIndex={-1}
-            className="size-full rounded-none [image-rendering:pixelated] outline-none"
-            aria-label={`${game.title} display`}
+            key={romKey} ref={canvasRef} tabIndex={-1} aria-label={`${game.title} display`}
+            className={cn(
+              "size-full rounded-none outline-none",
+              activeShader === "smooth" ? "[image-rendering:auto]" : "[image-rendering:pixelated]",
+            )}
           />
+          <ShaderOverlay shader={activeShader} />
           <PlayerOverlay game={game} phase={phase} onExit={handleConfirmExit} />
         </div>
       </div>

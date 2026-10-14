@@ -14,6 +14,7 @@ type UseNostalgistOptions = {
   canvasRef: React.RefObject<HTMLCanvasElement | null>
   onPhaseChange: (phase: "loading" | "ready" | "error") => void
   reloadKey?: number
+  isPaused?: boolean
 }
 
 // Guarantee NES loader displays for at least one second
@@ -22,22 +23,24 @@ const MIN_LOADER_DURATION_MS = 1000
 function setAudioContextState(emu: Nostalgist | null, state: "suspend" | "resume" | "close") {
   if (!emu) return
   try {
-    const al = (emu as unknown as { getEmscriptenAL?: () => { currentCtx?: { audioCtx?: AudioContext } } }).getEmscriptenAL?.()
-    al?.currentCtx?.audioCtx?.[state]?.()
-  } catch {}
-  try {
-    const mod = (emu as unknown as { getEmscriptenModule?: () => { SDL2?: { audio?: { audioCtx?: AudioContext } } } }).getEmscriptenModule?.()
-    mod?.SDL2?.audio?.audioCtx?.[state]?.()
+    const target = emu as unknown as {
+      getEmscriptenAL?: () => { currentCtx?: { audioCtx?: AudioContext } }
+      getEmscriptenModule?: () => { SDL2?: { audio?: { audioCtx?: AudioContext } } }
+    }
+    target.getEmscriptenAL?.()?.currentCtx?.audioCtx?.[state]?.()
+    target.getEmscriptenModule?.()?.SDL2?.audio?.audioCtx?.[state]?.()
   } catch {}
 }
 
 export function useNostalgistEmulator({
-  game,
-  canvasRef,
-  onPhaseChange,
-  reloadKey = 0,
+  game, canvasRef, onPhaseChange, reloadKey = 0, isPaused = false,
 }: UseNostalgistOptions) {
   const instanceRef = useRef<Nostalgist | null>(null)
+  const isPausedRef = useRef(Boolean(isPaused))
+
+  useEffect(() => {
+    isPausedRef.current = Boolean(isPaused)
+  }, [isPaused])
 
   const pause = () => {
     try {
@@ -46,9 +49,7 @@ export function useNostalgistEmulator({
       if (emu.getStatus?.() === "running") emu.pause()
       else emu.pause?.()
       setAudioContextState(emu, "suspend")
-    } catch (err) {
-      console.error("Failed to pause emulator:", err)
-    }
+    } catch {}
   }
 
   const resume = () => {
@@ -58,9 +59,7 @@ export function useNostalgistEmulator({
       setAudioContextState(emu, "resume")
       if (emu.getStatus?.() === "paused") emu.resume()
       else emu.resume?.()
-    } catch (err) {
-      console.error("Failed to resume emulator:", err)
-    }
+    } catch {}
   }
 
   const saveState = async (): Promise<Blob | null> => {
@@ -68,8 +67,7 @@ export function useNostalgistEmulator({
     try {
       const result = await instanceRef.current.saveState()
       return result.state
-    } catch (err) {
-      console.error("Failed to save state:", err)
+    } catch {
       return null
     }
   }
@@ -79,8 +77,7 @@ export function useNostalgistEmulator({
     try {
       await instanceRef.current.loadState(blob)
       return true
-    } catch (err) {
-      console.error("Failed to load state:", err)
+    } catch {
       return false
     }
   }
@@ -99,7 +96,7 @@ export function useNostalgistEmulator({
     if (emu) {
       setAudioContextState(emu, "close")
       try {
-        emu.exit()
+        emu.exit({ removeCanvas: false })
       } catch {}
       instanceRef.current = null
     }
@@ -139,25 +136,28 @@ export function useNostalgistEmulator({
           signal: controller.signal,
           cache: { core: true, rom: true },
           size: { width: 256 * scale, height: 240 * scale },
-          style: {
-            width: "100%",
-            height: "100%",
-            display: "block",
-            backgroundColor: "black",
-          },
+          style: { width: "100%", height: "100%", display: "block", backgroundColor: "black" },
           retroarchConfig: getRetroArchInputConfig(),
           retroarchCoreConfig: getRetroArchCoreConfig(),
-          onLaunch() {
+          onLaunch(emu) {
             if (stoppedRef.current) return
+            instanceRef.current = emu
 
-            // Even when the game is already loaded/cached, keep loader visible for at least 1s
+            if (isPausedRef.current) {
+              try {
+                emu.pause()
+                setAudioContextState(emu, "suspend")
+              } catch {}
+            }
+
+            const isInitial = reloadKey === 0
             const elapsed = performance.now() - loadStartTime
-            const delayRemaining = Math.max(0, MIN_LOADER_DURATION_MS - elapsed)
+            const delayRemaining = isInitial ? Math.max(0, MIN_LOADER_DURATION_MS - elapsed) : 0
 
             readyTimerRef.current = setTimeout(() => {
               if (!stoppedRef.current) {
                 onPhaseChange("ready")
-                canvas.focus()
+                if (!isPausedRef.current) canvas.focus()
               }
             }, delayRemaining)
           },
@@ -166,7 +166,7 @@ export function useNostalgistEmulator({
         if (stoppedRef.current) {
           setAudioContextState(emulator, "close")
           try {
-            emulator.exit()
+            emulator.exit({ removeCanvas: false })
           } catch {}
           return
         }

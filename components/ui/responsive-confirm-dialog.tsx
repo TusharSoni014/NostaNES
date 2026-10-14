@@ -1,8 +1,14 @@
 "use client"
 
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Kbd } from "@/components/ui/kbd"
+import { useMenuNavigation } from "@/hooks/use-menu-navigation"
+import { cn } from "@/lib/utils"
 import { ResponsiveModal } from "./responsive-modal"
+
+const DIALOG_OPTIONS = ["cancel", "confirm"] as const
+type DialogOption = (typeof DIALOG_OPTIONS)[number]
 
 export type ResponsiveConfirmDialogProps = {
   open: boolean
@@ -13,6 +19,7 @@ export type ResponsiveConfirmDialogProps = {
   variant?: "destructive" | "default"
   badgeText?: string
   badgeIcon?: React.ReactNode
+  defaultOption?: DialogOption
   onConfirm: () => void
   onCancel: () => void
 }
@@ -26,9 +33,32 @@ export function ResponsiveConfirmDialog({
   variant = "destructive",
   badgeText,
   badgeIcon,
+  defaultOption = "confirm",
   onConfirm,
   onCancel,
 }: ResponsiveConfirmDialogProps) {
+  const [selectedOption, setSelectedOption] = useState<DialogOption>(defaultOption)
+  const [prevOpen, setPrevOpen] = useState(open)
+
+  if (open !== prevOpen) {
+    setPrevOpen(open)
+    if (open) setSelectedOption(defaultOption)
+  }
+
+  useMenuNavigation<DialogOption>({
+    enabled: open,
+    items: DIALOG_OPTIONS,
+    activeItem: selectedOption,
+    onSelect: setSelectedOption,
+    onConfirm: (item) => {
+      if (item === "confirm") onConfirm()
+      else onCancel()
+    },
+    onCancel,
+    onNavigateLeft: () => setSelectedOption("cancel"),
+    onNavigateRight: () => setSelectedOption("confirm"),
+  })
+
   return (
     <ResponsiveModal
       open={open}
@@ -48,18 +78,24 @@ export function ResponsiveConfirmDialog({
       }
       description={description}
       footer={
-        <div className="flex w-full flex-col sm:flex-row items-center gap-2">
+        <div className="flex w-full flex-col sm:flex-row items-center gap-2.5 select-none">
           <Button
             type="button"
             variant="outline"
             size="lg"
             onClick={onCancel}
-            className="w-full sm:w-auto sm:flex-1 justify-between gap-2 border-white/10 bg-white/5 hover:bg-white/10 text-white"
+            onMouseEnter={() => setSelectedOption("cancel")}
+            className={cn(
+              "w-full sm:w-auto sm:flex-1 justify-between gap-2 border-white/10 bg-white/5 text-white transition-all duration-150",
+              selectedOption === "cancel"
+                ? "ring-2 ring-blue-400 border-blue-400/80 bg-blue-500/25 text-white shadow-[0_0_20px_rgba(59,130,246,0.35)] scale-[1.02]"
+                : "hover:bg-white/10 text-white/70",
+            )}
           >
-            <span>{cancelText}</span>
+            <span className="font-semibold">{cancelText}</span>
             <span className="flex items-center gap-1">
-              <Kbd className="text-[10px]">Esc</Kbd>
-              <Kbd className="text-[10px]">B</Kbd>
+              <Kbd className={cn("text-[10px]", selectedOption === "cancel" && "bg-blue-400 text-black font-bold")}>Esc</Kbd>
+              <Kbd className={cn("text-[10px]", selectedOption === "cancel" && "bg-blue-400 text-black font-bold")}>B</Kbd>
             </span>
           </Button>
 
@@ -68,12 +104,18 @@ export function ResponsiveConfirmDialog({
             variant={variant}
             size="lg"
             onClick={onConfirm}
-            className="w-full sm:w-auto sm:flex-1 justify-between gap-2 shadow-lg"
+            onMouseEnter={() => setSelectedOption("confirm")}
+            className={cn(
+              "w-full sm:w-auto sm:flex-1 justify-between gap-2 shadow-lg transition-all duration-150",
+              selectedOption === "confirm"
+                ? "ring-2 ring-rose-400 border-rose-400 bg-rose-600 text-white shadow-[0_0_24px_rgba(244,63,94,0.45)] scale-[1.02]"
+                : "opacity-80 hover:opacity-100",
+            )}
           >
-            <span>{confirmText}</span>
+            <span className="font-semibold">{confirmText}</span>
             <span className="flex items-center gap-1">
-              <Kbd className="text-[10px] bg-black/30 border-white/20">Enter</Kbd>
-              <Kbd className="text-[10px] bg-black/30 border-white/20">A</Kbd>
+              <Kbd className={cn("text-[10px] bg-black/40 border-white/20", selectedOption === "confirm" && "bg-white text-black font-bold")}>Enter</Kbd>
+              <Kbd className={cn("text-[10px] bg-black/40 border-white/20", selectedOption === "confirm" && "bg-white text-black font-bold")}>A</Kbd>
             </span>
           </Button>
         </div>

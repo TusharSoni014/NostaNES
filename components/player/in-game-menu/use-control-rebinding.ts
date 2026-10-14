@@ -14,15 +14,18 @@ import { normalizeKeyboardEvent } from "./controls-helpers"
 export function useControlRebinding(
   activeTab: "keyboard" | "gamepad",
   onControlsSaved?: () => void,
+  onControlsChanged?: () => void,
 ) {
   const [config, setConfig] = useState<CustomControlsConfig>(getCustomControls())
   const [listeningKey, setListeningKey] = useState<NesActionKey | null>(null)
   const [savedNotice, setSavedNotice] = useState(false)
   const onSavedRef = useRef(onControlsSaved)
+  const onChangedRef = useRef(onControlsChanged)
 
   useEffect(() => {
     onSavedRef.current = onControlsSaved
-  }, [onControlsSaved])
+    onChangedRef.current = onControlsChanged
+  }, [onControlsSaved, onControlsChanged])
 
   // Listen for keyboard input when rebinding
   useEffect(() => {
@@ -40,18 +43,27 @@ export function useControlRebinding(
 
       const normalized = normalizeKeyboardEvent(e)
       if (normalized) {
-        setConfig((prev) => ({
-          ...prev,
-          keyboard: { ...prev.keyboard, [listeningKey]: normalized.retroarchKey },
-        }))
+        const nextKb = { ...config.keyboard }
+        const conflict = (Object.keys(nextKb) as NesActionKey[]).find(
+          (k) => k !== listeningKey && nextKb[k] === normalized.retroarchKey,
+        )
+        if (conflict) nextKb[conflict] = config.keyboard[listeningKey]
+        nextKb[listeningKey] = normalized.retroarchKey
+
+        const newConfig: CustomControlsConfig = { ...config, keyboard: nextKb }
+        setConfig(newConfig)
+        saveCustomControls(newConfig)
+        onChangedRef.current?.()
         setListeningKey(null)
+        setSavedNotice(true)
         playUiSound("option_selected")
+        window.setTimeout(() => setSavedNotice(false), 2500)
       }
     }
 
     window.addEventListener("keydown", onKey, true)
     return () => window.removeEventListener("keydown", onKey, true)
-  }, [activeTab, listeningKey])
+  }, [activeTab, config, listeningKey])
 
   // Listen for gamepad input when rebinding with edge-detection
   useEffect(() => {
@@ -60,12 +72,29 @@ export function useControlRebinding(
     let animId = 0
     let heldAtStart: Set<number> | null = null
 
+    const commitGamepadBind = (code: string) => {
+      const nextPad = { ...config.gamepad }
+      const conflict = (Object.keys(nextPad) as NesActionKey[]).find(
+        (k) => k !== listeningKey && nextPad[k] === code,
+      )
+      if (conflict) nextPad[conflict] = config.gamepad[listeningKey]
+      nextPad[listeningKey] = code
+
+      const newConfig: CustomControlsConfig = { ...config, gamepad: nextPad }
+      setConfig(newConfig)
+      saveCustomControls(newConfig)
+      onChangedRef.current?.()
+      setListeningKey(null)
+      setSavedNotice(true)
+      playUiSound("option_selected")
+      window.setTimeout(() => setSavedNotice(false), 2500)
+    }
+
     const poll = () => {
       const pads = navigator.getGamepads?.() ?? []
       const pad = Array.from(pads).find((p): p is Gamepad => Boolean(p?.connected))
 
       if (pad) {
-        // Record all buttons currently held down on the first frame to prevent instant-firing
         if (heldAtStart === null) {
           heldAtStart = new Set<number>()
           pad.buttons.forEach((btn, idx) => {
@@ -73,7 +102,6 @@ export function useControlRebinding(
             if (isPressed) heldAtStart?.add(idx)
           })
         } else {
-          // Check for Select + Start combo to cancel
           const btnSelect = pad.buttons[8]?.pressed ?? false
           const btnStart = pad.buttons[9]?.pressed ?? false
           if (btnSelect && btnStart) {
@@ -82,45 +110,30 @@ export function useControlRebinding(
             return
           }
 
-          // Check if any button was released
           pad.buttons.forEach((btn, idx) => {
             const isPressed = typeof btn === "object" ? btn.pressed : Boolean(btn)
-            if (!isPressed && heldAtStart?.has(idx)) {
-              heldAtStart.delete(idx)
-            }
+            if (!isPressed && heldAtStart?.has(idx)) heldAtStart.delete(idx)
           })
 
-          // Check for newly pressed button
           for (let i = 0; i < pad.buttons.length; i++) {
             const btn = pad.buttons[i]
             const isPressed = typeof btn === "object" ? btn.pressed : Boolean(btn)
             if (isPressed && !heldAtStart.has(i)) {
-              setConfig((prev) => ({
-                ...prev,
-                gamepad: { ...prev.gamepad, [listeningKey]: String(i) },
-              }))
-              setListeningKey(null)
-              playUiSound("option_selected")
+              commitGamepadBind(String(i))
               return
             }
           }
 
-          // Check D-Pad axes if analog moved
           const axisX = pad.axes[0] ?? 0
           const axisY = pad.axes[1] ?? 0
           let axisCode: string | null = null
-          if (axisY < -0.65) axisCode = "12" // Up
-          else if (axisY > 0.65) axisCode = "13" // Down
-          else if (axisX < -0.65) axisCode = "14" // Left
-          else if (axisX > 0.65) axisCode = "15" // Right
+          if (axisY < -0.65) axisCode = "12"
+          else if (axisY > 0.65) axisCode = "13"
+          else if (axisX < -0.65) axisCode = "14"
+          else if (axisX > 0.65) axisCode = "15"
 
           if (axisCode) {
-            setConfig((prev) => ({
-              ...prev,
-              gamepad: { ...prev.gamepad, [listeningKey]: axisCode },
-            }))
-            setListeningKey(null)
-            playUiSound("option_selected")
+            commitGamepadBind(axisCode)
             return
           }
         }
@@ -131,7 +144,7 @@ export function useControlRebinding(
 
     animId = requestAnimationFrame(poll)
     return () => cancelAnimationFrame(animId)
-  }, [activeTab, listeningKey])
+  }, [activeTab, config, listeningKey])
 
   const handleSave = () => {
     saveCustomControls(config)
@@ -144,7 +157,7 @@ export function useControlRebinding(
   const handleReset = () => {
     const defaults = resetCustomControls()
     setConfig(defaults)
-    onSavedRef.current?.()
+    onChangedRef.current?.()
     setSavedNotice(true)
     playUiSound("navigation")
     window.setTimeout(() => setSavedNotice(false), 3000)

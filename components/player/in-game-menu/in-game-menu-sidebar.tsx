@@ -6,6 +6,7 @@ import {
   LogOutIcon,
   PlayIcon,
   RotateCcwIcon,
+  TvIcon,
   UploadIcon,
   Wand2Icon,
 } from "lucide-react"
@@ -37,6 +38,12 @@ const MENU_ITEMS: MenuItem[] = [
     label: "Load State",
     subtitle: "Restore previous game save",
     icon: UploadIcon,
+  },
+  {
+    id: "shaders",
+    label: "Shaders & Display",
+    subtitle: "CRT scanlines, arcade & filters",
+    icon: TvIcon,
   },
   {
     id: "controls",

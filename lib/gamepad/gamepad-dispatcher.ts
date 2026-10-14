@@ -106,8 +106,8 @@ export class GamepadDispatcher {
     this.checkSinglePress(pad, 3, "TOGGLE_CONTROLS")
     this.checkSinglePress(pad, 4, "PAGE_UP")
     this.checkSinglePress(pad, 5, "PAGE_DOWN")
-    // 10: L3 (Left Stick click) - single press toggles fullscreen for gamepad
-    this.checkSinglePress(pad, 10, "TOGGLE_FULLSCREEN")
+    // 11: R3 (Right Stick click) - single press toggles fullscreen for gamepad
+    this.checkSinglePress(pad, 11, "TOGGLE_FULLSCREEN")
     this.checkSinglePress(pad, 16, "MENU")
 
     if (!isCombo) {

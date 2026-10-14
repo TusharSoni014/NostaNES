@@ -76,10 +76,26 @@ export function getCustomControls(): CustomControlsConfig {
       }
     }
     const parsed = JSON.parse(raw) as Partial<CustomControlsConfig>
-    return {
-      keyboard: { ...DEFAULT_KEYBOARD_CONTROLS, ...(parsed.keyboard || {}) },
-      gamepad: { ...DEFAULT_GAMEPAD_CONTROLS, ...(parsed.gamepad || {}) },
+    const keyboard = { ...DEFAULT_KEYBOARD_CONTROLS }
+    const gamepad = { ...DEFAULT_GAMEPAD_CONTROLS }
+
+    if (parsed.keyboard && typeof parsed.keyboard === "object") {
+      for (const k of Object.keys(DEFAULT_KEYBOARD_CONTROLS) as NesActionKey[]) {
+        if (typeof parsed.keyboard[k] === "string" && parsed.keyboard[k].trim() !== "") {
+          keyboard[k] = parsed.keyboard[k].trim()
+        }
+      }
     }
+
+    if (parsed.gamepad && typeof parsed.gamepad === "object") {
+      for (const k of Object.keys(DEFAULT_GAMEPAD_CONTROLS) as NesActionKey[]) {
+        if (typeof parsed.gamepad[k] === "string" && parsed.gamepad[k].trim() !== "") {
+          gamepad[k] = parsed.gamepad[k].trim()
+        }
+      }
+    }
+
+    return { keyboard, gamepad }
   } catch {
     return {
       keyboard: { ...DEFAULT_KEYBOARD_CONTROLS },

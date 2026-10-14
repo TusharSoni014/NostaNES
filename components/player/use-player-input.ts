@@ -66,9 +66,6 @@ export function usePlayerInput({
         if (e.target instanceof HTMLElement && e.target.closest("input, textarea")) return
         e.preventDefault()
         actions.toggleFullscreen()
-      } else if (e.key === "Enter" && actions.confirmingExit) {
-        e.preventDefault()
-        actions.handleConfirmExit()
       }
     }
 
@@ -85,12 +82,7 @@ export function usePlayerInput({
           actions.toggleInGameMenu()
           return
         }
-        if (actions.inGameMenuOpen) return
-        if (actions.confirmingExit) {
-          if (action === "CONFIRM") actions.handleConfirmExit()
-          else if (action === "CANCEL") actions.handleResume()
-          return
-        }
+        if (actions.inGameMenuOpen || actions.confirmingExit) return
         if (action === "MENU") actions.handleRequestExit()
         else if (action === "TOGGLE_FULLSCREEN") actions.toggleFullscreen()
       },

@@ -11,13 +11,14 @@ import { InGameMenuHeader } from "./in-game-menu-header"
 import { InGameMenuLoadPanel } from "./in-game-menu-load-panel"
 import { InGameMenuResetPanel } from "./in-game-menu-reset-panel"
 import { InGameMenuSavePanel } from "./in-game-menu-save-panel"
+import { InGameMenuShadersPanel } from "./in-game-menu-shaders-panel"
 import { InGameMenuSidebar } from "./in-game-menu-sidebar"
 import type { InGameMenuProps, InGameMenuTab } from "./types"
 import { useMenuNavigation } from "@/hooks/use-menu-navigation"
 import { playUiSound } from "@/lib/ui-sounds"
 
 const MENU_TABS: readonly InGameMenuTab[] = [
-  "resume", "save", "load", "controls", "cheats", "reset", "exit",
+  "resume", "save", "load", "shaders", "controls", "cheats", "reset", "exit",
 ] as const
 
 export const InGameMenu = ({
@@ -29,6 +30,9 @@ export const InGameMenu = ({
   onSaveState,
   onLoadState,
   onReloadControls,
+  onControlsChanged,
+  activeShader = "none",
+  onSelectShader,
 }: InGameMenuProps) => {
   const [activeTab, setActiveTab] = useState<InGameMenuTab>("resume")
   const [focusPane, setFocusPane] = useState<"sidebar" | "content">("sidebar")
@@ -130,46 +134,36 @@ export const InGameMenu = ({
                   </div>
                 ) : activeTab === "save" ? (
                   <InGameMenuSavePanel
-                    game={game}
-                    onSaveState={onSaveState}
-                    isFocused={focusPane === "content"}
-                    onCancel={backToSidebar}
-                    onNavigateLeft={backToSidebar}
+                    game={game} onSaveState={onSaveState}
+                    isFocused={focusPane === "content"} onCancel={backToSidebar} onNavigateLeft={backToSidebar}
                   />
                 ) : activeTab === "load" ? (
                   <InGameMenuLoadPanel
-                    game={game}
-                    onLoadState={onLoadState}
-                    onResume={onResume}
-                    isFocused={focusPane === "content"}
-                    onCancel={backToSidebar}
-                    onNavigateLeft={backToSidebar}
+                    game={game} onLoadState={onLoadState} onResume={onResume}
+                    isFocused={focusPane === "content"} onCancel={backToSidebar} onNavigateLeft={backToSidebar}
+                  />
+                ) : activeTab === "shaders" ? (
+                  <InGameMenuShadersPanel
+                    activeShader={activeShader} onSelectShader={onSelectShader ?? (() => {})}
+                    isFocused={focusPane === "content"} onCancel={backToSidebar} onNavigateLeft={backToSidebar}
                   />
                 ) : activeTab === "controls" ? (
                   <InGameMenuControlsPanel
-                    isFocused={focusPane === "content"}
-                    onCancel={backToSidebar}
-                    onNavigateLeft={backToSidebar}
+                    isFocused={focusPane === "content"} onCancel={backToSidebar} onNavigateLeft={backToSidebar}
                     onControlsSaved={onReloadControls}
+                    onControlsChanged={onControlsChanged}
                   />
                 ) : activeTab === "cheats" ? (
                   <InGameMenuCheatsPanel />
                 ) : activeTab === "reset" ? (
                   <InGameMenuResetPanel
-                    game={game}
-                    onResetGame={onResetGame}
-                    onCancel={backToSidebar}
-                    isFocused={focusPane === "content"}
-                    onNavigateLeft={backToSidebar}
+                    game={game} onResetGame={onResetGame}
+                    isFocused={focusPane === "content"} onCancel={backToSidebar} onNavigateLeft={backToSidebar}
                   />
                 ) : activeTab === "exit" ? (
                   <InGameMenuExitPanel
-                    game={game}
-                    onRequestExit={onRequestExit}
-                    onResume={onResume}
-                    onCancel={backToSidebar}
-                    isFocused={focusPane === "content"}
-                    onNavigateLeft={backToSidebar}
+                    game={game} onRequestExit={onRequestExit} onResume={onResume}
+                    isFocused={focusPane === "content"} onCancel={backToSidebar} onNavigateLeft={backToSidebar}
                   />
                 ) : null}
               </motion.div>
