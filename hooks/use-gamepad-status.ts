@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { getGamepadProfile } from "@/lib/gamepad/gamepad-detector"
 import type { GamepadProfile } from "@/lib/gamepad/gamepad-types"
+import { getRawGamepads } from "@/lib/gamepad/gamepad-remapper"
 
 export type GamepadStatusState = {
   connected: boolean
@@ -28,7 +29,7 @@ export const useGamepadStatus = (): GamepadStatusState => {
     if (typeof window === "undefined" || !("getGamepads" in navigator)) return
 
     const updateStatus = () => {
-      const pads = navigator.getGamepads?.() ?? []
+      const pads = getRawGamepads()
       const primary = Array.from(pads).find(isValidGamepad) ?? null
 
       if (primary) {

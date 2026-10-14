@@ -56,9 +56,10 @@ function remapSingleGamepad(realPad: Gamepad, config: CustomGamepadMap): Gamepad
   if (axisX > 0.55 && newButtons[15]) newButtons[15] = { pressed: true, touched: true, value: 1 }
 
   return new Proxy(realPad, {
-    get(target, prop, receiver) {
+    get(target, prop) {
       if (prop === "buttons") return newButtons
-      return Reflect.get(target, prop, receiver)
+      const val = Reflect.get(target, prop, target)
+      return typeof val === "function" ? val.bind(target) : val
     },
   })
 }
