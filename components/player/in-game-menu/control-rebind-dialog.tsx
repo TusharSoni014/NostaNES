@@ -5,6 +5,7 @@ import { motion } from "motion/react"
 import { Button } from "@/components/ui/button"
 import { Kbd } from "@/components/ui/kbd"
 import { ACTION_LABELS, type NesActionKey } from "@/lib/storage/controls-storage"
+import { playUiSound } from "@/lib/ui-sounds"
 
 type ControlRebindDialogProps = {
   actionKey: NesActionKey | null
@@ -20,6 +21,11 @@ export function ControlRebindDialog({
   if (!actionKey) return null
 
   const { label, desc } = ACTION_LABELS[actionKey]
+
+  const cancel = () => {
+    playUiSound("back_cancel")
+    onCancel()
+  }
 
   return (
     <div
@@ -37,7 +43,7 @@ export function ControlRebindDialog({
       >
         <button
           type="button"
-          onClick={onCancel}
+          onClick={cancel}
           className="absolute top-4 right-4 text-white/50 hover:text-white transition-colors"
           aria-label="Cancel rebinding"
         >
@@ -79,7 +85,7 @@ export function ControlRebindDialog({
             <Button
               variant="ghost"
               size="sm"
-              onClick={onCancel}
+              onClick={cancel}
               className="text-xs h-8 text-white/70 hover:text-white"
             >
               Cancel

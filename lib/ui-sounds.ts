@@ -1,5 +1,6 @@
 export type UiSound =
   | "navigation"
+  | "back_cancel"
   | "option_selected"
   | "game_start"
   | "notification"
@@ -8,6 +9,7 @@ export type UiSound =
 
 const FILES: Record<UiSound | "booting", string> = {
   navigation: "/sounds/navigation.mp3",
+  back_cancel: "/sounds/back_cancel.mp3",
   option_selected: "/sounds/option_selected.mp3",
   game_start: "/sounds/game_start.mp3",
   notification: "/sounds/notification.mp3",
@@ -18,6 +20,7 @@ const FILES: Record<UiSound | "booting", string> = {
 
 const VOLUME: Record<UiSound | "booting", number> = {
   navigation: 0.42,
+  back_cancel: 0.46,
   option_selected: 0.55,
   game_start: 0.74,
   notification: 0.58,
@@ -29,6 +32,7 @@ const VOLUME: Record<UiSound | "booting", number> = {
 /** Ignore retriggers closer than this so holds and Strict Mode don't stack. */
 const MIN_GAP_MS: Record<UiSound, number> = {
   navigation: 50,
+  back_cancel: 80,
   option_selected: 80,
   game_start: 350,
   notification: 350,

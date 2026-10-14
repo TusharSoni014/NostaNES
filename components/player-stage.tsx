@@ -98,6 +98,7 @@ export const PlayerStage = ({ game, onExit }: PlayerStageProps) => {
   const closeInGameMenu = useCallback(() => {
     setInGameMenuOpen(false)
     resume()
+    playUiSound("back_cancel")
   }, [resume])
 
   const toggleInGameMenu = useCallback(() => {

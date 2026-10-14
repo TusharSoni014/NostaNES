@@ -11,6 +11,7 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer"
 import { useMediaQuery } from "@/hooks/use-media-query"
+import { playUiSound } from "@/lib/ui-sounds"
 import { cn } from "@/lib/utils"
 
 export type ResponsiveModalProps = {
@@ -36,19 +37,27 @@ export function ResponsiveModal({
 }: ResponsiveModalProps) {
   const isMobile = useMediaQuery("(max-width: 768px)")
 
+  const requestChange = React.useCallback(
+    (next: boolean) => {
+      if (open && !next) playUiSound("back_cancel")
+      onOpenChange(next)
+    },
+    [open, onOpenChange],
+  )
+
   // Handle escape key on desktop
   React.useEffect(() => {
     if (!open || isMobile) return
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onOpenChange(false)
+      if (e.key === "Escape") requestChange(false)
     }
     window.addEventListener("keydown", onKeyDown)
     return () => window.removeEventListener("keydown", onKeyDown)
-  }, [open, isMobile, onOpenChange])
+  }, [open, isMobile, requestChange])
 
   if (isMobile) {
     return (
-      <Drawer open={open} onOpenChange={onOpenChange} showSwipeHandle>
+      <Drawer open={open} onOpenChange={requestChange} showSwipeHandle>
         <DrawerContent
           className={cn(
             "p-4 text-white bg-[#030716] border-t border-blue-500/30",
@@ -89,7 +98,7 @@ export function ResponsiveModal({
                 : { opacity: 0 }
             }
             transition={{ duration: 0.18, ease: "easeOut" }}
-            onClick={() => onOpenChange(false)}
+            onClick={() => requestChange(false)}
             className="fixed inset-0 bg-black/80 backdrop-blur-md"
           />
 

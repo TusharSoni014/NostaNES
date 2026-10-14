@@ -49,6 +49,14 @@ export const ControlsDialog = ({ open, onOpenChange }: ControlsDialogProps) => {
   const tabRef = useRef(tab)
   const scrollRef = useRef<HTMLDivElement>(null)
 
+  const handleOpenChange = useCallback(
+    (next: boolean) => {
+      if (next !== open) playUiSound(next ? "option_selected" : "back_cancel")
+      onOpenChange(next)
+    },
+    [open, onOpenChange],
+  )
+
   const chooseTab = useCallback((next: "gamepad" | "keyboard") => {
     if (tabRef.current === next) return
     tabRef.current = next
@@ -76,12 +84,12 @@ export const ControlsDialog = ({ open, onOpenChange }: ControlsDialogProps) => {
       else if (action === "NAV_DOWN") scrollBody(70)
       else if (action === "NAV_LEFT" || action === "PAGE_UP") chooseTab("gamepad")
       else if (action === "NAV_RIGHT" || action === "PAGE_DOWN") chooseTab("keyboard")
-      else if (action === "CANCEL" || action === "TOGGLE_CONTROLS") onOpenChange(false)
+      else if (action === "CANCEL" || action === "TOGGLE_CONTROLS") handleOpenChange(false)
     })
 
     dispatcher.start()
     return () => dispatcher.stop()
-  }, [chooseTab, open, onOpenChange, scrollBody])
+  }, [chooseTab, handleOpenChange, open, scrollBody])
 
   // Keyboard navigation for dialog
   useEffect(() => {
@@ -102,10 +110,7 @@ export const ControlsDialog = ({ open, onOpenChange }: ControlsDialogProps) => {
   return (
     <Dialog
       open={open}
-      onOpenChange={(next) => {
-        if (next && !open) playUiSound("option_selected")
-        onOpenChange(next)
-      }}
+      onOpenChange={handleOpenChange}
     >
       <DialogTrigger render={<Button variant="outline" size="lg" />}>
         Controls

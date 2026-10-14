@@ -45,6 +45,11 @@ export function VersionSelectDialog({
   const selected =
     (selectedId ? versions.find((v) => v.id === selectedId) : null) ?? versions[0] ?? null
 
+  const dismiss = () => {
+    playUiSound("back_cancel")
+    onOpenChange(false)
+  }
+
   const handleConfirm = (version: Game) => {
     playUiSound("game_start")
     setIsLaunching(true)
@@ -63,10 +68,7 @@ export function VersionSelectDialog({
     onConfirm: (ver) => {
       if (ver) handleConfirm(ver)
     },
-    onCancel: () => {
-      playUiSound("navigation")
-      onOpenChange(false)
-    },
+    onCancel: dismiss,
   })
 
   if (!activeGroup && !open) return null
@@ -94,7 +96,7 @@ export function VersionSelectDialog({
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => onOpenChange(false)}
+            onClick={dismiss}
             className="text-xs text-white/60 hover:text-white gap-1"
           >
             Cancel <Kbd className="text-[10px] bg-white/10">Esc / B</Kbd>

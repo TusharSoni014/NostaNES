@@ -34,7 +34,7 @@ export function useControlRebinding(
 
       if (e.key === "Escape") {
         setListeningKey(null)
-        playUiSound("navigation")
+        playUiSound("back_cancel")
         return
       }
 
@@ -78,7 +78,7 @@ export function useControlRebinding(
           const btnStart = pad.buttons[9]?.pressed ?? false
           if (btnSelect && btnStart) {
             setListeningKey(null)
-            playUiSound("navigation")
+            playUiSound("back_cancel")
             return
           }
 
