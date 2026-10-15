@@ -8,6 +8,7 @@ import {
   type NesActionKey,
   type PlayerSlot,
 } from "@/lib/storage/controls-storage"
+import { PLAYER2_KEYBOARD_WIRES } from "@/lib/gamepad/retroarch-gamepad-config"
 import { normalizeKeyboardEvent } from "./in-game-menu/controls-helpers"
 import { NES_TO_RETROARCH_ACTION } from "./use-gamepad-controls"
 
@@ -19,9 +20,10 @@ type UseKeyboardControlsOptions = {
   pressUp: PressFn
 }
 
-const CANONICAL_KEYS = new Set([
+const CANONICAL_KEYS = new Set<string>([
   ...Object.values(DEFAULT_KEYBOARD_CONTROLS),
   ...Object.values(DEFAULT_KEYBOARD_CONTROLS_P2),
+  ...PLAYER2_KEYBOARD_WIRES,
 ])
 
 function findAction(

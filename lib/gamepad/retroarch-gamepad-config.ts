@@ -1,3 +1,6 @@
+/** Letters injected for player 2. They are not the keys a person presses. */
+export const PLAYER2_KEYBOARD_WIRES = ["i", "k", "j", "l", "u", "o", "h", "n"] as const
+
 /**
  * Provides comprehensive RetroArch input configuration for web gamepads and keyboards.
  * Fully supports Xbox, PlayStation, Nintendo, and standard USB/Bluetooth gamepads out of the box,
@@ -44,18 +47,20 @@ export const getRetroArchInputConfig = () => ({
     input_player1_start: "enter",
     input_player1_select: "shift",
 
-    // Player 2's synthetic keys. The page maps the physical number pad (and a
-    // second controller) onto these, then Nostalgist injects them for player 2.
-    input_player2_up: "num5",
-    input_player2_down: "num2",
-    input_player2_left: "num1",
-    input_player2_right: "num3",
-    input_player2_a: "num7",
-    input_player2_b: "num8",
+    // Private wires for player 2. The number pad the player actually presses is
+    // translated in JS, then Nostalgist injects these keys. RetroArch treats
+    // "num5" as the top-row 5, not Numpad5, so the wires are letters (and the
+    // keypad plus/minus, which already match on both sides).
+    input_player2_up: "i",
+    input_player2_down: "k",
+    input_player2_left: "j",
+    input_player2_right: "l",
+    input_player2_a: "u",
+    input_player2_b: "o",
     input_player2_x: "kp_plus",
     input_player2_y: "kp_minus",
-    input_player2_start: "kp_enter",
-    input_player2_select: "num0",
+    input_player2_start: "h",
+    input_player2_select: "n",
 
     // Slot 0 is required. -1 is read as an unsigned pad index and traps in
     // gamepadEventHandlerFunc (index out of bounds) when a pad connects on boot.
