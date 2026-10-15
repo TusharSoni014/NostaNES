@@ -81,15 +81,8 @@ export function ShaderOverlay({ shader }: ShaderOverlayProps) {
         </>
       )}
 
-      {/* Smooth Bilinear: Subtle anti-aliasing soft glow */}
-      {shader === "smooth" && (
-        <div
-          className="absolute inset-0"
-          style={{
-            backdropFilter: "blur(0.4px)",
-          }}
-        />
-      )}
+      {/* Smooth Bilinear: Hardware texture filtering is applied directly on canvas via image-rendering: auto */}
+      {shader === "smooth" && null}
 
       {/* Monochrome Dot Matrix Game Boy DMG */}
       {shader === "gameboy" && (

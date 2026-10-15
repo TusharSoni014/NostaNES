@@ -35,7 +35,7 @@ export function MobileTouchControls({
 
   // Polling loop: If user presses any gamepad button or stick, hide touch controls.
   useEffect(() => {
-    if (!visible) return
+    if (!visible || !gamepadConnected) return
 
     let animId = 0
     const pollGamepad = () => {
@@ -56,7 +56,7 @@ export function MobileTouchControls({
 
     animId = requestAnimationFrame(pollGamepad)
     return () => cancelAnimationFrame(animId)
-  }, [visible])
+  }, [visible, gamepadConnected])
 
   // Global screen tap listener: tapping anywhere on the screen shows the controls again
   useEffect(() => {
@@ -106,11 +106,11 @@ export function MobileTouchControls({
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.98 }}
           transition={{ duration: 0.18, ease: "easeOut" }}
-          className="pointer-events-none fixed inset-0 z-30 select-none overflow-hidden touch-none"
+          className="pointer-events-none absolute inset-0 z-30 select-none overflow-hidden touch-none"
           style={{ touchAction: "none" }}
         >
           {/* Top Bar Quick Controls: Menu & Controls visibility indicator */}
-          <div className="pointer-events-auto absolute top-2 inset-x-0 flex items-center justify-between px-4 z-40">
+          <div className="pointer-events-auto absolute top-2 inset-x-0 flex items-center justify-between px-3 sm:px-4 pt-[env(safe-area-inset-top,0px)] z-40">
             <button
               type="button"
               onClick={onToggleMenu}
@@ -132,7 +132,7 @@ export function MobileTouchControls({
           </div>
 
           {/* Bottom Left: Select Button (above) + Virtual Joystick (below) */}
-          <div className="pointer-events-auto absolute bottom-2 left-2 sm:bottom-5 sm:left-5 z-40 flex flex-col items-center gap-1.5 sm:gap-2">
+          <div className="pointer-events-auto absolute bottom-2 left-2 sm:bottom-5 sm:left-5 pb-[env(safe-area-inset-bottom,0px)] pl-[env(safe-area-inset-left,0px)] z-40 flex flex-col items-center gap-1.5 sm:gap-2">
             {/* SELECT BUTTON above Joystick Controller */}
             <button
               type="button"
@@ -162,7 +162,7 @@ export function MobileTouchControls({
           </div>
 
           {/* Bottom Right: Start Button (above) + Action Buttons Cluster (below) */}
-          <div className="pointer-events-auto absolute bottom-2 right-2 sm:bottom-5 sm:right-5 z-40 flex flex-col items-center gap-1.5 sm:gap-2">
+          <div className="pointer-events-auto absolute bottom-2 right-2 sm:bottom-5 sm:right-5 pb-[env(safe-area-inset-bottom,0px)] pr-[env(safe-area-inset-right,0px)] z-40 flex flex-col items-center gap-1.5 sm:gap-2">
             {/* START BUTTON above Turbo buttons */}
             <button
               type="button"

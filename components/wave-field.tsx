@@ -110,17 +110,23 @@ void main() {
 
 type WaveFieldProps = {
   shift: number
+  paused?: boolean
   onReady?: () => void
 }
 
-export function WaveField({ shift, onReady }: WaveFieldProps) {
+export function WaveField({ shift, paused = false, onReady }: WaveFieldProps) {
   const hostRef = useRef<HTMLDivElement>(null)
   const shiftRef = useRef(shift)
+  const pausedRef = useRef(Boolean(paused))
   const onReadyRef = useRef(onReady)
 
   useEffect(() => {
     shiftRef.current = shift
   }, [shift])
+
+  useEffect(() => {
+    pausedRef.current = Boolean(paused)
+  }, [paused])
 
   useEffect(() => {
     onReadyRef.current = onReady
@@ -158,11 +164,11 @@ export function WaveField({ shift, onReady }: WaveFieldProps) {
       }
 
       const renderer = new THREE.WebGLRenderer({
-        antialias: true,
+        antialias: false,
         alpha: false,
         powerPreference: "high-performance",
       })
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
       renderer.outputColorSpace = THREE.LinearSRGBColorSpace
       renderer.toneMapping = THREE.NoToneMapping
       renderer.setClearColor(0x020712, 1)
@@ -206,10 +212,19 @@ export function WaveField({ shift, onReady }: WaveFieldProps) {
 
       let elapsed = uniforms.u_time.value
       let last = performance.now()
+      let wasPaused = false
       renderer.render(scene, camera)
       notifyReady()
       renderer.setAnimationLoop(() => {
+        if (pausedRef.current) {
+          wasPaused = true
+          return
+        }
         const now = performance.now()
+        if (wasPaused) {
+          last = now
+          wasPaused = false
+        }
         const dt = Math.min(0.05, (now - last) / 1000)
         last = now
         if (document.hidden) return

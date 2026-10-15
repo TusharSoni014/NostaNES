@@ -86,7 +86,7 @@ export const InGameMenuSidebar = ({
     <nav
       role="tablist"
       aria-label="In-Game Menu Navigation"
-      className="flex flex-row md:flex-col gap-1 sm:gap-1.5 md:gap-2 w-full md:w-64 lg:w-72 shrink-0 overflow-x-auto md:overflow-y-auto pb-1 md:pb-0 focus:outline-none"
+      className="flex flex-row md:flex-col gap-1 sm:gap-1.5 md:gap-2 w-full md:w-64 lg:w-72 shrink-0 overflow-x-auto md:overflow-y-auto no-scrollbar pb-1 md:pb-0 focus:outline-none"
     >
       {MENU_ITEMS.map((item) => {
         const Icon = item.icon

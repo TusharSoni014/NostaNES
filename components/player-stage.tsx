@@ -14,7 +14,7 @@ import { usePlayerInput } from "@/components/player/use-player-input"
 import { useKeyboardControls } from "@/components/player/use-keyboard-controls"
 import { useGamepadControls } from "@/components/player/use-gamepad-controls"
 import { MobileTouchControls } from "@/components/player/mobile-touch-controls"
-import { useIsMobile, useIsPortrait } from "@/hooks/use-is-mobile"
+import { useIsMobile } from "@/hooks/use-is-mobile"
 import { useGamepadStatus } from "@/hooks/use-gamepad-status"
 import { getSavedShader, saveShader, type GameShader } from "@/lib/storage/shader-storage"
 import type { GamepadHoldState } from "@/lib/gamepad/gamepad-dispatcher"
@@ -34,41 +34,28 @@ export const PlayerStage = ({ game, initialSlot, onExit }: PlayerStageProps) => 
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   const isMobile = useIsMobile()
-  const isPortrait = useIsPortrait()
   const { connected: gamepadConnected } = useGamepadStatus()
-  const [forceLandscape, setForceLandscape] = useState(true)
 
   // Screen orientation lock for mobile devices
   useEffect(() => {
     if (!isMobile) return
 
-    const lockOrientation = async () => {
-      try {
-        const orientation = screen.orientation as unknown as { lock?: (type: string) => Promise<void> } | undefined
-        const legacyScreen = screen as unknown as { lockOrientation?: (type: string) => boolean }
-        if (orientation && typeof orientation.lock === "function") {
-          await orientation.lock("landscape")
-        } else if (typeof legacyScreen.lockOrientation === "function") {
-          legacyScreen.lockOrientation("landscape")
-        }
-      } catch {}
-    }
-    void lockOrientation()
+    try {
+      const orientation = screen.orientation as unknown as { lock?: (type: string) => Promise<void> } | undefined
+      if (orientation && typeof orientation.lock === "function") {
+        void orientation.lock("landscape").catch(() => {})
+      }
+    } catch {}
 
     return () => {
       try {
         const orientation = screen.orientation as unknown as { unlock?: () => void } | undefined
-        const legacyScreen = screen as unknown as { unlockOrientation?: () => boolean }
         if (orientation && typeof orientation.unlock === "function") {
           orientation.unlock()
-        } else if (typeof legacyScreen.unlockOrientation === "function") {
-          legacyScreen.unlockOrientation()
         }
       } catch {}
     }
   }, [isMobile])
-
-  const shouldRotate = isMobile && isPortrait && forceLandscape
 
   const [phase, setPhase] = useState<"loading" | "ready" | "error">("loading")
   const [isFullscreen, setIsFullscreen] = useState(true)
@@ -123,12 +110,14 @@ export const PlayerStage = ({ game, initialSlot, onExit }: PlayerStageProps) => 
   useEffect(() => {
     const onFs = () => setIsFullscreen(Boolean(document.fullscreenElement))
     document.addEventListener("fullscreenchange", onFs)
-    if (!document.fullscreenElement) stageRef.current?.requestFullscreen().catch(() => {})
+    if (!isMobile && !document.fullscreenElement) {
+      stageRef.current?.requestFullscreen().catch(() => {})
+    }
     return () => {
       document.removeEventListener("fullscreenchange", onFs)
       if (document.fullscreenElement) document.exitFullscreen().catch(() => {})
     }
-  }, [])
+  }, [isMobile])
 
   const toggleFullscreen = useCallback(() => {
     if (!document.fullscreenElement) stageRef.current?.requestFullscreen().catch(() => {})
@@ -183,23 +172,22 @@ export const PlayerStage = ({ game, initialSlot, onExit }: PlayerStageProps) => 
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.25, ease: "easeOut" }}
-      className={cn(
-        "z-40 flex flex-col bg-black will-change-transform select-none overflow-hidden",
-        shouldRotate
-          ? "fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[100dvh] h-[100dvw] rotate-90 origin-center"
-          : "fixed inset-0 w-full h-full will-change-opacity",
-      )}
+      className="fixed inset-0 z-40 flex flex-col bg-black w-screen h-dvh select-none overflow-hidden touch-none"
     >
       <GamepadExitHud active={exitHud.active} remainingSeconds={exitHud.remainingSeconds} progress={exitHud.progress} />
       <ExitConfirmDialog open={confirmingExit} onResume={handleResume} onConfirmExit={handleConfirmExit} />
 
       <InGameMenu
         key={inGameMenuOpen ? "open" : "closed"}
-        open={inGameMenuOpen} game={game}
-        onResume={handleResume} onRequestExit={handleConfirmExit}
+        open={inGameMenuOpen}
+        game={game}
+        onResume={handleResume}
+        onRequestExit={handleConfirmExit}
         onResetGame={handleResetGame}
-        onSaveState={handleSaveState} onLoadState={handleLoadState}
-        activeShader={activeShader} onSelectShader={handleSelectShader}
+        onSaveState={handleSaveState}
+        onLoadState={handleLoadState}
+        activeShader={activeShader}
+        onSelectShader={handleSelectShader}
         cheats={{ loadCheats, enableCheat, disableCheat, clearCheats, getCheats }}
       />
 
@@ -209,23 +197,27 @@ export const PlayerStage = ({ game, initialSlot, onExit }: PlayerStageProps) => 
         onToggleFullscreen={toggleFullscreen}
         onRequestExit={handleRequestExit}
         isMobile={isMobile}
-        onToggleRotate={isMobile ? () => setForceLandscape((prev) => !prev) : undefined}
-        isRotated={shouldRotate}
       />
 
-      {/* Game Stage: Unrounded, zero-lag, arcade CRT 4:3 display */}
-      <div className="flex min-h-0 flex-1 items-center justify-center p-0 bg-black relative">
+      {/* Game Stage: Unrounded, zero-lag, arcade CRT 4:3 display mathematically centered */}
+      <div className="relative flex min-h-0 flex-1 w-full items-center justify-center p-0 bg-black overflow-hidden [container-type:size]">
         <div
-          className={cn(
-            "relative aspect-[4/3] h-full max-h-screen w-full max-w-[min(100%,calc(100dvh*4/3))] overflow-hidden bg-black rounded-none shadow-none ring-0",
-            !isFullscreen && !isMobile && "max-h-[calc(100dvh-8rem)]",
-          )}
+          className="relative aspect-[4/3] max-w-full max-h-full overflow-hidden bg-black flex items-center justify-center"
+          style={{
+            width: "min(100cqw, calc(100cqh * 4 / 3))",
+            height: "min(100cqh, calc(100cqw * 3 / 4))",
+          }}
         >
           <canvas
-            key={romKey} ref={canvasRef} tabIndex={-1} aria-label={`${game.title} display`}
+            key={romKey}
+            ref={canvasRef}
+            tabIndex={-1}
+            aria-label={`${game.title} display`}
             className={cn(
-              "size-full rounded-none outline-none",
-              activeShader === "smooth" ? "[image-rendering:auto]" : "[image-rendering:pixelated]",
+              "size-full outline-none",
+              activeShader === "smooth"
+                ? "[image-rendering:auto]"
+                : "[image-rendering:pixelated]",
             )}
           />
           <ShaderOverlay shader={activeShader} />

@@ -92,6 +92,7 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
   const [versionSelectGroup, setVersionSelectGroup] =
     useState<GameGroup | null>(null);
   const [infoDrawerOpen, setInfoDrawerOpen] = useState(false);
+  const [shaderPaused, setShaderPaused] = useState(false);
 
   const handleLoadRomFile = useCallback((file: File) => {
     const name = file.name;
@@ -145,6 +146,12 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
     const id = window.setTimeout(() => playUiSound("navigation"), 450);
     return () => window.clearTimeout(id);
   }, [presented, query]);
+
+  useEffect(() => {
+    if (!playing) return;
+    const timer = window.setTimeout(() => setShaderPaused(true), 300);
+    return () => window.clearTimeout(timer);
+  }, [playing]);
 
   const allGames = useMemo(() => {
     if (!games) return customGames.length > 0 ? customGames : null;
@@ -309,6 +316,7 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
 
       <WaveField
         shift={count === 0 ? 0 : (index % 4) / 3}
+        paused={shaderPaused}
         onReady={() => setShaderReady(true)}
       />
 
@@ -794,7 +802,10 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
             key={(playing.game.id || playing.game.file) + (playing.slot ? `_slot${playing.slot}` : "")}
             game={playing.game}
             initialSlot={playing.slot}
-            onExit={() => setPlaying(null)}
+            onExit={() => {
+              setPlaying(null);
+              setShaderPaused(false);
+            }}
           />
         ) : null}
       </AnimatePresence>
