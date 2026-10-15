@@ -4,15 +4,18 @@ import Image from "next/image"
 import { PlayIcon } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { FavoriteButton } from "@/components/ui/favorite-button"
 import { Kbd, GamepadKey } from "@/components/ui/kbd"
 import { useInputMode } from "@/hooks/use-input-mode"
+import type { Game } from "@/lib/games"
 
 type InGameMenuHeaderProps = {
-  gameTitle: string
+  game: Game
+  gameTitle?: string
   onResume: () => void
 }
 
-export const InGameMenuHeader = ({ gameTitle, onResume }: InGameMenuHeaderProps) => {
+export const InGameMenuHeader = ({ game, gameTitle = game.title, onResume }: InGameMenuHeaderProps) => {
   const inputMode = useInputMode()
   return (
     <header className="flex shrink-0 items-center justify-between border-b border-white/10 bg-white/[0.02] px-4 py-3 sm:px-8">
@@ -43,6 +46,7 @@ export const InGameMenuHeader = ({ gameTitle, onResume }: InGameMenuHeaderProps)
       </div>
 
       <div className="flex items-center gap-2">
+        <FavoriteButton game={game} variant="button" size="sm" showLabel />
         <Button
           variant="outline"
           size="sm"

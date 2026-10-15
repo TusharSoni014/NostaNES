@@ -6,6 +6,8 @@ export type UiSound =
   | "notification"
   | "game_paused"
   | "error"
+  | "heart"
+  | "unheart"
 
 const FILES: Record<UiSound | "booting", string> = {
   navigation: "/sounds/navigation.mp3",
@@ -16,6 +18,8 @@ const FILES: Record<UiSound | "booting", string> = {
   game_paused: "/sounds/game_paused.mp3",
   error: "/sounds/error.mp3",
   booting: "/sounds/booting.mp3",
+  heart: "/sounds/heart.mp3",
+  unheart: "/sounds/unheart.mp3",
 }
 
 const VOLUME: Record<UiSound | "booting", number> = {
@@ -27,6 +31,8 @@ const VOLUME: Record<UiSound | "booting", number> = {
   game_paused: 0.62,
   error: 0.64,
   booting: 0.9,
+  heart: 0.6,
+  unheart: 0.55,
 }
 
 /** Ignore retriggers closer than this so holds and Strict Mode don't stack. */
@@ -38,6 +44,8 @@ const MIN_GAP_MS: Record<UiSound, number> = {
   notification: 350,
   game_paused: 350,
   error: 350,
+  heart: 80,
+  unheart: 80,
 }
 
 const clips = new Map<string, HTMLAudioElement>()

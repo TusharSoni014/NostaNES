@@ -3,6 +3,7 @@
 import { useCallback, useState } from "react"
 import { AnimatePresence, motion } from "motion/react"
 import { Button } from "@/components/ui/button"
+import { FavoriteButton } from "@/components/ui/favorite-button"
 import { Kbd, GamepadKey } from "@/components/ui/kbd"
 import { InGameMenuCheatsPanel } from "./in-game-menu-cheats-panel"
 import { InGameMenuControlsPanel } from "./in-game-menu-controls-panel"
@@ -104,7 +105,7 @@ export const InGameMenu = ({
       >
         <div className="absolute -top-32 left-1/2 -translate-x-1/2 size-[600px] rounded-full bg-blue-600/15 blur-[120px] pointer-events-none" />
 
-        <InGameMenuHeader gameTitle={game.title} onResume={onResume} />
+        <InGameMenuHeader game={game} onResume={onResume} />
 
         <div className="flex min-h-0 flex-1 flex-col md:flex-row gap-6 p-4 sm:p-6 md:p-8 max-w-7xl mx-auto w-full overflow-hidden">
           <InGameMenuSidebar
@@ -129,9 +130,12 @@ export const InGameMenu = ({
                     <p className="text-sm text-muted-foreground mb-6 max-w-sm">
                       Ready to jump back into {game.title}? Press Resume or hit F1 / Select+Start.
                     </p>
-                    <Button size="lg" onClick={onResume} className="gap-2">
-                      Resume Gameplay
-                    </Button>
+                    <div className="flex flex-wrap items-center justify-center gap-3">
+                      <Button size="lg" onClick={onResume} className="gap-2">
+                        Resume Gameplay
+                      </Button>
+                      <FavoriteButton game={game} variant="button" size="lg" className="h-9 px-4 text-sm" showLabel />
+                    </div>
                   </div>
                 ) : activeTab === "save" ? (
                   <InGameMenuSavePanel

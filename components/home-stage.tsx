@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { FolderOpenIcon, Gamepad2Icon, PlayIcon, SearchIcon } from "lucide-react"
+import { FolderOpenIcon, Gamepad2Icon, HeartIcon, PlayIcon, SearchIcon } from "lucide-react"
 import Image from "next/image"
 import { BootScreen } from "@/components/boot-screen"
 import { Clock } from "@/components/clock"
@@ -38,9 +38,11 @@ import {
 import { motion, AnimatePresence } from "motion/react"
 import { useLibrary } from "@/hooks/use-library"
 import { useInputMode } from "@/hooks/use-input-mode"
+import { useFavorites } from "@/hooks/use-favorites"
 import { enableUiSounds, playUiSound } from "@/lib/ui-sounds"
 import { type Game, type GameGroup, groupGames, parseRomFile } from "@/lib/games"
 import { VersionSelectDialog } from "@/components/version-select-dialog"
+import { cn } from "@/lib/utils"
 
 export type HomeStageProps = {
   initialGames?: Game[]
@@ -48,6 +50,7 @@ export type HomeStageProps = {
 
 export function HomeStage({ initialGames }: HomeStageProps = {}) {
   const inputMode = useInputMode()
+  const { isFavorite, favoritesCount } = useFavorites()
   const library = useLibrary(initialGames)
   const games = library.data ?? null
   const failed = library.isError && !library.isFetching
@@ -65,6 +68,7 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
   const [controlsOpen, setControlsOpen] = useState(false)
   const [query, setQuery] = useState("")
   const [region, setRegion] = useState("All")
+  const [favoritesOnly, setFavoritesOnly] = useState(false)
   const [versionSelectGroup, setVersionSelectGroup] = useState<GameGroup | null>(null)
 
   const handleLoadRomFile = useCallback((file: File) => {
@@ -142,12 +146,13 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
     if (!groupedGames) return []
     const needle = query.trim().toLowerCase()
     return groupedGames.filter((group) => {
+      if (favoritesOnly && !isFavorite(group)) return false
       const regionMatches = region === "All" || group.regions.includes(region)
       const versionFiles = group.versions.map((v) => `${v.file} ${v.tags.join(" ")}`).join(" ")
       const text = `${group.title} ${group.tags.join(" ")} ${versionFiles}`.toLowerCase()
       return regionMatches && (needle.length === 0 || text.includes(needle))
     })
-  }, [groupedGames, query, region])
+  }, [groupedGames, query, region, favoritesOnly, isFavorite])
 
   const count = visible.length
   const selected = visible[index] ?? null
@@ -391,27 +396,59 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
               </motion.div>
             ) : null}
           </AnimatePresence>
-          <ToggleGroup
-            variant="outline"
-            size="sm"
-            spacing={1}
-            value={[region]}
-            onValueChange={(next) => {
-              const value = next.at(-1) ?? "All"
-              if (value === region) return
-              setRegion(value)
-              indexRef.current = 0
-              setIndex(0)
-              playUiSound("navigation")
-            }}
-            className="max-w-full flex-wrap"
-          >
-            {regions.map((item) => (
-              <ToggleGroupItem key={item} value={item}>
-                {item}
-              </ToggleGroupItem>
-            ))}
-          </ToggleGroup>
+          <div className="flex flex-wrap items-center gap-2 max-w-full">
+            <Button
+              variant={favoritesOnly ? "default" : "outline"}
+              size="sm"
+              onClick={() => {
+                setFavoritesOnly((prev) => !prev)
+                indexRef.current = 0
+                setIndex(0)
+                playUiSound("option_selected")
+              }}
+              className={cn(
+                "h-8 gap-1.5 px-3 text-xs font-semibold shrink-0 transition-all duration-200 cursor-pointer border",
+                favoritesOnly
+                  ? "border-rose-500 bg-rose-600 text-white shadow-[0_0_18px_rgba(244,63,94,0.4)] hover:bg-rose-500"
+                  : "border-white/10 bg-white/[0.04] text-white/75 hover:border-white/20 hover:text-white hover:bg-white/[0.08]",
+              )}
+            >
+              <HeartIcon className={cn("size-3.5 transition-colors", favoritesOnly ? "fill-current text-white" : "text-rose-400")} />
+              <span>Favorites</span>
+              {favoritesCount > 0 ? (
+                <span
+                  className={cn(
+                    "rounded-full px-1.5 py-0.5 text-[10px] font-bold tabular-nums leading-none",
+                    favoritesOnly ? "bg-white/25 text-white" : "bg-white/10 text-white/70",
+                  )}
+                >
+                  {favoritesCount}
+                </span>
+              ) : null}
+            </Button>
+
+            <ToggleGroup
+              variant="outline"
+              size="sm"
+              spacing={1}
+              value={[region]}
+              onValueChange={(next) => {
+                const value = next.at(-1) ?? "All"
+                if (value === region) return
+                setRegion(value)
+                indexRef.current = 0
+                setIndex(0)
+                playUiSound("navigation")
+              }}
+              className="max-w-full flex-wrap"
+            >
+              {regions.map((item) => (
+                <ToggleGroupItem key={item} value={item}>
+                  {item}
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
+          </div>
         </div>
 
         <main className="flex min-h-0 flex-1 flex-col overflow-hidden py-3">
@@ -499,7 +536,7 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
               </motion.div>
             ) : visible.length === 0 ? (
               <motion.div
-                key="no-matches"
+                key={favoritesOnly ? "no-favorites" : "no-matches"}
                 initial={{ opacity: 0, scale: 0.98 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0 }}
@@ -509,13 +546,29 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
                 <Empty>
                   <EmptyHeader>
                     <EmptyMedia variant="icon">
-                      <SearchIcon />
+                      {favoritesOnly ? <HeartIcon className="text-rose-400 fill-rose-500/20" /> : <SearchIcon />}
                     </EmptyMedia>
-                    <EmptyTitle>Nothing matches</EmptyTitle>
+                    <EmptyTitle>{favoritesOnly ? "No favorite cartridges" : "Nothing matches"}</EmptyTitle>
                     <EmptyDescription>
-                      Try another title or clear the region filter.
+                      {favoritesOnly
+                        ? "You haven't added any cartridges to your favorites yet. Click the heart on any cartridge to pin it here."
+                        : "Try another title or clear the region filter."}
                     </EmptyDescription>
                   </EmptyHeader>
+                  {favoritesOnly ? (
+                    <div className="mt-4 flex justify-center">
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setFavoritesOnly(false)
+                          playUiSound("navigation")
+                        }}
+                        className="gap-2"
+                      >
+                        Show All Cartridges
+                      </Button>
+                    </div>
+                  ) : null}
                 </Empty>
               </motion.div>
             ) : selected ? (
@@ -588,7 +641,9 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
             <span className="text-xs text-muted-foreground/80">
               {allGames === null
                 ? "Reading cartridges..."
-                : `${visible.length} ${visible.length === 1 ? "game" : "games"} available`}
+                : favoritesOnly
+                  ? `${visible.length} ${visible.length === 1 ? "favorite cartridge" : "favorite cartridges"}`
+                  : `${visible.length} ${visible.length === 1 ? "game" : "games"} available`}
             </span>
           </div>
           <div className="ml-auto flex items-center gap-2">

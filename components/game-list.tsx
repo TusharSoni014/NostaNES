@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react"
 import { Gamepad2Icon } from "lucide-react"
+import { FavoriteButton } from "@/components/ui/favorite-button"
 import { cn } from "@/lib/utils"
 import type { Game, GameGroup } from "@/lib/games"
 
@@ -179,6 +180,12 @@ export const GameList = ({
                   {game.year}
                 </span>
               ) : null}
+              <FavoriteButton
+                game={game}
+                variant="badge"
+                size="sm"
+                className="ml-0.5"
+              />
             </div>
           </div>
         )

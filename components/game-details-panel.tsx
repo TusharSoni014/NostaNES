@@ -4,6 +4,7 @@ import { PlayIcon } from "lucide-react"
 import { GameCover } from "@/components/game-cover"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { FavoriteButton } from "@/components/ui/favorite-button"
 import { Kbd, GamepadKey } from "@/components/ui/kbd"
 import { Separator } from "@/components/ui/separator"
 import { useInputMode } from "@/hooks/use-input-mode"
@@ -75,24 +76,32 @@ export const GameDetailsPanel = ({ game, onLaunch }: GameDetailsPanelProps) => {
 
     <Separator className="shrink-0" />
 
-    {/* Launch Action */}
+    {/* Launch & Favorite Action */}
     <div className="flex flex-col gap-1.5 shrink-0">
-      <Button
-        className="w-full h-9 sm:h-10 gap-2 text-xs sm:text-sm font-semibold shadow-lg"
-        onClick={onLaunch}
-      >
-        <PlayIcon className="size-3.5 fill-current" />
-        {"versions" in game && game.versions.length > 1
-          ? `Choose Version (${game.versions.length})`
-          : "Start Game"}
-        <span className="ml-auto flex items-center gap-1 shrink-0">
-          {inputMode === "gamepad" ? (
-            <GamepadKey button="A" size="sm" />
-          ) : (
-            <Kbd size="sm" variant="solid">Enter</Kbd>
-          )}
-        </span>
-      </Button>
+      <div className="flex items-center gap-2">
+        <Button
+          className="flex-1 h-9 sm:h-10 gap-2 text-xs sm:text-sm font-semibold shadow-lg"
+          onClick={onLaunch}
+        >
+          <PlayIcon className="size-3.5 fill-current" />
+          {"versions" in game && game.versions.length > 1
+            ? `Choose Version (${game.versions.length})`
+            : "Start Game"}
+          <span className="ml-auto flex items-center gap-1 shrink-0">
+            {inputMode === "gamepad" ? (
+              <GamepadKey button="A" size="sm" />
+            ) : (
+              <Kbd size="sm" variant="solid">Enter</Kbd>
+            )}
+          </span>
+        </Button>
+        <FavoriteButton
+          game={game}
+          variant="icon"
+          size="lg"
+          className="size-9 sm:size-10 shrink-0 rounded-lg"
+        />
+      </div>
       <p className="text-center text-[10px] text-muted-foreground">
         {"versions" in game && game.versions.length > 1
           ? inputMode === "gamepad"
