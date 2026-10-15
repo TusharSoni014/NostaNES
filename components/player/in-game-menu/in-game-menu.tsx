@@ -107,14 +107,14 @@ export const InGameMenu = ({
 
         <InGameMenuHeader game={game} onResume={onResume} />
 
-        <div className="flex min-h-0 flex-1 flex-col md:flex-row gap-6 p-4 sm:p-6 md:p-8 max-w-7xl mx-auto w-full overflow-hidden">
+        <div className="flex min-h-0 flex-1 flex-col md:flex-row gap-3 sm:gap-4 md:gap-6 p-2.5 sm:p-4 md:p-6 max-w-7xl mx-auto w-full overflow-hidden">
           <InGameMenuSidebar
             activeTab={activeTab}
             onSelectTab={handleSelectTab}
             isFocused={focusPane === "sidebar"}
           />
 
-          <main className="flex min-h-0 flex-1 flex-col rounded-2xl border border-white/10 bg-white/[0.02] p-5 sm:p-6 backdrop-blur-md overflow-hidden relative h-full">
+          <main className="flex min-h-0 flex-1 flex-col rounded-xl sm:rounded-2xl border border-white/10 bg-white/[0.02] p-3 sm:p-4 md:p-6 backdrop-blur-md overflow-hidden relative h-full">
             <AnimatePresence mode="wait">
               <motion.div
                 key={activeTab}
@@ -125,16 +125,16 @@ export const InGameMenu = ({
                 className="flex min-h-0 flex-1 flex-col h-full w-full"
               >
                 {activeTab === "resume" ? (
-                  <div className="flex flex-col items-center justify-center text-center p-8 flex-1 h-full w-full min-h-0">
-                    <h3 className="text-xl font-bold text-white mb-2">Game Paused</h3>
-                    <p className="text-sm text-muted-foreground mb-6 max-w-sm">
-                      Ready to jump back into {game.title}? Press Resume or hit F1 / Select+Start.
+                  <div className="flex flex-col items-center justify-center text-center p-4 sm:p-8 flex-1 h-full w-full min-h-0">
+                    <h3 className="text-base sm:text-xl font-bold text-white mb-1.5">Game Paused</h3>
+                    <p className="text-xs sm:text-sm text-muted-foreground mb-4 sm:mb-6 max-w-sm">
+                      Ready to jump back into {game.title}? Press Resume or hit Menu.
                     </p>
-                    <div className="flex flex-wrap items-center justify-center gap-3">
-                      <Button size="lg" onClick={onResume} className="gap-2">
+                    <div className="flex flex-wrap items-center justify-center gap-2.5 sm:gap-3">
+                      <Button onClick={onResume} className="gap-2 h-8 sm:h-10 px-4 text-xs sm:text-sm">
                         Resume Gameplay
                       </Button>
-                      <FavoriteButton game={game} variant="button" size="lg" className="h-9 px-4 text-sm" showLabel />
+                      <FavoriteButton game={game} variant="button" className="h-8 sm:h-10 px-3 sm:px-4 text-xs sm:text-sm" showLabel />
                     </div>
                   </div>
                 ) : activeTab === "save" ? (

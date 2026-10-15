@@ -18,9 +18,9 @@ type InGameMenuHeaderProps = {
 export const InGameMenuHeader = ({ game, gameTitle = game.title, onResume }: InGameMenuHeaderProps) => {
   const inputMode = useInputMode()
   return (
-    <header className="flex shrink-0 items-center justify-between border-b border-white/10 bg-white/[0.02] px-4 py-3 sm:px-8">
-      <div className="flex items-center gap-3 min-w-0">
-        <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-transparent p-0">
+    <header className="flex shrink-0 items-center justify-between border-b border-white/10 bg-white/[0.02] px-3 py-1.5 sm:px-8 sm:py-3">
+      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+        <div className="flex size-7 sm:size-9 shrink-0 items-center justify-center rounded-xl bg-transparent p-0">
           <Image
             src="/nostanes.png"
             alt="Nostanes"
@@ -31,29 +31,29 @@ export const InGameMenuHeader = ({ game, gameTitle = game.title, onResume }: InG
           />
         </div>
         <div className="flex flex-col min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="font-mono text-xs font-bold tracking-widest text-blue-400">
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <span className="font-mono text-[10px] sm:text-xs font-bold tracking-widest text-blue-400">
               NOSTANES
             </span>
-            <Badge className="bg-blue-600/30 text-blue-300 border-blue-500/30 text-[10px] px-1.5 py-0">
+            <Badge className="bg-blue-600/30 text-blue-300 border-blue-500/30 text-[9px] sm:text-[10px] px-1 py-0">
               PAUSED
             </Badge>
           </div>
-          <h2 className="text-sm font-semibold truncate text-white/90" title={gameTitle}>
+          <h2 className="text-xs sm:text-sm font-semibold truncate text-white/90" title={gameTitle}>
             {gameTitle}
           </h2>
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
-        <FavoriteButton game={game} variant="button" size="sm" showLabel />
+      <div className="flex items-center gap-1.5 sm:gap-2">
+        <FavoriteButton game={game} variant="button" size="sm" showLabel={false} className="h-7 sm:h-8 px-2" />
         <Button
           variant="outline"
           size="sm"
           onClick={onResume}
-          className="border-white/15 bg-white/5 hover:bg-white/10 text-white gap-2"
+          className="border-white/15 bg-white/5 hover:bg-white/10 text-white gap-1.5 sm:gap-2 h-7 sm:h-8 px-2.5 sm:px-3 text-xs"
         >
-          <PlayIcon className="size-3.5 fill-current" />
+          <PlayIcon className="size-3 fill-current" />
           <span>Resume</span>
           <span className="hidden sm:inline-flex items-center gap-1 opacity-70">
             {inputMode === "gamepad" ? (

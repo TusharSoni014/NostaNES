@@ -45,6 +45,8 @@ import { motion, AnimatePresence } from "motion/react";
 import { useLibrary } from "@/hooks/use-library";
 import { useInputMode } from "@/hooks/use-input-mode";
 import { useFavorites } from "@/hooks/use-favorites";
+import { useIsMobile } from "@/hooks/use-is-mobile";
+import { useGamepadStatus } from "@/hooks/use-gamepad-status";
 import { enableUiSounds, playUiSound } from "@/lib/ui-sounds";
 import {
   type Game,
@@ -52,6 +54,7 @@ import {
   groupGames,
   parseRomFile,
 } from "@/lib/games";
+import { GameInfoDrawer } from "@/components/game-info-drawer";
 import { VersionSelectDialog } from "@/components/version-select-dialog";
 import { cn } from "@/lib/utils";
 
@@ -64,6 +67,8 @@ export type HomeStageProps = {
 };
 
 export function HomeStage({ initialGames }: HomeStageProps = {}) {
+  const isMobile = useIsMobile();
+  const { connected: gamepadConnected } = useGamepadStatus();
   const inputMode = useInputMode();
   const { isFavorite, favoritesCount } = useFavorites();
   const library = useLibrary(initialGames);
@@ -86,6 +91,7 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [versionSelectGroup, setVersionSelectGroup] =
     useState<GameGroup | null>(null);
+  const [infoDrawerOpen, setInfoDrawerOpen] = useState(false);
 
   const handleLoadRomFile = useCallback((file: File) => {
     const name = file.name;
@@ -233,7 +239,8 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
   useShelfNavigation({
     count,
     isPlaying: Boolean(playing) || !presented,
-    controlsOpen: controlsOpen || Boolean(versionSelectGroup),
+    controlsOpen:
+      controlsOpen || Boolean(versionSelectGroup) || infoDrawerOpen,
     move,
     jump,
     launch,
@@ -342,31 +349,33 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
           presented ? "" : "pointer-events-none"
         }`}
       >
-        <header className="flex shrink-0 items-center justify-between gap-4 px-5 pt-6 sm:px-10">
-          <div className="flex items-center gap-3">
+        <header className="flex shrink-0 items-center justify-between gap-3 px-3 pt-3 pb-1 sm:gap-4 sm:px-10 sm:pt-6 sm:pb-0">
+          <div className="flex items-center gap-2.5 sm:gap-3">
             <Image
               src="/nostanes.png"
               alt="NostaNES"
               width={40}
               height={40}
               priority
-              className="h-10 w-auto object-contain shrink-0 select-none"
+              className="h-8 w-auto sm:h-10 object-contain shrink-0 select-none"
             />
             <div className="flex flex-col">
-              <p className="text-sm font-semibold tracking-wide">NostaNES</p>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-sm sm:text-base font-semibold tracking-wide leading-tight">NostaNES</p>
+              <p className="text-xs text-muted-foreground hidden sm:block">
                 Nintendo Entertainment System
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <GamepadStatusIndicator />
-            <Clock />
+            <div className="hidden sm:block">
+              <Clock />
+            </div>
           </div>
         </header>
 
-        <div className="flex shrink-0 flex-col gap-3 px-4 pt-5 sm:px-10 z-20">
-          <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex shrink-0 flex-col gap-2 px-3 pt-2 sm:gap-3 sm:px-10 sm:pt-4 z-20">
+          <div className="flex items-center justify-between gap-2 sm:gap-3">
             <Field className="max-w-sm flex-1">
               <FieldLabel htmlFor="library-search" className="sr-only">
                 Search cartridges
@@ -384,6 +393,7 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
                     indexRef.current = 0;
                     setIndex(0);
                   }}
+                  className="h-8 sm:h-9 text-xs sm:text-sm"
                 />
               </InputGroup>
             </Field>
@@ -392,10 +402,12 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
               variant="outline"
               size="sm"
               onClick={() => fileInputRef.current?.click()}
-              className="hidden sm:inline-flex items-center gap-2 h-9 px-3 text-xs font-medium border-border/80 bg-foreground/[0.03] hover:bg-foreground/[0.08] shadow-xs cursor-pointer"
+              className="inline-flex items-center gap-1.5 sm:gap-2 h-8 sm:h-9 px-2.5 sm:px-3 text-xs font-medium border-border/80 bg-foreground/[0.03] hover:bg-foreground/[0.08] shadow-xs cursor-pointer shrink-0"
+              title="Load Local ROM"
             >
               <FolderOpenIcon className="size-3.5 text-muted-foreground" />
-              <span>Load Local ROM</span>
+              <span className="hidden sm:inline">Load Local ROM</span>
+              <span className="sm:hidden">Load ROM</span>
             </Button>
           </div>
 
@@ -418,7 +430,8 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
               </motion.div>
             ) : null}
           </AnimatePresence>
-          <div className="flex flex-wrap items-center gap-2 max-w-full">
+
+          <div className="flex items-center gap-1.5 max-w-full overflow-x-auto no-scrollbar scroll-smooth flex-nowrap py-0.5 [touch-action:pan-x] [-webkit-overflow-scrolling:touch]">
             <Button
               variant={favoritesOnly ? "default" : "outline"}
               size="sm"
@@ -429,7 +442,7 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
                 playUiSound("option_selected");
               }}
               className={cn(
-                "h-8 gap-1.5 px-3 text-xs font-semibold shrink-0 transition-all duration-200 cursor-pointer border",
+                "h-7 sm:h-8 gap-1.5 px-2.5 sm:px-3 text-xs font-semibold shrink-0 transition-all duration-200 cursor-pointer border",
                 favoritesOnly
                   ? "border-rose-500 bg-rose-600 text-white shadow-[0_0_18px_rgba(244,63,94,0.4)] hover:bg-rose-500"
                   : "border-white/10 bg-white/[0.04] text-white/75 hover:border-white/20 hover:text-white hover:bg-white/[0.08]",
@@ -469,10 +482,14 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
                 setIndex(0);
                 playUiSound("navigation");
               }}
-              className="max-w-full flex-wrap"
+              className="flex-nowrap shrink-0"
             >
               {regions.map((item) => (
-                <ToggleGroupItem key={item} value={item}>
+                <ToggleGroupItem
+                  key={item}
+                  value={item}
+                  className="shrink-0 h-7 sm:h-8 px-2.5 sm:px-3 text-xs font-medium"
+                >
                   {item}
                 </ToggleGroupItem>
               ))}
@@ -630,17 +647,36 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
                       setIndex(next);
                       playUiSound("navigation");
                     }}
-                    onLaunch={(next) => launch(next)}
+                    onOpenDetails={(next) => {
+                      indexRef.current = next;
+                      setIndex(next);
+                      setInfoDrawerOpen(true);
+                    }}
+                    onLaunch={(next) => {
+                      if (isMobile && !gamepadConnected) {
+                        if (next !== undefined) {
+                          indexRef.current = next;
+                          setIndex(next);
+                        }
+                        setInfoDrawerOpen(true);
+                      } else {
+                        launch(next);
+                      }
+                    }}
+                    isMobile={isMobile}
+                    gamepadConnected={gamepadConnected}
                   />
                 </div>
 
-                {/* Right Column: Interactive Game Hub (Tablet/Desktop) */}
-                <div className="hidden shrink-0 md:flex flex-col h-full min-h-0">
-                  <GameHub
-                    game={selected}
-                    onLaunch={(ver, slot) => launch(undefined, ver, slot)}
-                  />
-                </div>
+                {/* Right Column: Interactive Game Hub (Desktop/Large screens only, hidden on mobile) */}
+                {!isMobile ? (
+                  <div className="hidden shrink-0 lg:flex flex-col h-full min-h-0">
+                    <GameHub
+                      game={selected}
+                      onLaunch={(ver, slot) => launch(undefined, ver, slot)}
+                    />
+                  </div>
+                ) : null}
               </motion.div>
             ) : null}
           </AnimatePresence>
@@ -710,7 +746,13 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
                   <Button
                     size="lg"
                     disabled={!selected || allGames === null}
-                    onClick={() => launch()}
+                    onClick={() => {
+                      if (isMobile && !gamepadConnected) {
+                        setInfoDrawerOpen(true);
+                      } else {
+                        launch();
+                      }
+                    }}
                   />
                 }
               >
@@ -722,6 +764,17 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
           </div>
         </footer>
       </motion.div>
+
+      <GameInfoDrawer
+        game={selected}
+        open={infoDrawerOpen && Boolean(selected)}
+        onOpenChange={setInfoDrawerOpen}
+        onPlay={(chosenGame, slot) => {
+          setInfoDrawerOpen(false);
+          playUiSound("game_start");
+          setPlaying({ game: chosenGame, slot });
+        }}
+      />
 
       <VersionSelectDialog
         group={versionSelectGroup}

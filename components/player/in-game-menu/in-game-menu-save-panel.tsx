@@ -99,25 +99,25 @@ export const InGameMenuSavePanel = ({
   const getSaveForSlot = (slot: number) => saves.find((s) => s.slot === slot)
 
   return (
-    <div className="flex flex-col flex-1 h-full min-h-0 w-full min-w-0 gap-4">
-      <div className="shrink-0 flex flex-col gap-1">
-        <h3 className="text-lg font-bold text-white flex items-center gap-2">
-          <HardDriveIcon className="size-5 text-blue-400" />
+    <div className="flex flex-col flex-1 h-full min-h-0 w-full min-w-0 gap-2.5 sm:gap-4">
+      <div className="shrink-0 flex flex-col gap-0.5 sm:gap-1">
+        <h3 className="text-sm sm:text-base md:text-lg font-bold text-white flex items-center gap-1.5 sm:gap-2">
+          <HardDriveIcon className="size-4 sm:size-5 text-blue-400" />
           Save Game State
         </h3>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-[11px] sm:text-xs text-muted-foreground">
           Snapshot your current gameplay and store it securely in your browser storage.
         </p>
       </div>
 
       {statusMessage ? (
-        <div className="shrink-0 flex items-center gap-2 rounded-xl border border-blue-500/30 bg-blue-500/10 px-4 py-2.5 text-xs text-blue-200">
-          <CheckCircle2Icon className="size-4 shrink-0 text-blue-400" />
+        <div className="shrink-0 flex items-center gap-2 rounded-xl border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-[11px] sm:text-xs text-blue-200">
+          <CheckCircle2Icon className="size-3.5 sm:size-4 shrink-0 text-blue-400" />
           <span>{statusMessage}</span>
         </div>
       ) : null}
 
-      <div ref={listRef} className="flex-1 min-h-0 flex flex-col gap-3 overflow-y-auto pr-1.5 focus:outline-none">
+      <div ref={listRef} className="flex-1 min-h-0 flex flex-col gap-2 sm:gap-3 overflow-y-auto pr-1 sm:pr-1.5 focus:outline-none">
         {SLOTS.map((slot) => {
           const existing = getSaveForSlot(slot)
           const isSaving = savingSlot === slot
@@ -132,31 +132,31 @@ export const InGameMenuSavePanel = ({
                 handleSave(slot)
               }}
               className={cn(
-                "flex items-center justify-between gap-4 rounded-2xl border p-4 transition-all cursor-pointer",
+                "flex items-center justify-between gap-2.5 sm:gap-4 rounded-xl sm:rounded-2xl border p-2.5 sm:p-3.5 transition-all cursor-pointer",
                 isSelected
-                  ? "border-blue-400 bg-blue-600/20 shadow-[0_0_24px_rgba(59,130,246,0.3)] ring-1 ring-blue-400"
+                  ? "border-blue-400 bg-blue-600/20 shadow-[0_0_20px_rgba(59,130,246,0.3)] ring-1 ring-blue-400"
                   : "border-white/10 bg-white/[0.03] hover:border-white/20 hover:bg-white/[0.05]",
               )}
             >
-              <div className="flex flex-col gap-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="font-mono text-sm font-bold text-blue-400">
+              <div className="flex flex-col gap-0.5 min-w-0">
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  <span className="font-mono text-xs sm:text-sm font-bold text-blue-400">
                     SLOT {slot}
                   </span>
                   {existing ? (
-                    <span className="text-[10px] rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5">
+                    <span className="text-[9px] sm:text-[10px] rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-1.5 py-0.2">
                       Occupied
                     </span>
                   ) : (
-                    <span className="text-[10px] rounded-full bg-white/5 text-white/50 border border-white/10 px-2 py-0.5">
+                    <span className="text-[9px] sm:text-[10px] rounded-full bg-white/5 text-white/50 border border-white/10 px-1.5 py-0.2">
                       Empty Slot
                     </span>
                   )}
                 </div>
 
-                <p className="text-xs text-muted-foreground">
+                <p className="text-[10px] sm:text-xs text-muted-foreground truncate">
                   {existing
-                    ? `Saved on ${new Date(existing.timestamp).toLocaleString()} (${Math.round(
+                    ? `Saved ${new Date(existing.timestamp).toLocaleDateString()} (${Math.round(
                         existing.sizeBytes / 1024,
                       )} KB)`
                     : "No saved state in this slot."}
@@ -168,17 +168,17 @@ export const InGameMenuSavePanel = ({
                 size="sm"
                 disabled={isSaving}
                 onClick={() => handleSave(slot)}
-                className="shrink-0 gap-2 min-w-28"
+                className="shrink-0 gap-1.5 h-7 sm:h-8 px-2.5 sm:px-3 text-xs min-w-20 sm:min-w-28"
               >
                 {isSaving ? (
                   <>
-                    <Loader2Icon className="size-3.5 animate-spin" />
+                    <Loader2Icon className="size-3 animate-spin" />
                     <span>Saving...</span>
                   </>
                 ) : (
                   <>
-                    <DownloadIcon className="size-3.5" />
-                    <span>{existing ? "Overwrite" : "Save State"}</span>
+                    <DownloadIcon className="size-3" />
+                    <span>{existing ? "Overwrite" : "Save"}</span>
                   </>
                 )}
               </Button>

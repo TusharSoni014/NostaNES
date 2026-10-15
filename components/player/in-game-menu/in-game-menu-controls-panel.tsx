@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { CheckCircle2Icon, RotateCcwIcon, SaveIcon, SlidersIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { GamepadKey, Kbd } from "@/components/ui/kbd"
@@ -41,18 +41,21 @@ export const InGameMenuControlsPanel = ({
   const [selectedItem, setSelectedItem] = useState<PanelItem>("up")
   const listRef = useRef<HTMLDivElement>(null)
   const playerRef = useRef<PlayerSlot>(1)
-  playerRef.current = player
 
   const { config, listeningKey, setListeningKey, savedNotice, handleSave, handleReset } =
     useControlRebinding(player, activeTab)
 
-  const setPlayer = (next: PlayerSlot) => {
+  const setPlayer = useCallback((next: PlayerSlot) => {
     setListeningKey(null)
     if (playerRef.current === next) return
     playerRef.current = next
     setPlayerSlot(next)
     playUiSound("navigation")
-  }
+  }, [setListeningKey])
+
+  useEffect(() => {
+    playerRef.current = player
+  }, [player])
 
   // Auto-scroll selected row into view
   useEffect(() => {
@@ -101,73 +104,73 @@ export const InGameMenuControlsPanel = ({
 
     window.addEventListener("keydown", onKey, true)
     return () => window.removeEventListener("keydown", onKey, true)
-  }, [isFocused, listeningKey])
+  }, [isFocused, listeningKey, setPlayer])
 
   return (
-    <div className="flex flex-col flex-1 h-full min-h-0 w-full min-w-0 gap-3.5">
-      <div className="shrink-0 flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-3">
+    <div className="flex flex-col flex-1 h-full min-h-0 w-full min-w-0 gap-2.5 sm:gap-3.5">
+      <div className="shrink-0 flex flex-wrap items-center justify-between gap-2 sm:gap-3 border-b border-white/10 pb-2 sm:pb-3">
         <div>
-          <h3 className="text-base font-bold text-white flex items-center gap-2">
-            <SlidersIcon className="size-4 text-blue-400" />
+          <h3 className="text-sm sm:text-base font-bold text-white flex items-center gap-1.5 sm:gap-2">
+            <SlidersIcon className="size-3.5 sm:size-4 text-blue-400" />
             Remap Controls
           </h3>
-          <p className="text-xs text-white/60">
+          <p className="text-[10px] sm:text-xs text-white/60">
             {player === 1
-              ? "Arrows and the first controller. Only Player 1 moves menus."
-              : "Number pad and the second controller. Player 2 does not move menus."}
+              ? "Arrows & Player 1 controller move menus."
+              : "Numpad & Player 2 controller."}
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-1.5 bg-white/5 p-1 rounded-xl border border-white/10">
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+          <div className="flex items-center gap-1 bg-white/5 p-0.5 sm:p-1 rounded-xl border border-white/10">
             <Button
               variant={player === 1 ? "default" : "ghost"}
               size="sm"
               onClick={() => setPlayer(1)}
-              className="text-xs h-7 px-2.5 gap-1.5"
+              className="text-[11px] sm:text-xs h-6 sm:h-7 px-2 sm:px-2.5 gap-1"
             >
-              Player 1
-              {inputMode === "gamepad" ? null : <Kbd size="sm">[</Kbd>}
+              P1
+              {inputMode === "gamepad" ? null : <Kbd size="sm" className="hidden sm:inline-flex">[</Kbd>}
             </Button>
             <Button
               variant={player === 2 ? "default" : "ghost"}
               size="sm"
               onClick={() => setPlayer(2)}
-              className="text-xs h-7 px-2.5 gap-1.5"
+              className="text-[11px] sm:text-xs h-6 sm:h-7 px-2 sm:px-2.5 gap-1"
             >
-              Player 2
+              P2
               {inputMode === "gamepad" ? (
                 <GamepadKey button="Y" size="sm" className="hidden sm:inline-flex" />
               ) : (
-                <Kbd size="sm">]</Kbd>
+                <Kbd size="sm" className="hidden sm:inline-flex">]</Kbd>
               )}
             </Button>
           </div>
 
-        <div className="flex items-center gap-1.5 bg-white/5 p-1 rounded-xl border border-white/10">
-          <Button
-            variant={activeTab === "keyboard" ? "default" : "ghost"}
-            size="sm"
-            onClick={() => setTab("keyboard")}
-            className="text-xs h-7 px-2.5 gap-1.5"
-          >
-            Keyboard
-            {inputMode === "gamepad" ? (
-              <GamepadKey button="LB" size="sm" className="hidden sm:inline-flex" />
-            ) : null}
-          </Button>
-          <Button
-            variant={activeTab === "gamepad" ? "default" : "ghost"}
-            size="sm"
-            onClick={() => setTab("gamepad")}
-            className="text-xs h-7 px-2.5 gap-1.5"
-          >
-            Gamepad
-            {inputMode === "gamepad" ? (
-              <GamepadKey button="RB" size="sm" className="hidden sm:inline-flex" />
-            ) : null}
-          </Button>
-        </div>
+          <div className="flex items-center gap-1 bg-white/5 p-0.5 sm:p-1 rounded-xl border border-white/10">
+            <Button
+              variant={activeTab === "keyboard" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setTab("keyboard")}
+              className="text-[11px] sm:text-xs h-6 sm:h-7 px-2 sm:px-2.5 gap-1"
+            >
+              Keys
+              {inputMode === "gamepad" ? (
+                <GamepadKey button="LB" size="sm" className="hidden sm:inline-flex" />
+              ) : null}
+            </Button>
+            <Button
+              variant={activeTab === "gamepad" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setTab("gamepad")}
+              className="text-[11px] sm:text-xs h-6 sm:h-7 px-2 sm:px-2.5 gap-1"
+            >
+              Pad
+              {inputMode === "gamepad" ? (
+                <GamepadKey button="RB" size="sm" className="hidden sm:inline-flex" />
+              ) : null}
+            </Button>
+          </div>
         </div>
       </div>
 

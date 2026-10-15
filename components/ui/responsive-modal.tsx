@@ -10,6 +10,7 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer"
+import { useIsMobile } from "@/hooks/use-is-mobile"
 import { useMediaQuery } from "@/hooks/use-media-query"
 import { playUiSound } from "@/lib/ui-sounds"
 import { cn } from "@/lib/utils"
@@ -35,7 +36,9 @@ export function ResponsiveModal({
   className,
   exitToBlack = false,
 }: ResponsiveModalProps) {
-  const isMobile = useMediaQuery("(max-width: 768px)")
+  const isMobileDevice = useIsMobile()
+  const isSmallScreen = useMediaQuery("(max-width: 768px)")
+  const isMobile = isMobileDevice || isSmallScreen
 
   const requestChange = React.useCallback(
     (next: boolean) => {
@@ -74,12 +77,14 @@ export function ResponsiveModal({
       <Drawer open={open} onOpenChange={requestChange} showSwipeHandle>
         <DrawerContent
           className={cn(
-            "p-4 text-white bg-[#030716] border-t border-blue-500/30",
+            "p-4 text-white bg-[#030716] border-t border-blue-500/30 max-h-[88dvh] overflow-y-auto",
             className,
           )}
         >
           <DrawerHeader className="text-left pb-2">
-            <DrawerTitle className="text-lg font-bold text-white tracking-tight">{title}</DrawerTitle>
+            <DrawerTitle render={<div />} className="text-lg font-bold text-white tracking-tight">
+              {title}
+            </DrawerTitle>
             {description ? (
               <DrawerDescription className="text-xs text-white/60">{description}</DrawerDescription>
             ) : null}

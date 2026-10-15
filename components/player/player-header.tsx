@@ -1,7 +1,7 @@
 "use client"
 
 import Image from "next/image"
-import { Maximize2Icon, Minimize2Icon, XIcon } from "lucide-react"
+import { Maximize2Icon, Minimize2Icon, RotateCcwIcon, XIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Tooltip,
@@ -15,6 +15,9 @@ type PlayerHeaderProps = {
   isFullscreen: boolean
   onToggleFullscreen: () => void
   onRequestExit: () => void
+  isMobile?: boolean
+  onToggleRotate?: () => void
+  isRotated?: boolean
 }
 
 export const PlayerHeader = ({
@@ -22,13 +25,18 @@ export const PlayerHeader = ({
   isFullscreen,
   onToggleFullscreen,
   onRequestExit,
+  isMobile = false,
+  onToggleRotate,
+  isRotated = false,
 }: PlayerHeaderProps) => (
   <header
     className={cn(
-      "flex shrink-0 items-center justify-between gap-4 px-6 py-3 transition-opacity duration-200 z-30 sm:px-10",
-      isFullscreen
-        ? "absolute top-0 inset-x-0 opacity-0 hover:opacity-100 focus-within:opacity-100 bg-gradient-to-b from-black/90 via-black/40 to-transparent"
-        : "bg-black/90",
+      "flex shrink-0 items-center justify-between gap-2 sm:gap-4 px-3 py-2 sm:px-10 sm:py-3 transition-opacity duration-200 z-30",
+      isMobile
+        ? "bg-black/70 backdrop-blur-md border-b border-white/10"
+        : isFullscreen
+          ? "absolute top-0 inset-x-0 opacity-0 hover:opacity-100 focus-within:opacity-100 bg-gradient-to-b from-black/90 via-black/40 to-transparent"
+          : "bg-black/90",
     )}
   >
     <div className="flex min-w-0 items-center gap-3">
@@ -48,7 +56,29 @@ export const PlayerHeader = ({
         </h2>
       </div>
     </div>
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-1.5 sm:gap-2">
+      {onToggleRotate ? (
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Button
+                variant="outline"
+                size="icon"
+                aria-label={isRotated ? "Restore Portrait" : "Rotate Landscape"}
+                onClick={onToggleRotate}
+                className={cn(
+                  "size-8 sm:size-9 border-white/20 text-white hover:bg-white/10",
+                  isRotated ? "bg-blue-600/40 text-blue-300 border-blue-400/50" : "bg-black/40",
+                )}
+              />
+            }
+          >
+            <RotateCcwIcon className="size-4" />
+          </TooltipTrigger>
+          <TooltipContent>{isRotated ? "Restore normal orientation" : "Rotate into landscape"}</TooltipContent>
+        </Tooltip>
+      ) : null}
+
       <Tooltip>
         <TooltipTrigger
           render={
@@ -57,7 +87,7 @@ export const PlayerHeader = ({
               size="icon"
               aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
               onClick={onToggleFullscreen}
-              className="bg-black/40 border-white/20 text-white hover:bg-white/10"
+              className="size-8 sm:size-9 bg-black/40 border-white/20 text-white hover:bg-white/10"
             />
           }
         >
@@ -78,7 +108,7 @@ export const PlayerHeader = ({
               variant="outline"
               onClick={onRequestExit}
               aria-label="Exit game"
-              className="bg-black/40 border-white/20 text-white hover:bg-white/10"
+              className="h-8 sm:h-9 px-2 sm:px-3 bg-black/40 border-white/20 text-white hover:bg-white/10 gap-1.5"
             />
           }
         >

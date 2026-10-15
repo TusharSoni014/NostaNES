@@ -42,21 +42,21 @@ export const InGameMenuExitPanel = ({
   })
 
   return (
-    <div className="flex flex-col items-center justify-center text-center p-8 flex-1 h-full w-full min-h-0">
-      <div className="flex size-14 items-center justify-center rounded-2xl bg-rose-500/10 text-rose-400 mb-4 border border-rose-500/20">
-        <LogOutIcon className="size-7" />
+    <div className="flex flex-col items-center justify-center text-center p-4 sm:p-8 flex-1 h-full w-full min-h-0">
+      <div className="flex size-10 sm:size-14 items-center justify-center rounded-xl sm:rounded-2xl bg-rose-500/10 text-rose-400 mb-2 sm:mb-4 border border-rose-500/20">
+        <LogOutIcon className="size-5 sm:size-7" />
       </div>
 
-      <h3 className="text-xl font-bold text-white mb-2">Leave to Cartridge Shelf?</h3>
-      <p className="text-sm text-muted-foreground mb-6 max-w-sm">
+      <h3 className="text-base sm:text-xl font-bold text-white mb-1 sm:mb-2">Leave to Cartridge Shelf?</h3>
+      <p className="text-xs sm:text-sm text-muted-foreground mb-4 sm:mb-6 max-w-sm">
         Your emulation session for {game.title} will stop. Make sure your progress has been saved.
       </p>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2.5 sm:gap-3">
         <Button
           variant={isFocused && selectedBtn === "cancel" ? "default" : "outline"}
           onClick={handleCancel}
-          className={cn(isFocused && selectedBtn === "cancel" && "ring-2 ring-blue-400")}
+          className={cn("h-8 sm:h-9 text-xs sm:text-sm px-3 sm:px-4", isFocused && selectedBtn === "cancel" && "ring-2 ring-blue-400")}
         >
           Cancel
         </Button>
@@ -64,9 +64,9 @@ export const InGameMenuExitPanel = ({
         <Button
           variant="destructive"
           onClick={onRequestExit}
-          className={cn("gap-2", isFocused && selectedBtn === "exit" && "ring-2 ring-rose-400")}
+          className={cn("gap-2 h-8 sm:h-9 text-xs sm:text-sm px-3 sm:px-4", isFocused && selectedBtn === "exit" && "ring-2 ring-rose-400")}
         >
-          <LogOutIcon className="size-4" />
+          <LogOutIcon className="size-3.5 sm:size-4" />
           <span>Exit Game</span>
         </Button>
       </div>

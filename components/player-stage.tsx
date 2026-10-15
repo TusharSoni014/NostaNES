@@ -13,6 +13,9 @@ import { useSaveLoadState } from "@/components/player/use-save-load-state"
 import { usePlayerInput } from "@/components/player/use-player-input"
 import { useKeyboardControls } from "@/components/player/use-keyboard-controls"
 import { useGamepadControls } from "@/components/player/use-gamepad-controls"
+import { MobileTouchControls } from "@/components/player/mobile-touch-controls"
+import { useIsMobile, useIsPortrait } from "@/hooks/use-is-mobile"
+import { useGamepadStatus } from "@/hooks/use-gamepad-status"
 import { getSavedShader, saveShader, type GameShader } from "@/lib/storage/shader-storage"
 import type { GamepadHoldState } from "@/lib/gamepad/gamepad-dispatcher"
 import { motion } from "motion/react"
@@ -29,6 +32,43 @@ type PlayerStageProps = {
 export const PlayerStage = ({ game, initialSlot, onExit }: PlayerStageProps) => {
   const stageRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
+
+  const isMobile = useIsMobile()
+  const isPortrait = useIsPortrait()
+  const { connected: gamepadConnected } = useGamepadStatus()
+  const [forceLandscape, setForceLandscape] = useState(true)
+
+  // Screen orientation lock for mobile devices
+  useEffect(() => {
+    if (!isMobile) return
+
+    const lockOrientation = async () => {
+      try {
+        const orientation = screen.orientation as unknown as { lock?: (type: string) => Promise<void> } | undefined
+        const legacyScreen = screen as unknown as { lockOrientation?: (type: string) => boolean }
+        if (orientation && typeof orientation.lock === "function") {
+          await orientation.lock("landscape")
+        } else if (typeof legacyScreen.lockOrientation === "function") {
+          legacyScreen.lockOrientation("landscape")
+        }
+      } catch {}
+    }
+    void lockOrientation()
+
+    return () => {
+      try {
+        const orientation = screen.orientation as unknown as { unlock?: () => void } | undefined
+        const legacyScreen = screen as unknown as { unlockOrientation?: () => boolean }
+        if (orientation && typeof orientation.unlock === "function") {
+          orientation.unlock()
+        } else if (typeof legacyScreen.unlockOrientation === "function") {
+          legacyScreen.unlockOrientation()
+        }
+      } catch {}
+    }
+  }, [isMobile])
+
+  const shouldRotate = isMobile && isPortrait && forceLandscape
 
   const [phase, setPhase] = useState<"loading" | "ready" | "error">("loading")
   const [isFullscreen, setIsFullscreen] = useState(true)
@@ -138,9 +178,17 @@ export const PlayerStage = ({ game, initialSlot, onExit }: PlayerStageProps) => 
 
   return (
     <motion.div
-      ref={stageRef} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      ref={stageRef}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
       transition={{ duration: 0.25, ease: "easeOut" }}
-      className="fixed inset-0 z-40 flex flex-col bg-black will-change-opacity select-none"
+      className={cn(
+        "z-40 flex flex-col bg-black will-change-transform select-none overflow-hidden",
+        shouldRotate
+          ? "fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[100dvh] h-[100dvw] rotate-90 origin-center"
+          : "fixed inset-0 w-full h-full will-change-opacity",
+      )}
     >
       <GamepadExitHud active={exitHud.active} remainingSeconds={exitHud.remainingSeconds} progress={exitHud.progress} />
       <ExitConfirmDialog open={confirmingExit} onResume={handleResume} onConfirmExit={handleConfirmExit} />
@@ -156,16 +204,21 @@ export const PlayerStage = ({ game, initialSlot, onExit }: PlayerStageProps) => 
       />
 
       <PlayerHeader
-        title={game.title} isFullscreen={isFullscreen}
-        onToggleFullscreen={toggleFullscreen} onRequestExit={handleRequestExit}
+        title={game.title}
+        isFullscreen={isFullscreen}
+        onToggleFullscreen={toggleFullscreen}
+        onRequestExit={handleRequestExit}
+        isMobile={isMobile}
+        onToggleRotate={isMobile ? () => setForceLandscape((prev) => !prev) : undefined}
+        isRotated={shouldRotate}
       />
 
       {/* Game Stage: Unrounded, zero-lag, arcade CRT 4:3 display */}
-      <div className="flex min-h-0 flex-1 items-center justify-center p-0 bg-black">
+      <div className="flex min-h-0 flex-1 items-center justify-center p-0 bg-black relative">
         <div
           className={cn(
             "relative aspect-[4/3] h-full max-h-screen w-full max-w-[min(100%,calc(100dvh*4/3))] overflow-hidden bg-black rounded-none shadow-none ring-0",
-            !isFullscreen && "max-h-[calc(100dvh-8rem)]",
+            !isFullscreen && !isMobile && "max-h-[calc(100dvh-8rem)]",
           )}
         >
           <canvas
@@ -178,9 +231,19 @@ export const PlayerStage = ({ game, initialSlot, onExit }: PlayerStageProps) => 
           <ShaderOverlay shader={activeShader} />
           <PlayerOverlay game={game} phase={phase} onExit={handleConfirmExit} />
         </div>
+
+        {/* On-screen controls on mobile */}
+        {isMobile && !inGameMenuOpen ? (
+          <MobileTouchControls
+            pressDown={pressDown}
+            pressUp={pressUp}
+            onToggleMenu={toggleInGameMenu}
+            gamepadConnected={gamepadConnected}
+          />
+        ) : null}
       </div>
 
-      <PlayerFooter isFullscreen={isFullscreen} />
+      <PlayerFooter isFullscreen={isFullscreen || isMobile} />
     </motion.div>
   )
 }

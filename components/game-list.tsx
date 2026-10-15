@@ -11,6 +11,9 @@ type GameListProps = {
   selectedIndex: number
   onSelectIndex: (index: number) => void
   onLaunch: (index: number) => void
+  onOpenDetails?: (index: number) => void
+  isMobile?: boolean
+  gamepadConnected?: boolean
 }
 
 const ROW_GAP = 12
@@ -24,8 +27,13 @@ export const GameList = ({
   selectedIndex,
   onSelectIndex,
   onLaunch,
+  onOpenDetails,
+  isMobile = false,
+  gamepadConnected = false,
 }: GameListProps) => {
+  const isMobileTouchMode = isMobile && !gamepadConnected
   const listRef = useRef<HTMLDivElement>(null)
+  const [stride, setStride] = useState(FALLBACK_ROW_HEIGHT + ROW_GAP)
   const strideRef = useRef(FALLBACK_ROW_HEIGHT + ROW_GAP)
   const rangeRef = useRef<Range>({ start: 0, end: 24 })
   const lastScrollTimeRef = useRef(0)
@@ -43,24 +51,25 @@ export const GameList = ({
   const syncRange = useCallback(() => {
     const listEl = listRef.current
     if (!listEl) return
-    const stride = strideRef.current
+    const currentStride = strideRef.current
     const padding = Number.parseFloat(getComputedStyle(listEl).paddingTop) || 0
-    const start = Math.max(0, Math.floor((listEl.scrollTop - padding) / stride) - OVERSCAN)
+    const start = Math.max(0, Math.floor((listEl.scrollTop - padding) / currentStride) - OVERSCAN)
     const end = Math.min(
       games.length,
-      Math.ceil((listEl.scrollTop - padding + listEl.clientHeight) / stride) + OVERSCAN,
+      Math.ceil((listEl.scrollTop - padding + listEl.clientHeight) / currentStride) + OVERSCAN,
     )
     publishRange({ start, end: Math.max(end, start) })
   }, [games.length, publishRange])
 
   useEffect(() => {
+    if (isMobileTouchMode) return
     const listEl = listRef.current
     if (!listEl) return
 
-    const stride = strideRef.current
+    const currentStride = strideRef.current
     const padding = Number.parseFloat(getComputedStyle(listEl).paddingTop) || 0
-    const rowHeight = stride - ROW_GAP
-    const itemTop = padding + selectedIndex * stride
+    const rowHeight = currentStride - ROW_GAP
+    const itemTop = padding + selectedIndex * currentStride
     const targetScrollTop = itemTop - (listEl.clientHeight - rowHeight) / 2
     const now = performance.now()
     const isRapid = now - lastScrollTimeRef.current < 130
@@ -71,7 +80,7 @@ export const GameList = ({
       behavior: isRapid ? "auto" : "smooth",
     })
     syncRange()
-  }, [selectedIndex, games.length, syncRange])
+  }, [selectedIndex, games.length, syncRange, isMobileTouchMode])
 
   useEffect(() => {
     const listEl = listRef.current
@@ -97,6 +106,10 @@ export const GameList = ({
   }, [syncRange])
 
   useEffect(() => {
+    measuredRef.current = false
+  }, [isMobileTouchMode])
+
+  useEffect(() => {
     if (measuredRef.current) return
     const row = listRef.current?.querySelector("[data-game-row]")
     if (!(row instanceof HTMLElement)) return
@@ -105,19 +118,24 @@ export const GameList = ({
     measuredRef.current = true
     if (next === strideRef.current) return
     strideRef.current = next
+    setStride(next)
     syncRange()
-  })
+  }, [syncRange])
 
   const start = range.start
   const end = range.end
-  const stride = strideRef.current
 
   return (
     <div
       ref={listRef}
       role="listbox"
       aria-label="NES Cartridges Library"
-      className="relative flex-1 overflow-y-auto px-4 py-8 sm:px-6 md:px-7 [scrollbar-gutter:stable] focus:outline-none [perspective:1200px] [transform-style:preserve-3d]"
+      className={cn(
+        "relative flex-1 overflow-y-auto overscroll-y-contain focus:outline-none",
+        isMobileTouchMode
+          ? "px-2 py-3 sm:px-6 md:px-7 [touch-action:pan-y] [-webkit-overflow-scrolling:touch]"
+          : "px-4 py-8 sm:px-6 md:px-7 [scrollbar-gutter:stable] [perspective:1200px] [transform-style:preserve-3d]",
+      )}
       tabIndex={-1}
     >
       <div style={{ position: "relative", height: Math.max(0, games.length * stride - ROW_GAP) }}>
@@ -134,8 +152,14 @@ export const GameList = ({
           const scale =
             delta === 0 ? 1.02 : Math.max(0.95, 1 - absDelta * 0.008)
           const opacity =
-            delta === 0 ? 1 : Math.max(0.42, 1 - absDelta * 0.07)
-          const zIndex = delta === 0 ? 30 : Math.max(1, 20 - absDelta)
+            isMobileTouchMode ? 1 : delta === 0 ? 1 : Math.max(0.42, 1 - absDelta * 0.07)
+          const zIndex = isMobileTouchMode
+            ? isSelected
+              ? 10
+              : 1
+            : delta === 0
+              ? 30
+              : Math.max(1, 20 - absDelta)
 
           return (
             <div
@@ -146,8 +170,12 @@ export const GameList = ({
               aria-setsize={games.length}
               aria-posinset={i + 1}
               onClick={() => {
-                if (isSelected) onLaunch(i)
-                else onSelectIndex(i)
+                onSelectIndex(i)
+                if (isMobileTouchMode && onOpenDetails) {
+                  onOpenDetails(i)
+                } else if (isSelected) {
+                  onLaunch(i)
+                }
               }}
               onDoubleClick={() => onLaunch(i)}
               style={{
@@ -155,12 +183,15 @@ export const GameList = ({
                 top: i * stride,
                 left: 0,
                 right: 0,
-                transform: `perspective(1200px) translate3d(0, 0, ${translateZ}px) rotateX(${rotateX}deg) scale(${scale})`,
+                transform: isMobileTouchMode
+                  ? "none"
+                  : `perspective(1200px) translate3d(0, 0, ${translateZ}px) rotateX(${rotateX}deg) scale(${scale})`,
                 opacity,
                 zIndex,
               }}
               className={cn(
-                "group relative flex cursor-pointer items-center justify-between gap-3.5 rounded-2xl border px-4 py-3 select-none [transform-style:preserve-3d] [backface-visibility:hidden] will-change-transform transition-[transform,background-color,border-color,box-shadow,opacity] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)]",
+                "group relative flex cursor-pointer items-center justify-between gap-2.5 sm:gap-3.5 rounded-2xl border px-3 sm:px-4 py-2.5 sm:py-3 select-none will-change-transform transition-[transform,background-color,border-color,box-shadow,opacity] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)]",
+                !isMobileTouchMode && "[transform-style:preserve-3d] [backface-visibility:hidden]",
                 isSelected
                   ? "border-white bg-white text-zinc-950 shadow-[0_12px_36px_rgba(255,255,255,0.22),0_4px_16px_rgba(0,0,0,0.6)] ring-1 ring-white/70"
                   : "border-white/10 bg-white/[0.04] backdrop-blur-md text-white/90 hover:border-white/25 hover:bg-white/[0.08] hover:text-white",
@@ -189,7 +220,7 @@ export const GameList = ({
                   <Gamepad2Icon className="size-4" />
                 </div>
 
-                <div className="flex min-w-0 flex-1 flex-col">
+                <div className="flex min-w-0 flex-1 flex-col justify-center">
                   <span
                     title={game.title}
                     className={cn(
@@ -201,55 +232,61 @@ export const GameList = ({
                   >
                     {game.title}
                   </span>
-                  <span
-                    className={cn(
-                      "truncate font-mono text-[11px] transition-colors",
-                      isSelected
-                        ? "font-medium text-zinc-600"
-                        : "text-white/40 group-hover:text-white/60",
-                    )}
-                  >
-                    {"versions" in game && game.versions.length > 1
-                      ? `${game.versions.length} versions available`
-                      : game.file}
-                  </span>
+                  {!isMobileTouchMode ? (
+                    <span
+                      className={cn(
+                        "truncate font-mono text-[11px] transition-colors",
+                        isSelected
+                          ? "font-medium text-zinc-600"
+                          : "text-white/40 group-hover:text-white/60",
+                      )}
+                    >
+                      {"versions" in game && game.versions.length > 1
+                        ? `${game.versions.length} versions available`
+                        : game.file}
+                    </span>
+                  ) : null}
                 </div>
               </div>
 
               <div className="flex shrink-0 items-center gap-1.5">
-                {"versions" in game && game.versions.length > 1 ? (
-                  <span
-                    className={cn(
-                      "rounded-full px-2 py-0.5 text-xs border font-semibold transition-colors",
-                      isSelected
-                        ? "border-zinc-800 bg-zinc-950 text-sky-400"
-                        : "border-sky-400/30 bg-sky-500/10 text-sky-300",
-                    )}
-                  >
-                    {game.versions.length} Ver
-                  </span>
-                ) : null}
-                <span
-                  className={cn(
-                    "rounded-full px-2.5 py-0.5 text-xs border font-medium transition-colors",
-                    isSelected
-                      ? "border-zinc-800 bg-zinc-950 text-white"
-                      : "border-white/10 bg-white/[0.06] text-white/70",
-                  )}
-                >
-                  {game.region}
-                </span>
-                {game.year ? (
-                  <span
-                    className={cn(
-                      "rounded-full px-2 py-0.5 text-xs border transition-colors",
-                      isSelected
-                        ? "border-zinc-300 bg-zinc-200 text-zinc-900 font-medium"
-                        : "border-white/10 bg-white/[0.04] text-white/50",
-                    )}
-                  >
-                    {game.year}
-                  </span>
+                {!isMobileTouchMode ? (
+                  <>
+                    {"versions" in game && game.versions.length > 1 ? (
+                      <span
+                        className={cn(
+                          "rounded-full px-2 py-0.5 text-xs border font-semibold transition-colors",
+                          isSelected
+                            ? "border-zinc-800 bg-zinc-950 text-sky-400"
+                            : "border-sky-400/30 bg-sky-500/10 text-sky-300",
+                        )}
+                      >
+                        {game.versions.length} Ver
+                      </span>
+                    ) : null}
+                    <span
+                      className={cn(
+                        "rounded-full px-2.5 py-0.5 text-xs border font-medium transition-colors",
+                        isSelected
+                          ? "border-zinc-800 bg-zinc-950 text-white"
+                          : "border-white/10 bg-white/[0.06] text-white/70",
+                      )}
+                    >
+                      {game.region}
+                    </span>
+                    {game.year ? (
+                      <span
+                        className={cn(
+                          "rounded-full px-2 py-0.5 text-xs border transition-colors",
+                          isSelected
+                            ? "border-zinc-300 bg-zinc-200 text-zinc-900 font-medium"
+                            : "border-white/10 bg-white/[0.04] text-white/50",
+                        )}
+                      >
+                        {game.year}
+                      </span>
+                    ) : null}
+                  </>
                 ) : null}
                 <FavoriteButton
                   game={game}

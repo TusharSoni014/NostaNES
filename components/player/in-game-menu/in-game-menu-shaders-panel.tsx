@@ -58,18 +58,18 @@ export function InGameMenuShadersPanel({
   });
 
   return (
-    <div className="flex flex-col flex-1 h-full min-h-0 w-full min-w-0 gap-4 select-none">
+    <div className="flex flex-col flex-1 h-full min-h-0 w-full min-w-0 gap-2.5 sm:gap-4 select-none">
       {/* Header */}
-      <div className="shrink-0 flex items-center justify-between border-b border-white/10 pb-4">
-        <div className="flex items-center gap-3">
-          <div className="grid size-10 place-items-center rounded-xl bg-blue-500/15 text-blue-400 border border-blue-500/30">
-            <TvIcon className="size-5" />
+      <div className="shrink-0 flex items-center justify-between border-b border-white/10 pb-2.5 sm:pb-4">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="grid size-7 sm:size-10 place-items-center rounded-lg sm:rounded-xl bg-blue-500/15 text-blue-400 border border-blue-500/30">
+            <TvIcon className="size-3.5 sm:size-5" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-white tracking-tight">
+            <h2 className="text-sm sm:text-lg font-bold text-white tracking-tight">
               Shaders & Display
             </h2>
-            <p className="text-xs text-white/60">
+            <p className="text-[11px] sm:text-xs text-white/60">
               Choose CRT scanlines and retro display filters
             </p>
           </div>
@@ -80,7 +80,7 @@ export function InGameMenuShadersPanel({
       <div
         role="listbox"
         aria-label="Available CRT and display shaders"
-        className="flex-1 min-h-0 flex flex-col gap-2 overflow-y-auto p-1 focus:outline-none [scrollbar-gutter:stable]"
+        className="flex-1 min-h-0 flex flex-col gap-1.5 sm:gap-2 overflow-y-auto p-0.5 sm:p-1 focus:outline-none [scrollbar-gutter:stable]"
       >
         {SHADER_OPTIONS.map((opt, idx) => {
           const isCursor = isFocused && selectedId === opt.id;
@@ -99,21 +99,21 @@ export function InGameMenuShadersPanel({
                 handleApply(opt);
               }}
               className={cn(
-                "group relative flex cursor-pointer items-center justify-between gap-4 rounded-xl border p-3.5 transition-all duration-150",
+                "group relative flex cursor-pointer items-center justify-between gap-2.5 sm:gap-4 rounded-xl border p-2.5 sm:p-3.5 transition-all duration-150",
                 isCursor
                   ? "border-blue-400 bg-blue-500/15 text-white ring-2 ring-blue-400/60 shadow-[0_0_20px_rgba(59,130,246,0.2)]"
                   : "border-white/10 bg-white/[0.02] text-white/70 hover:border-white/20 hover:bg-white/[0.05] hover:text-white",
               )}
             >
-              <div className="flex min-w-0 flex-1 flex-col gap-1">
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-sm text-white tracking-tight">
+              <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  <span className="font-semibold text-xs sm:text-sm text-white tracking-tight">
                     {opt.label}
                   </span>
                   <Badge
                     variant="outline"
                     className={cn(
-                      "text-[10px] py-0 px-2 font-mono",
+                      "text-[9px] sm:text-[10px] py-0 px-1.5 font-mono",
                       isActive
                         ? "bg-emerald-500/20 text-emerald-300 border-emerald-400/50"
                         : "bg-white/5 text-white/50 border-white/10",
@@ -122,14 +122,14 @@ export function InGameMenuShadersPanel({
                     {isActive ? "ACTIVE" : opt.badge}
                   </Badge>
                 </div>
-                <p className="text-xs text-white/50 leading-relaxed line-clamp-1">
+                <p className="text-[10px] sm:text-xs text-white/50 leading-relaxed line-clamp-1">
                   {opt.description}
                 </p>
               </div>
 
               <div
                 className={cn(
-                  "grid size-6 shrink-0 place-items-center rounded-md border transition-colors",
+                  "grid size-5 sm:size-6 shrink-0 place-items-center rounded-md border transition-colors",
                   isActive
                     ? "border-emerald-400 bg-emerald-500 text-black font-bold shadow-sm"
                     : isCursor
@@ -138,7 +138,7 @@ export function InGameMenuShadersPanel({
                 )}
               >
                 {isActive ? (
-                  <CheckIcon className="size-3.5 stroke-[3]" />
+                  <CheckIcon className="size-3 sm:size-3.5 stroke-[3]" />
                 ) : null}
               </div>
             </div>
@@ -147,7 +147,7 @@ export function InGameMenuShadersPanel({
       </div>
 
       {/* Footer action bar */}
-      <div className="shrink-0 mt-auto flex items-center justify-between pt-3 border-t border-white/10 text-xs text-white/60">
+      <div className="shrink-0 mt-auto flex items-center justify-between pt-2 sm:pt-3 border-t border-white/10 text-[10px] sm:text-xs text-white/60">
         <span className="flex items-center gap-1">
           <span>Press</span>
           {inputMode === "gamepad" ? (
@@ -164,7 +164,7 @@ export function InGameMenuShadersPanel({
             const opt = SHADER_OPTIONS.find((o) => o.id === selectedId);
             if (opt) handleApply(opt);
           }}
-          className="text-xs gap-1.5 bg-blue-600 hover:bg-blue-500 text-white border-0"
+          className="text-xs h-7 sm:h-8 px-2.5 sm:px-3 gap-1.5 bg-blue-600 hover:bg-blue-500 text-white border-0"
         >
           Apply Preset
         </Button>
