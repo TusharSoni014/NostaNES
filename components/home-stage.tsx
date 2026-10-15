@@ -37,6 +37,7 @@ import {
 } from "@/components/ui/tooltip"
 import { motion, AnimatePresence } from "motion/react"
 import { useLibrary } from "@/hooks/use-library"
+import { useInputMode } from "@/hooks/use-input-mode"
 import { enableUiSounds, playUiSound } from "@/lib/ui-sounds"
 import { type Game, type GameGroup, groupGames, parseRomFile } from "@/lib/games"
 import { VersionSelectDialog } from "@/components/version-select-dialog"
@@ -46,6 +47,7 @@ export type HomeStageProps = {
 }
 
 export function HomeStage({ initialGames }: HomeStageProps = {}) {
+  const inputMode = useInputMode()
   const library = useLibrary(initialGames)
   const games = library.data ?? null
   const failed = library.isError && !library.isFetching
@@ -554,22 +556,34 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
 
         <footer className="flex shrink-0 items-center justify-between gap-3 px-4 pb-5 sm:px-10">
           <div className="hidden flex-wrap items-center gap-3 text-sm text-muted-foreground sm:flex">
-            <span className="flex items-center gap-1.5">
-              <span className="flex items-center gap-1">
-                <Kbd size="sm">↑</Kbd>
-                <Kbd size="sm">↓</Kbd>
-              </span>
-              <span className="text-muted-foreground/40 text-[10px]">/</span>
-              <GamepadKey button="D-Pad" size="sm" />
-              <span className="text-xs font-medium text-foreground/80">Navigate</span>
-            </span>
-            <Separator orientation="vertical" className="hidden h-4 sm:block" />
-            <span className="flex items-center gap-1.5">
-              <Kbd size="sm">Enter</Kbd>
-              <span className="text-muted-foreground/40 text-[10px]">/</span>
-              <GamepadKey button="A" size="sm" />
-              <span className="text-xs font-medium text-foreground/80">Play</span>
-            </span>
+            {inputMode === "gamepad" ? (
+              <>
+                <span className="flex items-center gap-1.5">
+                  <GamepadKey button="D-Pad" size="sm" />
+                  <span className="text-xs font-medium text-foreground/80">Navigate</span>
+                </span>
+                <Separator orientation="vertical" className="hidden h-4 sm:block" />
+                <span className="flex items-center gap-1.5">
+                  <GamepadKey button="A" size="sm" />
+                  <span className="text-xs font-medium text-foreground/80">Play</span>
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="flex items-center gap-1.5">
+                  <span className="flex items-center gap-1">
+                    <Kbd size="sm">↑</Kbd>
+                    <Kbd size="sm">↓</Kbd>
+                  </span>
+                  <span className="text-xs font-medium text-foreground/80">Navigate</span>
+                </span>
+                <Separator orientation="vertical" className="hidden h-4 sm:block" />
+                <span className="flex items-center gap-1.5">
+                  <Kbd size="sm">Enter</Kbd>
+                  <span className="text-xs font-medium text-foreground/80">Play</span>
+                </span>
+              </>
+            )}
             <Separator orientation="vertical" className="hidden h-4 sm:block" />
             <span className="text-xs text-muted-foreground/80">
               {allGames === null

@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
 
     return Response.json(
       { files },
-      { headers: { "Cache-Control": "public, max-age=3600" } },
+      { headers: { "Cache-Control": "no-store" } },
     )
   } catch (error) {
     const message = error instanceof Error ? error.message : "Cheat lookup failed"

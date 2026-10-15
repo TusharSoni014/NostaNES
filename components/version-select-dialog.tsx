@@ -6,6 +6,7 @@ import { ResponsiveModal } from "@/components/ui/responsive-modal"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Kbd, GamepadKey } from "@/components/ui/kbd"
+import { useInputMode } from "@/hooks/use-input-mode"
 import { useMenuNavigation } from "@/hooks/use-menu-navigation"
 import { cn } from "@/lib/utils"
 import { scrollNearestIntoView } from "@/lib/motion/scroll-into-view"
@@ -25,6 +26,7 @@ export function VersionSelectDialog({
   onOpenChange,
   onSelectVersion,
 }: VersionSelectDialogProps) {
+  const inputMode = useInputMode()
   // Preserve last group during close transition so modal animates out cleanly
   const [cachedGroup, setCachedGroup] = useState<GameGroup | null>(group)
   if (group && group !== cachedGroup) setCachedGroup(group)
@@ -100,9 +102,11 @@ export function VersionSelectDialog({
           <Button variant="ghost" size="sm" onClick={dismiss} className="text-xs text-white/70 hover:text-white gap-2">
             <span>Cancel</span>
             <span className="flex items-center gap-1">
-              <Kbd size="sm" variant="subtle">Esc</Kbd>
-              <span className="text-white/30 text-[10px] font-mono">/</span>
-              <GamepadKey button="B" size="sm" />
+              {inputMode === "gamepad" ? (
+                <GamepadKey button="B" size="sm" />
+              ) : (
+                <Kbd size="sm" variant="subtle">Esc</Kbd>
+              )}
             </span>
           </Button>
 
@@ -115,9 +119,11 @@ export function VersionSelectDialog({
             <PlayIcon className="size-3.5 fill-current" />
             <span>Play Version</span>
             <span className="flex items-center gap-1 ml-0.5">
-              <Kbd size="sm" variant="solid">Enter</Kbd>
-              <span className="text-white/40 text-[10px] font-mono">/</span>
-              <GamepadKey button="A" size="sm" />
+              {inputMode === "gamepad" ? (
+                <GamepadKey button="A" size="sm" />
+              ) : (
+                <Kbd size="sm" variant="solid">Enter</Kbd>
+              )}
             </span>
           </Button>
         </div>

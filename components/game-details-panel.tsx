@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Kbd, GamepadKey } from "@/components/ui/kbd"
 import { Separator } from "@/components/ui/separator"
+import { useInputMode } from "@/hooks/use-input-mode"
 import type { Game, GameGroup } from "@/lib/games"
 
 type GameDetailsPanelProps = {
@@ -13,8 +14,11 @@ type GameDetailsPanelProps = {
   onLaunch: () => void
 }
 
-export const GameDetailsPanel = ({ game, onLaunch }: GameDetailsPanelProps) => (
-  <div className="flex w-full flex-col justify-between gap-3 sm:gap-4 rounded-2xl border border-foreground/15 bg-background/40 p-4 sm:p-5 backdrop-blur-xl shadow-xl md:w-72 lg:w-80 max-h-[calc(100dvh-12rem)] overflow-y-auto [scrollbar-width:none] transition-all">
+export const GameDetailsPanel = ({ game, onLaunch }: GameDetailsPanelProps) => {
+  const inputMode = useInputMode()
+
+  return (
+    <div className="flex w-full flex-col justify-between gap-3 sm:gap-4 rounded-2xl border border-foreground/15 bg-background/40 p-4 sm:p-5 backdrop-blur-xl shadow-xl md:w-72 lg:w-80 max-h-[calc(100dvh-12rem)] overflow-y-auto [scrollbar-width:none] transition-all">
     {/* Visual Cartridge Box Preview - viewport-aware and fluid */}
     <div className="relative mx-auto aspect-square w-24 sm:w-28 md:w-32 lg:w-36 max-h-[16vh] shrink-0 overflow-hidden rounded-xl shadow-xl ring-1 ring-foreground/20 transition-all">
       <GameCover game={game} selected />
@@ -82,16 +86,23 @@ export const GameDetailsPanel = ({ game, onLaunch }: GameDetailsPanelProps) => (
           ? `Choose Version (${game.versions.length})`
           : "Start Game"}
         <span className="ml-auto flex items-center gap-1 shrink-0">
-          <Kbd size="sm" variant="solid">Enter</Kbd>
-          <span className="text-white/40 text-[10px] font-mono">/</span>
-          <GamepadKey button="A" size="sm" />
+          {inputMode === "gamepad" ? (
+            <GamepadKey button="A" size="sm" />
+          ) : (
+            <Kbd size="sm" variant="solid">Enter</Kbd>
+          )}
         </span>
       </Button>
       <p className="text-center text-[10px] text-muted-foreground">
         {"versions" in game && game.versions.length > 1
-          ? "Press Enter / A to select version"
-          : "Press Enter / A or click to play"}
+          ? inputMode === "gamepad"
+            ? "Press A to select version"
+            : "Press Enter to select version"
+          : inputMode === "gamepad"
+            ? "Press A or click to play"
+            : "Press Enter or click to play"}
       </p>
     </div>
   </div>
-)
+  )
+}

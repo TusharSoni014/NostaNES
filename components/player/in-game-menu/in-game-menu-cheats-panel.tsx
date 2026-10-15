@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import { useMenuNavigation } from "@/hooks/use-menu-navigation"
 import { useCheatFileSearch, useCheatFileText, useGameCheatFiles, type CheatFileMatch } from "@/hooks/use-cheats"
+import { matchSearchQuery } from "@/lib/cheats/match-cheat-files"
 import { applyCheatSession } from "@/lib/cheats/apply-cheat-session"
 import type { EmulatorCheatControls } from "@/lib/cheats/emulator-cheats"
 import type { Game } from "@/lib/games"
@@ -94,17 +95,34 @@ export const InGameMenuCheatsPanel = ({
   const filesQuery = useGameCheatFiles(game, !showingCheats)
   const files = filesQuery.data ?? EMPTY_FILES
   const localFiles = useMemo(() => {
-    const query = fileQuery.trim().toLowerCase()
+    const query = fileQuery.trim()
     if (!query) return files
-    return files.filter((file) => file.name.toLowerCase().includes(query))
+    return files.filter((file) => matchSearchQuery(file.name, query))
   }, [fileQuery, files])
-  const wantsRepoSearch = !showingCheats && fileQuery.trim().length >= 2 && localFiles.length === 0
+  const wantsRepoSearch = !showingCheats && deferredFileQuery.length >= 2
   const searchQuery = useCheatFileSearch(deferredFileQuery, wantsRepoSearch)
   const repoReady = wantsRepoSearch && deferredFileQuery === fileQuery.trim() && searchQuery.isSuccess
-  const visibleFiles = useMemo(
-    () => (repoReady ? (searchQuery.data ?? EMPTY_FILES) : localFiles),
-    [localFiles, repoReady, searchQuery.data],
-  )
+  const visibleFiles = useMemo(() => {
+    if (!fileQuery.trim()) return files
+    if (repoReady && searchQuery.data) {
+      const seen = new Set<string>()
+      const merged: CheatFileMatch[] = []
+      for (const file of localFiles) {
+        if (!seen.has(file.name)) {
+          seen.add(file.name)
+          merged.push(file)
+        }
+      }
+      for (const file of searchQuery.data) {
+        if (!seen.has(file.name)) {
+          seen.add(file.name)
+          merged.push(file)
+        }
+      }
+      return merged
+    }
+    return localFiles
+  }, [fileQuery, files, localFiles, repoReady, searchQuery.data])
 
   const visibleCheats = useMemo(() => {
     const query = cheatQuery.trim().toLowerCase()
@@ -497,7 +515,7 @@ function CheatFiles({
                   <span className="min-w-0">
                     <span className="block truncate text-xs font-medium text-white">{fileTitle(file.name)}</span>
                     <span className="block text-[11px] text-white/45">
-                      {file.exactFile ? "Matches this ROM" : "Cheat file"}
+                      {file.exactFile ? "Matches this ROM" : file.similar ? "Related game" : "Cheat file"}
                     </span>
                   </span>
                   <span className="flex shrink-0 items-center gap-2">

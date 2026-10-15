@@ -14,6 +14,7 @@ import { InGameMenuSavePanel } from "./in-game-menu-save-panel"
 import { InGameMenuShadersPanel } from "./in-game-menu-shaders-panel"
 import { InGameMenuSidebar } from "./in-game-menu-sidebar"
 import type { InGameMenuProps, InGameMenuTab } from "./types"
+import { useInputMode } from "@/hooks/use-input-mode"
 import { useMenuNavigation } from "@/hooks/use-menu-navigation"
 import { playUiSound } from "@/lib/ui-sounds"
 
@@ -33,6 +34,7 @@ export const InGameMenu = ({
   onSelectShader,
   cheats,
 }: InGameMenuProps) => {
+  const inputMode = useInputMode()
   const [activeTab, setActiveTab] = useState<InGameMenuTab>("resume")
   const [focusPane, setFocusPane] = useState<"sidebar" | "content">("sidebar")
   const [prevOpen, setPrevOpen] = useState(open)
@@ -178,35 +180,58 @@ export const InGameMenu = ({
 
         {/* Global Navigation Hints Footer */}
         <div className="shrink-0 flex items-center justify-between border-t border-white/10 px-6 py-2.5 bg-black/40 text-xs text-white/60 select-none">
-          <div className="flex items-center gap-3">
-            <span className="flex items-center gap-1.5">
-              <GamepadKey button="D-Pad" size="sm" />
-              <span className="text-[11px] text-white/80">Navigate</span>
-            </span>
-            <span className="text-white/20">•</span>
-            <span className="flex items-center gap-1.5">
-              <span className="flex items-center gap-1">
-                <Kbd size="sm">←</Kbd>
-                <Kbd size="sm">→</Kbd>
-              </span>
-              <span className="text-[11px] text-white/80">Switch Pane</span>
-            </span>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="flex items-center gap-1.5">
-              <GamepadKey button="A" size="sm" />
-              <span className="text-white/30 text-[10px] font-mono">/</span>
-              <Kbd size="sm">Enter</Kbd>
-              <span className="text-[11px] text-white/80">Select</span>
-            </span>
-            <span className="text-white/20">•</span>
-            <span className="flex items-center gap-1.5">
-              <GamepadKey button="B" size="sm" />
-              <span className="text-white/30 text-[10px] font-mono">/</span>
-              <Kbd size="sm">Esc</Kbd>
-              <span className="text-[11px] text-white/80">Back / Resume</span>
-            </span>
-          </div>
+          {inputMode === "gamepad" ? (
+            <>
+              <div className="flex items-center gap-3">
+                <span className="flex items-center gap-1.5">
+                  <GamepadKey button="D-Pad" size="sm" />
+                  <span className="text-[11px] text-white/80">Navigate</span>
+                </span>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="flex items-center gap-1.5">
+                  <GamepadKey button="A" size="sm" />
+                  <span className="text-[11px] text-white/80">Select</span>
+                </span>
+                <span className="text-white/20">•</span>
+                <span className="flex items-center gap-1.5">
+                  <GamepadKey button="B" size="sm" />
+                  <span className="text-[11px] text-white/80">Back / Resume</span>
+                </span>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="flex items-center gap-3">
+                <span className="flex items-center gap-1.5">
+                  <span className="flex items-center gap-1">
+                    <Kbd size="sm">↑</Kbd>
+                    <Kbd size="sm">↓</Kbd>
+                  </span>
+                  <span className="text-[11px] text-white/80">Navigate</span>
+                </span>
+                <span className="text-white/20">•</span>
+                <span className="flex items-center gap-1.5">
+                  <span className="flex items-center gap-1">
+                    <Kbd size="sm">←</Kbd>
+                    <Kbd size="sm">→</Kbd>
+                  </span>
+                  <span className="text-[11px] text-white/80">Switch Pane</span>
+                </span>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="flex items-center gap-1.5">
+                  <Kbd size="sm">Enter</Kbd>
+                  <span className="text-[11px] text-white/80">Select</span>
+                </span>
+                <span className="text-white/20">•</span>
+                <span className="flex items-center gap-1.5">
+                  <Kbd size="sm">Esc</Kbd>
+                  <span className="text-[11px] text-white/80">Back / Resume</span>
+                </span>
+              </div>
+            </>
+          )}
         </div>
       </motion.div>
     </AnimatePresence>

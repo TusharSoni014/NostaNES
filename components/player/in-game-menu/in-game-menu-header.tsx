@@ -4,7 +4,8 @@ import Image from "next/image"
 import { PlayIcon } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Kbd } from "@/components/ui/kbd"
+import { Kbd, GamepadKey } from "@/components/ui/kbd"
+import { useInputMode } from "@/hooks/use-input-mode"
 
 type InGameMenuHeaderProps = {
   gameTitle: string
@@ -12,6 +13,7 @@ type InGameMenuHeaderProps = {
 }
 
 export const InGameMenuHeader = ({ gameTitle, onResume }: InGameMenuHeaderProps) => {
+  const inputMode = useInputMode()
   return (
     <header className="flex shrink-0 items-center justify-between border-b border-white/10 bg-white/[0.02] px-4 py-3 sm:px-8">
       <div className="flex items-center gap-3 min-w-0">
@@ -50,9 +52,11 @@ export const InGameMenuHeader = ({ gameTitle, onResume }: InGameMenuHeaderProps)
           <PlayIcon className="size-3.5 fill-current" />
           <span>Resume</span>
           <span className="hidden sm:inline-flex items-center gap-1 opacity-70">
-            <Kbd size="sm">F1</Kbd>
-            <span className="text-white/30 text-[10px] font-mono">/</span>
-            <Kbd size="sm">Esc</Kbd>
+            {inputMode === "gamepad" ? (
+              <GamepadKey button="B" size="sm" />
+            ) : (
+              <Kbd size="sm">Esc</Kbd>
+            )}
           </span>
         </Button>
       </div>

@@ -10,6 +10,7 @@ import {
   type ShaderOption,
   SHADER_OPTIONS,
 } from "@/lib/storage/shader-storage";
+import { useInputMode } from "@/hooks/use-input-mode";
 import { useMenuNavigation } from "@/hooks/use-menu-navigation";
 import { scrollNearestIntoView } from "@/lib/motion/scroll-into-view";
 import { playUiSound } from "@/lib/ui-sounds";
@@ -30,6 +31,7 @@ export function InGameMenuShadersPanel({
   onCancel,
   onNavigateLeft,
 }: InGameMenuShadersPanelProps) {
+  const inputMode = useInputMode();
   const [selectedId, setSelectedId] = useState<GameShader>(activeShader);
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
 
@@ -148,9 +150,11 @@ export function InGameMenuShadersPanel({
       <div className="shrink-0 mt-auto flex items-center justify-between pt-3 border-t border-white/10 text-xs text-white/60">
         <span className="flex items-center gap-1">
           <span>Press</span>
-          <GamepadKey button="A" size="sm" />
-          <span className="text-white/30 text-[10px] font-mono">/</span>
-          <Kbd size="sm">Enter</Kbd>
+          {inputMode === "gamepad" ? (
+            <GamepadKey button="A" size="sm" />
+          ) : (
+            <Kbd size="sm">Enter</Kbd>
+          )}
           <span>to activate shader</span>
         </span>
         <Button

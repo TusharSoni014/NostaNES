@@ -19,12 +19,12 @@ async function readCheatFiles(response: Response): Promise<CheatFileMatch[]> {
 
 export function useGameCheatFiles(game: { title: string; file: string }, enabled: boolean) {
   return useQuery({
-    queryKey: ["cheats", "files", game.file],
+    queryKey: ["cheats", "files", "related-name", game.file],
     enabled,
-    staleTime: HOUR,
+    staleTime: 60 * 1000,
     queryFn: async () => {
       const params = new URLSearchParams({ title: game.title, file: game.file })
-      const response = await fetch(`/api/cheats?${params}`)
+      const response = await fetch(`/api/cheats?${params}`, { cache: "no-store" })
       return readCheatFiles(response)
     },
   })
@@ -38,7 +38,7 @@ export function useCheatFileSearch(query: string, enabled: boolean) {
     enabled: enabled && q.length >= 2,
     staleTime: HOUR,
     queryFn: async () => {
-      const response = await fetch(`/api/cheats?q=${encodeURIComponent(q)}`)
+      const response = await fetch(`/api/cheats?q=${encodeURIComponent(q)}`, { cache: "no-store" })
       return readCheatFiles(response)
     },
   })

@@ -7,6 +7,7 @@ import { GamepadKey } from "@/components/ui/kbd"
 import { ACTION_LABELS, type NesActionKey } from "@/lib/storage/controls-storage"
 import { scrollNearestIntoView } from "@/lib/motion/scroll-into-view"
 import { playUiSound } from "@/lib/ui-sounds"
+import { useInputMode } from "@/hooks/use-input-mode"
 import { useMenuNavigation } from "@/hooks/use-menu-navigation"
 import { InGameMenuControlRow } from "./in-game-menu-control-row"
 import { ControlRebindDialog } from "./control-rebind-dialog"
@@ -34,7 +35,8 @@ export const InGameMenuControlsPanel = ({
   onCancel,
   onNavigateLeft,
 }: InGameMenuControlsPanelProps) => {
-  const [activeTab, setActiveTab] = useState<"keyboard" | "gamepad">("keyboard")
+  const inputMode = useInputMode()
+  const [activeTab, setActiveTab] = useState<"keyboard" | "gamepad">(inputMode)
   const [selectedItem, setSelectedItem] = useState<PanelItem>("up")
   const listRef = useRef<HTMLDivElement>(null)
 
@@ -95,7 +97,9 @@ export const InGameMenuControlsPanel = ({
             className="text-xs h-7 px-2.5 gap-1.5"
           >
             Keyboard
-            <GamepadKey button="LB" size="sm" className="hidden sm:inline-flex" />
+            {inputMode === "gamepad" ? (
+              <GamepadKey button="LB" size="sm" className="hidden sm:inline-flex" />
+            ) : null}
           </Button>
           <Button
             variant={activeTab === "gamepad" ? "default" : "ghost"}
@@ -104,7 +108,9 @@ export const InGameMenuControlsPanel = ({
             className="text-xs h-7 px-2.5 gap-1.5"
           >
             Gamepad
-            <GamepadKey button="RB" size="sm" className="hidden sm:inline-flex" />
+            {inputMode === "gamepad" ? (
+              <GamepadKey button="RB" size="sm" className="hidden sm:inline-flex" />
+            ) : null}
           </Button>
         </div>
       </div>

@@ -22,6 +22,7 @@ import {
   type ControlItem,
 } from "@/components/controls-data"
 import { GamepadDispatcher } from "@/lib/gamepad/gamepad-dispatcher"
+import { useInputMode } from "@/hooks/use-input-mode"
 import { playUiSound } from "@/lib/ui-sounds"
 import { cn } from "@/lib/utils"
 
@@ -50,9 +51,17 @@ const ControlRow = ({
 )
 
 export const ControlsDialog = ({ open, onOpenChange }: ControlsDialogProps) => {
-  const [tab, setTab] = useState<"gamepad" | "keyboard">("gamepad")
-  const tabRef = useRef(tab)
+  const inputMode = useInputMode()
+  const [tab, setTab] = useState<"gamepad" | "keyboard">(inputMode)
+  const [prevOpen, setPrevOpen] = useState(open)
   const scrollRef = useRef<HTMLDivElement>(null)
+
+  if (open && !prevOpen) {
+    setPrevOpen(true)
+    setTab(inputMode)
+  } else if (!open && prevOpen) {
+    setPrevOpen(false)
+  }
 
   const handleOpenChange = useCallback(
     (next: boolean) => {
@@ -63,10 +72,11 @@ export const ControlsDialog = ({ open, onOpenChange }: ControlsDialogProps) => {
   )
 
   const chooseTab = useCallback((next: "gamepad" | "keyboard") => {
-    if (tabRef.current === next) return
-    tabRef.current = next
-    setTab(next)
-    playUiSound("navigation")
+    setTab((prev) => {
+      if (prev === next) return prev
+      playUiSound("navigation")
+      return next
+    })
   }, [])
 
   const scrollBody = useCallback((amount: number) => {
@@ -192,27 +202,53 @@ export const ControlsDialog = ({ open, onOpenChange }: ControlsDialogProps) => {
         </div>
 
         <div className="shrink-0 flex items-center justify-between border-t border-border/50 px-5 py-2.5 bg-muted/20 text-xs text-muted-foreground select-none">
-          <div className="flex items-center gap-3">
-            <span className="flex items-center gap-1.5">
-              <GamepadKey button="LB" size="sm" />
-              <span className="text-muted-foreground/40 text-[10px]">/</span>
-              <GamepadKey button="RB" size="sm" />
-              <span className="text-xs">Tabs</span>
-            </span>
-            <span className="text-muted-foreground/30">•</span>
-            <span className="flex items-center gap-1.5">
-              <GamepadKey button="D-Pad" size="sm" />
-              <span className="text-xs">Scroll</span>
-            </span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <GamepadKey button="B" size="sm" />
-            <span className="text-muted-foreground/40 text-[10px]">/</span>
-            <GamepadKey button="Y" size="sm" />
-            <span className="text-muted-foreground/30">•</span>
-            <Kbd size="sm">Esc</Kbd>
-            <span className="text-xs">Close</span>
-          </div>
+          {inputMode === "gamepad" ? (
+            <>
+              <div className="flex items-center gap-3">
+                <span className="flex items-center gap-1.5">
+                  <GamepadKey button="LB" size="sm" />
+                  <span className="text-muted-foreground/40 text-[10px]">/</span>
+                  <GamepadKey button="RB" size="sm" />
+                  <span className="text-xs">Tabs</span>
+                </span>
+                <span className="text-muted-foreground/30">•</span>
+                <span className="flex items-center gap-1.5">
+                  <GamepadKey button="D-Pad" size="sm" />
+                  <span className="text-xs">Scroll</span>
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <GamepadKey button="B" size="sm" />
+                <span className="text-muted-foreground/40 text-[10px]">/</span>
+                <GamepadKey button="Y" size="sm" />
+                <span className="text-xs">Close</span>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="flex items-center gap-3">
+                <span className="flex items-center gap-1.5">
+                  <span className="flex items-center gap-1">
+                    <Kbd size="sm">←</Kbd>
+                    <Kbd size="sm">→</Kbd>
+                  </span>
+                  <span className="text-xs">Tabs</span>
+                </span>
+                <span className="text-muted-foreground/30">•</span>
+                <span className="flex items-center gap-1.5">
+                  <span className="flex items-center gap-1">
+                    <Kbd size="sm">↑</Kbd>
+                    <Kbd size="sm">↓</Kbd>
+                  </span>
+                  <span className="text-xs">Scroll</span>
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Kbd size="sm">Esc</Kbd>
+                <span className="text-xs">Close</span>
+              </div>
+            </>
+          )}
         </div>
       </DialogContent>
     </Dialog>

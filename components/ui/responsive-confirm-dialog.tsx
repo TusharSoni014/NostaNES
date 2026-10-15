@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Kbd, GamepadKey } from "@/components/ui/kbd"
+import { useInputMode } from "@/hooks/use-input-mode"
 import { useMenuNavigation } from "@/hooks/use-menu-navigation"
 import { cn } from "@/lib/utils"
 import { ResponsiveModal } from "./responsive-modal"
@@ -37,6 +38,7 @@ export function ResponsiveConfirmDialog({
   onConfirm,
   onCancel,
 }: ResponsiveConfirmDialogProps) {
+  const inputMode = useInputMode()
   const [selectedOption, setSelectedOption] = useState<DialogOption>(defaultOption)
   const [prevOpen, setPrevOpen] = useState(open)
 
@@ -94,8 +96,11 @@ export function ResponsiveConfirmDialog({
           >
             <span className="font-semibold">{cancelText}</span>
             <span className="flex items-center gap-1.5">
-              <Kbd size="sm" variant={selectedOption === "cancel" ? "solid" : "subtle"}>Esc</Kbd>
-              <GamepadKey button="B" size="sm" />
+              {inputMode === "gamepad" ? (
+                <GamepadKey button="B" size="sm" />
+              ) : (
+                <Kbd size="sm" variant={selectedOption === "cancel" ? "solid" : "subtle"}>Esc</Kbd>
+              )}
             </span>
           </Button>
 
@@ -114,8 +119,11 @@ export function ResponsiveConfirmDialog({
           >
             <span className="font-semibold">{confirmText}</span>
             <span className="flex items-center gap-1.5">
-              <Kbd size="sm" variant={selectedOption === "confirm" ? "solid" : "subtle"}>Enter</Kbd>
-              <GamepadKey button="A" size="sm" />
+              {inputMode === "gamepad" ? (
+                <GamepadKey button="A" size="sm" />
+              ) : (
+                <Kbd size="sm" variant={selectedOption === "confirm" ? "solid" : "subtle"}>Enter</Kbd>
+              )}
             </span>
           </Button>
         </div>

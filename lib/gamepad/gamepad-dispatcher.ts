@@ -19,6 +19,8 @@ export type GamepadDispatcherOptions = {
 const AXIS_ENGAGE_THRESHOLD = 0.55
 const AXIS_RELEASE_THRESHOLD = 0.25
 
+import { setInputMode } from "@/hooks/use-input-mode"
+
 export class GamepadDispatcher {
   private frameId = 0
   private running = false
@@ -34,7 +36,10 @@ export class GamepadDispatcher {
   private selectStartComboActive = false
 
   constructor(callback: GamepadListenerCallback, options?: GamepadDispatcherOptions) {
-    this.callback = callback
+    this.callback = (action) => {
+      setInputMode("gamepad")
+      callback(action)
+    }
     this.onSelectHold = options?.onSelectHold
     this.onSelectHoldComplete = options?.onSelectHoldComplete
   }

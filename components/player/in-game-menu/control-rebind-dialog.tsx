@@ -4,6 +4,7 @@ import { Gamepad2Icon, KeyboardIcon, XIcon } from "lucide-react"
 import { motion } from "motion/react"
 import { Button } from "@/components/ui/button"
 import { Kbd, GamepadKey } from "@/components/ui/kbd"
+import { useInputMode } from "@/hooks/use-input-mode"
 import { ACTION_LABELS, type NesActionKey } from "@/lib/storage/controls-storage"
 import { playUiSound } from "@/lib/ui-sounds"
 
@@ -18,6 +19,7 @@ export function ControlRebindDialog({
   activeTab,
   onCancel,
 }: ControlRebindDialogProps) {
+  const inputMode = useInputMode()
   if (!actionKey) return null
 
   const { label, desc } = ACTION_LABELS[actionKey]
@@ -79,11 +81,11 @@ export function ControlRebindDialog({
 
           <div className="flex w-full items-center justify-between pt-2 border-t border-white/10 text-xs text-white/60">
             <span className="flex items-center gap-1.5">
-              <span className="flex items-center gap-1">
-                <Kbd size="sm">Esc</Kbd>
-                <span className="text-white/30 text-[10px] font-mono">/</span>
+              {inputMode === "gamepad" ? (
                 <GamepadKey button="B" size="sm" />
-              </span>
+              ) : (
+                <Kbd size="sm">Esc</Kbd>
+              )}
               <span>to Cancel</span>
             </span>
             <Button
