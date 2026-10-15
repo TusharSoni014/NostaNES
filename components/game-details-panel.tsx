@@ -4,7 +4,7 @@ import { PlayIcon } from "lucide-react"
 import { GameCover } from "@/components/game-cover"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Kbd } from "@/components/ui/kbd"
+import { Kbd, GamepadKey } from "@/components/ui/kbd"
 import { Separator } from "@/components/ui/separator"
 import type { Game, GameGroup } from "@/lib/games"
 
@@ -81,12 +81,16 @@ export const GameDetailsPanel = ({ game, onLaunch }: GameDetailsPanelProps) => (
         {"versions" in game && game.versions.length > 1
           ? `Choose Version (${game.versions.length})`
           : "Start Game"}
-        <Kbd className="ml-auto text-[11px]">Enter</Kbd>
+        <span className="ml-auto flex items-center gap-1 shrink-0">
+          <Kbd size="sm" variant="solid">Enter</Kbd>
+          <span className="text-white/40 text-[10px] font-mono">/</span>
+          <GamepadKey button="A" size="sm" />
+        </span>
       </Button>
       <p className="text-center text-[10px] text-muted-foreground">
         {"versions" in game && game.versions.length > 1
-          ? "Press Enter to select version"
-          : "Press Enter or click to play"}
+          ? "Press Enter / A to select version"
+          : "Press Enter / A or click to play"}
       </p>
     </div>
   </div>

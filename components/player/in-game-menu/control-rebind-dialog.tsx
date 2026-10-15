@@ -3,7 +3,7 @@
 import { Gamepad2Icon, KeyboardIcon, XIcon } from "lucide-react"
 import { motion } from "motion/react"
 import { Button } from "@/components/ui/button"
-import { Kbd } from "@/components/ui/kbd"
+import { Kbd, GamepadKey } from "@/components/ui/kbd"
 import { ACTION_LABELS, type NesActionKey } from "@/lib/storage/controls-storage"
 import { playUiSound } from "@/lib/ui-sounds"
 
@@ -79,7 +79,11 @@ export function ControlRebindDialog({
 
           <div className="flex w-full items-center justify-between pt-2 border-t border-white/10 text-xs text-white/60">
             <span className="flex items-center gap-1.5">
-              <Kbd className="text-[10px]">Esc / B</Kbd>
+              <span className="flex items-center gap-1">
+                <Kbd size="sm">Esc</Kbd>
+                <span className="text-white/30 text-[10px] font-mono">/</span>
+                <GamepadKey button="B" size="sm" />
+              </span>
               <span>to Cancel</span>
             </span>
             <Button

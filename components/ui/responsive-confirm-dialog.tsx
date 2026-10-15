@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Kbd } from "@/components/ui/kbd"
+import { Kbd, GamepadKey } from "@/components/ui/kbd"
 import { useMenuNavigation } from "@/hooks/use-menu-navigation"
 import { cn } from "@/lib/utils"
 import { ResponsiveModal } from "./responsive-modal"
@@ -93,9 +93,9 @@ export function ResponsiveConfirmDialog({
             )}
           >
             <span className="font-semibold">{cancelText}</span>
-            <span className="flex items-center gap-1">
-              <Kbd className={cn("text-[10px]", selectedOption === "cancel" && "bg-blue-400 text-black font-bold")}>Esc</Kbd>
-              <Kbd className={cn("text-[10px]", selectedOption === "cancel" && "bg-blue-400 text-black font-bold")}>B</Kbd>
+            <span className="flex items-center gap-1.5">
+              <Kbd size="sm" variant={selectedOption === "cancel" ? "solid" : "subtle"}>Esc</Kbd>
+              <GamepadKey button="B" size="sm" />
             </span>
           </Button>
 
@@ -113,9 +113,9 @@ export function ResponsiveConfirmDialog({
             )}
           >
             <span className="font-semibold">{confirmText}</span>
-            <span className="flex items-center gap-1">
-              <Kbd className={cn("text-[10px] bg-black/40 border-white/20", selectedOption === "confirm" && "bg-white text-black font-bold")}>Enter</Kbd>
-              <Kbd className={cn("text-[10px] bg-black/40 border-white/20", selectedOption === "confirm" && "bg-white text-black font-bold")}>A</Kbd>
+            <span className="flex items-center gap-1.5">
+              <Kbd size="sm" variant={selectedOption === "confirm" ? "solid" : "subtle"}>Enter</Kbd>
+              <GamepadKey button="A" size="sm" />
             </span>
           </Button>
         </div>

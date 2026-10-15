@@ -12,7 +12,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Kbd } from "@/components/ui/kbd"
+import { Kbd, GamepadKey, KeyBadge } from "@/components/ui/kbd"
 import { Separator } from "@/components/ui/separator"
 import {
   GAMEPAD_LIBRARY_CONTROLS,
@@ -30,15 +30,20 @@ type ControlsDialogProps = {
   onOpenChange: (open: boolean) => void
 }
 
-const ControlRow = ({ label, keys, detail }: ControlItem) => (
-  <div className="flex items-center justify-between gap-4 py-1">
+const ControlRow = ({
+  label,
+  keys,
+  detail,
+  mode,
+}: ControlItem & { mode: "gamepad" | "keyboard" }) => (
+  <div className="flex items-center justify-between gap-4 py-1.5">
     <div className="flex flex-col">
       <span className="text-sm font-medium">{label}</span>
       {detail ? <span className="text-[11px] text-muted-foreground">{detail}</span> : null}
     </div>
     <span className="flex items-center gap-1.5 shrink-0">
       {keys.map((key) => (
-        <Kbd key={key}>{key}</Kbd>
+        <KeyBadge key={key} combo={key} mode={mode} />
       ))}
     </span>
   </div>
@@ -61,7 +66,7 @@ export const ControlsDialog = ({ open, onOpenChange }: ControlsDialogProps) => {
     if (tabRef.current === next) return
     tabRef.current = next
     setTab(next)
-    playUiSound("option_selected")
+    playUiSound("navigation")
   }, [])
 
   const scrollBody = useCallback((amount: number) => {
@@ -172,7 +177,7 @@ export const ControlsDialog = ({ open, onOpenChange }: ControlsDialogProps) => {
               Library Navigation
             </p>
             {libraryControls.map((ctrl) => (
-              <ControlRow key={ctrl.label} {...ctrl} />
+              <ControlRow key={ctrl.label} {...ctrl} mode={tab} />
             ))}
 
             <Separator className="my-1" />
@@ -181,21 +186,32 @@ export const ControlsDialog = ({ open, onOpenChange }: ControlsDialogProps) => {
               In-Game NES Layout
             </p>
             {nesControls.map((ctrl) => (
-              <ControlRow key={ctrl.label} {...ctrl} />
+              <ControlRow key={ctrl.label} {...ctrl} mode={tab} />
             ))}
           </div>
         </div>
 
         <div className="shrink-0 flex items-center justify-between border-t border-border/50 px-5 py-2.5 bg-muted/20 text-xs text-muted-foreground select-none">
-          <div className="flex items-center gap-2">
-            <span className="flex items-center gap-1"><Kbd className="text-[10px]">LB/RB</Kbd><span>Tabs</span></span>
-            <span className="text-muted-foreground/40">•</span>
-            <span className="flex items-center gap-1"><Kbd className="text-[10px]">D-Pad ↑↓</Kbd><span>Scroll</span></span>
+          <div className="flex items-center gap-3">
+            <span className="flex items-center gap-1.5">
+              <GamepadKey button="LB" size="sm" />
+              <span className="text-muted-foreground/40 text-[10px]">/</span>
+              <GamepadKey button="RB" size="sm" />
+              <span className="text-xs">Tabs</span>
+            </span>
+            <span className="text-muted-foreground/30">•</span>
+            <span className="flex items-center gap-1.5">
+              <GamepadKey button="D-Pad" size="sm" />
+              <span className="text-xs">Scroll</span>
+            </span>
           </div>
           <div className="flex items-center gap-1.5">
-            <Kbd className="text-[10px]">B / Y</Kbd>
-            <Kbd className="text-[10px]">Esc</Kbd>
-            <span>Close</span>
+            <GamepadKey button="B" size="sm" />
+            <span className="text-muted-foreground/40 text-[10px]">/</span>
+            <GamepadKey button="Y" size="sm" />
+            <span className="text-muted-foreground/30">•</span>
+            <Kbd size="sm">Esc</Kbd>
+            <span className="text-xs">Close</span>
           </div>
         </div>
       </DialogContent>

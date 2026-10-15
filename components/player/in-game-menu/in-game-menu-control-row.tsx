@@ -1,7 +1,7 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { Kbd } from "@/components/ui/kbd"
+import { KeyBadge } from "@/components/ui/kbd"
 import { cn } from "@/lib/utils"
 import { getGamepadButtonName, getKeyboardKeyName } from "./controls-helpers"
 import type { NesActionKey } from "@/lib/storage/controls-storage"
@@ -76,7 +76,12 @@ export const InGameMenuControlRow = ({
         {isListening ? (
           <span className="animate-pulse text-amber-300 font-bold">Pressing...</span>
         ) : (
-          <Kbd className="font-semibold">{displayVal}</Kbd>
+          <KeyBadge
+            combo={displayVal}
+            mode={mode}
+            size="sm"
+            variant={isSelected ? "solid" : "default"}
+          />
         )}
       </Button>
     </div>

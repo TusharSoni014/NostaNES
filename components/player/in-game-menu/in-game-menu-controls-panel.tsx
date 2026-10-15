@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import { CheckCircle2Icon, RotateCcwIcon, SaveIcon, SlidersIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Kbd } from "@/components/ui/kbd"
+import { GamepadKey } from "@/components/ui/kbd"
 import { ACTION_LABELS, type NesActionKey } from "@/lib/storage/controls-storage"
 import { scrollNearestIntoView } from "@/lib/motion/scroll-into-view"
 import { playUiSound } from "@/lib/ui-sounds"
@@ -50,7 +50,7 @@ export const InGameMenuControlsPanel = ({
 
   const setTab = (tab: "keyboard" | "gamepad") => {
     setActiveTab(tab)
-    playUiSound("option_selected")
+    playUiSound("navigation")
   }
 
   useMenuNavigation<PanelItem>({
@@ -95,7 +95,7 @@ export const InGameMenuControlsPanel = ({
             className="text-xs h-7 px-2.5 gap-1.5"
           >
             Keyboard
-            <Kbd className="text-[9px] hidden sm:inline-block">LB</Kbd>
+            <GamepadKey button="LB" size="sm" className="hidden sm:inline-flex" />
           </Button>
           <Button
             variant={activeTab === "gamepad" ? "default" : "ghost"}
@@ -104,7 +104,7 @@ export const InGameMenuControlsPanel = ({
             className="text-xs h-7 px-2.5 gap-1.5"
           >
             Gamepad
-            <Kbd className="text-[9px] hidden sm:inline-block">RB</Kbd>
+            <GamepadKey button="RB" size="sm" className="hidden sm:inline-flex" />
           </Button>
         </div>
       </div>

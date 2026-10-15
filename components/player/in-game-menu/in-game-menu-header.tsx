@@ -50,8 +50,9 @@ export const InGameMenuHeader = ({ gameTitle, onResume }: InGameMenuHeaderProps)
           <PlayIcon className="size-3.5 fill-current" />
           <span>Resume</span>
           <span className="hidden sm:inline-flex items-center gap-1 opacity-70">
-            <Kbd>F1</Kbd>
-            <Kbd>ESC</Kbd>
+            <Kbd size="sm">F1</Kbd>
+            <span className="text-white/30 text-[10px] font-mono">/</span>
+            <Kbd size="sm">Esc</Kbd>
           </span>
         </Button>
       </div>

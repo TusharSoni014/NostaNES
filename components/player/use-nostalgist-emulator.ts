@@ -86,11 +86,11 @@ export function useNostalgistEmulator({
   }
 
   const pressDown = useCallback((action: string) => {
-    try { instanceRef.current?.pressDown?.(action as any) } catch {}
+    try { instanceRef.current?.pressDown?.(action) } catch {}
   }, [])
 
   const pressUp = useCallback((action: string) => {
-    try { instanceRef.current?.pressUp?.(action as any) } catch {}
+    try { instanceRef.current?.pressUp?.(action) } catch {}
   }, [])
 
   const loadCheats = useCallback(async (content: string) => {
@@ -163,16 +163,18 @@ export function useNostalgistEmulator({
         const { Nostalgist } = await import("nostalgist")
         if (stoppedRef.current) return
 
-        const rom = new URL(
-          `/api/rom?file=${encodeURIComponent(game.file)}`,
-          window.location.origin,
-        ).href
+        const rom = game.customRom
+          ? { fileName: game.file, fileContent: game.customRom }
+          : new URL(
+              `/api/rom?file=${encodeURIComponent(game.file)}`,
+              window.location.origin,
+            ).href
 
         const emulator = await Nostalgist.nes({
           rom,
           element: canvas,
           signal: controller.signal,
-          cache: { core: true, rom: true },
+          cache: game.customRom ? { core: true, rom: false } : { core: true, rom: true },
           size: { width: 256 * scale, height: 240 * scale },
           style: { width: "100%", height: "100%", display: "block", backgroundColor: "black" },
           retroarchConfig: getRetroArchInputConfig(),
@@ -237,7 +239,7 @@ export function useNostalgistEmulator({
     return () => {
       unload()
     }
-  }, [canvasRef, game.file, onPhaseChange, reloadKey, unload])
+  }, [canvasRef, game.file, game.customRom, onPhaseChange, reloadKey, unload])
 
   return {
     pause, resume, saveState, loadState, unload, pressDown, pressUp,

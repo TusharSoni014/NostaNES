@@ -13,6 +13,7 @@ export type Game = {
   region: string
   tags: string[]
   year?: number
+  customRom?: File | Blob
 }
 
 export type GameGroup = Game & {
@@ -57,7 +58,7 @@ export function isSafeNesFile(file: string) {
 }
 
 export function parseRomFile(file: string, year?: number): Game {
-  const base = file.replace(/\.nes$/i, "")
+  const base = file.replace(/\.(nes|zip)$/i, "")
   const tags: string[] = []
   let region = "NES"
 

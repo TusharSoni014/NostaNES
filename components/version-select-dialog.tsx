@@ -5,7 +5,7 @@ import { CheckIcon, PlayIcon } from "lucide-react"
 import { ResponsiveModal } from "@/components/ui/responsive-modal"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Kbd } from "@/components/ui/kbd"
+import { Kbd, GamepadKey } from "@/components/ui/kbd"
 import { useMenuNavigation } from "@/hooks/use-menu-navigation"
 import { cn } from "@/lib/utils"
 import { scrollNearestIntoView } from "@/lib/motion/scroll-into-view"
@@ -97,8 +97,13 @@ export function VersionSelectDialog({
       className="max-w-md"
       footer={
         <div className="flex w-full items-center justify-between gap-2 select-none">
-          <Button variant="ghost" size="sm" onClick={dismiss} className="text-xs text-white/60 hover:text-white gap-1">
-            Cancel <Kbd className="text-[10px] bg-white/10">Esc / B</Kbd>
+          <Button variant="ghost" size="sm" onClick={dismiss} className="text-xs text-white/70 hover:text-white gap-2">
+            <span>Cancel</span>
+            <span className="flex items-center gap-1">
+              <Kbd size="sm" variant="subtle">Esc</Kbd>
+              <span className="text-white/30 text-[10px] font-mono">/</span>
+              <GamepadKey button="B" size="sm" />
+            </span>
           </Button>
 
           <Button
@@ -108,8 +113,12 @@ export function VersionSelectDialog({
             className="gap-1.5 text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white shadow-md"
           >
             <PlayIcon className="size-3.5 fill-current" />
-            Play Version
-            <Kbd className="text-[10px] bg-black/40 text-white">Enter / A</Kbd>
+            <span>Play Version</span>
+            <span className="flex items-center gap-1 ml-0.5">
+              <Kbd size="sm" variant="solid">Enter</Kbd>
+              <span className="text-white/40 text-[10px] font-mono">/</span>
+              <GamepadKey button="A" size="sm" />
+            </span>
           </Button>
         </div>
       }
@@ -138,8 +147,10 @@ export function VersionSelectDialog({
               role="option"
               aria-selected={isCurrent}
               onClick={() => {
-                setSelectedId(ver.id)
-                playUiSound("option_selected")
+                if (selected?.id !== ver.id) {
+                  setSelectedId(ver.id)
+                  playUiSound("navigation")
+                }
               }}
               onDoubleClick={() => handleConfirm(ver)}
               className={cn(

@@ -1,9 +1,9 @@
 "use client"
 
 import { motion } from "motion/react"
-import { cn } from "cn"
+import { cn } from "@/lib/utils"
 
-type SwitchProps = {
+export type SwitchProps = {
   checked: boolean
   onCheckedChange?: (checked: boolean) => void
   disabled?: boolean
@@ -32,18 +32,19 @@ export function Switch({
         onCheckedChange?.(!checked)
       }}
       className={cn(
-        "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border outline-none transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-blue-300 disabled:pointer-events-none disabled:opacity-50",
-        checked ? "border-blue-300 bg-blue-500" : "border-white/20 bg-white/10",
+        "relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 disabled:cursor-not-allowed disabled:opacity-50",
+        checked
+          ? "bg-blue-600 shadow-[inset_0_1px_2px_rgba(0,0,0,0.25)]"
+          : "bg-white/20 hover:bg-white/25",
         className,
       )}
     >
       <motion.span
         aria-hidden
         initial={false}
-        animate={{ x: checked ? 16 : 2 }}
-        transition={{ type: "spring", stiffness: 520, damping: 34, mass: 0.6 }}
-        style={{ willChange: "transform" }}
-        className="block size-3.5 rounded-full bg-white shadow-sm"
+        animate={{ x: checked ? 16 : 0 }}
+        transition={{ type: "spring", stiffness: 500, damping: 30 }}
+        className="pointer-events-none block size-4 rounded-full bg-white shadow-md ring-0"
       />
     </button>
   )

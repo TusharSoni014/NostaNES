@@ -318,6 +318,15 @@ export const InGameMenuCheatsPanel = ({
           <span className="rounded-full border border-blue-300/40 bg-blue-500/20 px-2 py-0.5 text-[11px] font-semibold text-blue-100">
             {regionLabel}
           </span>
+          {showingCheats ? (
+            <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-[11px] text-white/80">
+              <span className={enabledCount > 0 ? "font-semibold text-emerald-400" : "text-white/60"}>
+                {enabledCount}
+              </span>
+              <span className="mx-1 text-white/30">/</span>
+              <span>{viewRows.length} active</span>
+            </span>
+          ) : null}
         </div>
         <p className="mt-1 text-xs text-white/70">
           Running {game.title} · {regionLabel}
@@ -329,6 +338,7 @@ export const InGameMenuCheatsPanel = ({
         <CheatCodes
           fileName={viewName}
           enabledCount={enabledCount}
+          totalCount={viewRows.length}
           busy={busy}
           isFocused={isFocused}
           activeItem={activeItem}
@@ -513,6 +523,7 @@ function CheatFiles({
 function CheatCodes({
   fileName,
   enabledCount,
+  totalCount,
   busy,
   isFocused,
   activeItem,
@@ -527,6 +538,7 @@ function CheatCodes({
 }: {
   fileName: string
   enabledCount: number
+  totalCount: number
   busy: string
   isFocused: boolean
   activeItem: string
@@ -543,11 +555,43 @@ function CheatCodes({
 
   return (
     <>
-      <div className="shrink-0 flex flex-wrap items-center justify-between gap-2">
-        <p className="min-w-0 text-xs text-white/70">
-          <span className="block truncate">{fileTitle(fileName)}</span>
-          <span className="text-white/45">{enabledCount} on{busy ? " · Loading..." : ""}</span>
-        </p>
+      <div className="shrink-0 flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0 flex flex-col gap-1">
+          <span className="block truncate font-semibold text-xs text-white">
+            {fileTitle(fileName)}
+          </span>
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <span
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium transition-colors",
+                enabledCount > 0
+                  ? "border border-emerald-500/40 bg-emerald-500/15 text-emerald-300"
+                  : "border border-white/10 bg-white/5 text-white/50",
+              )}
+            >
+              <span
+                className={cn(
+                  "size-1.5 rounded-full",
+                  enabledCount > 0 ? "bg-emerald-400 animate-pulse" : "bg-white/30",
+                )}
+              />
+              <span>{enabledCount} activated</span>
+            </span>
+            <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[11px] text-white/70">
+              <span className="font-semibold text-white">{totalCount}</span> available
+            </span>
+            {cheatQuery.trim() && visibleCheats.length !== totalCount ? (
+              <span className="text-[11px] text-white/40">
+                ({visibleCheats.length} matching search)
+              </span>
+            ) : null}
+            {busy ? (
+              <span className="text-[11px] text-blue-300 animate-pulse">
+                Loading...
+              </span>
+            ) : null}
+          </div>
+        </div>
         <div className="flex flex-wrap items-center gap-1.5">
           <Button
             type="button"

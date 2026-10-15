@@ -81,11 +81,20 @@ export function getR2Client(): S3Client {
   })
 }
 
+let cachedGames: { data: Game[]; timestamp: number } | null = null
+const CACHE_TTL_MS = 60_000 // 60 seconds in-memory cache
+
 /**
  * Dynamically fetches all game ROMs directly from the Cloudflare R2 bucket.
  * No static JSON files required; newly uploaded games appear automatically.
+ * Cached in-memory for 60 seconds to prevent blocking during page reloads.
  */
-export async function fetchGamesFromBucket(): Promise<Game[]> {
+export async function fetchGamesFromBucket(forceRefresh = false): Promise<Game[]> {
+  const now = Date.now()
+  if (!forceRefresh && cachedGames && now - cachedGames.timestamp < CACHE_TTL_MS) {
+    return cachedGames.data
+  }
+
   const client = getR2Client()
   let continuationToken: string | undefined = undefined
   const seen = new Set<string>()
@@ -118,6 +127,7 @@ export async function fetchGamesFromBucket(): Promise<Game[]> {
 
   // Sort games alphabetically by title
   games.sort((a, b) => a.title.localeCompare(b.title))
+  cachedGames = { data: games, timestamp: now }
 
   return games
 }

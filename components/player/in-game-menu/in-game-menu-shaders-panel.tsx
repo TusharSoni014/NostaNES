@@ -1,10 +1,10 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { CheckIcon, SparklesIcon, TvIcon } from "lucide-react";
+import { CheckIcon, TvIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Kbd } from "@/components/ui/kbd";
+import { Kbd, GamepadKey } from "@/components/ui/kbd";
 import {
   type GameShader,
   type ShaderOption,
@@ -146,8 +146,12 @@ export function InGameMenuShadersPanel({
 
       {/* Footer action bar */}
       <div className="shrink-0 mt-auto flex items-center justify-between pt-3 border-t border-white/10 text-xs text-white/60">
-        <span>
-          Press <Kbd className="text-[10px]">A / Enter</Kbd> to activate shader
+        <span className="flex items-center gap-1">
+          <span>Press</span>
+          <GamepadKey button="A" size="sm" />
+          <span className="text-white/30 text-[10px] font-mono">/</span>
+          <Kbd size="sm">Enter</Kbd>
+          <span>to activate shader</span>
         </span>
         <Button
           size="sm"
