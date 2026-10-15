@@ -1,211 +1,227 @@
-"use client"
+"use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { FolderOpenIcon, Gamepad2Icon, HeartIcon, PlayIcon, SearchIcon } from "lucide-react"
-import Image from "next/image"
-import { BootScreen } from "@/components/boot-screen"
-import { Clock } from "@/components/clock"
-import { ControlsDialog } from "@/components/controls-dialog"
-import { GameDetailsPanel } from "@/components/game-details-panel"
-import { GameList } from "@/components/game-list"
-import { GameListSkeleton } from "@/components/game-list-skeleton"
-import { GamepadStatusIndicator } from "@/components/gamepad-status-indicator"
-import { PlayerStage } from "@/components/player-stage"
-import { useShelfNavigation } from "@/components/use-shelf-navigation"
-import { WaveField } from "@/components/wave-field"
-import { Button } from "@/components/ui/button"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  FolderOpenIcon,
+  Gamepad2Icon,
+  HeartIcon,
+  PlayIcon,
+  SearchIcon,
+} from "lucide-react";
+import Image from "next/image";
+import { BootScreen } from "@/components/boot-screen";
+import { Clock } from "@/components/clock";
+import { ControlsDialog } from "@/components/controls-dialog";
+import { GameDetailsPanel } from "@/components/game-details-panel";
+import { GameList } from "@/components/game-list";
+import { GameListSkeleton } from "@/components/game-list-skeleton";
+import { GamepadStatusIndicator } from "@/components/gamepad-status-indicator";
+import { PlayerStage } from "@/components/player-stage";
+import { useShelfNavigation } from "@/components/use-shelf-navigation";
+import { WaveField } from "@/components/wave-field";
+import { Button } from "@/components/ui/button";
 import {
   Empty,
   EmptyDescription,
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
-} from "@/components/ui/empty"
-import { Field, FieldLabel } from "@/components/ui/field"
+} from "@/components/ui/empty";
+import { Field, FieldLabel } from "@/components/ui/field";
 import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
-} from "@/components/ui/input-group"
-import { Kbd, GamepadKey } from "@/components/ui/kbd"
-import { Separator } from "@/components/ui/separator"
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+} from "@/components/ui/input-group";
+import { Kbd, GamepadKey } from "@/components/ui/kbd";
+import { Separator } from "@/components/ui/separator";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "@/components/ui/tooltip"
-import { motion, AnimatePresence } from "motion/react"
-import { useLibrary } from "@/hooks/use-library"
-import { useInputMode } from "@/hooks/use-input-mode"
-import { useFavorites } from "@/hooks/use-favorites"
-import { enableUiSounds, playUiSound } from "@/lib/ui-sounds"
-import { type Game, type GameGroup, groupGames, parseRomFile } from "@/lib/games"
-import { VersionSelectDialog } from "@/components/version-select-dialog"
-import { cn } from "@/lib/utils"
+} from "@/components/ui/tooltip";
+import { motion, AnimatePresence } from "motion/react";
+import { useLibrary } from "@/hooks/use-library";
+import { useInputMode } from "@/hooks/use-input-mode";
+import { useFavorites } from "@/hooks/use-favorites";
+import { enableUiSounds, playUiSound } from "@/lib/ui-sounds";
+import {
+  type Game,
+  type GameGroup,
+  groupGames,
+  parseRomFile,
+} from "@/lib/games";
+import { VersionSelectDialog } from "@/components/version-select-dialog";
+import { cn } from "@/lib/utils";
 
 export type HomeStageProps = {
-  initialGames?: Game[]
-}
+  initialGames?: Game[];
+};
 
 export function HomeStage({ initialGames }: HomeStageProps = {}) {
-  const inputMode = useInputMode()
-  const { isFavorite, favoritesCount } = useFavorites()
-  const library = useLibrary(initialGames)
-  const games = library.data ?? null
-  const failed = library.isError && !library.isFetching
-  const [customGames, setCustomGames] = useState<Game[]>([])
-  const [loadError, setLoadError] = useState<string | null>(null)
-  const [isDragging, setIsDragging] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const [index, setIndex] = useState(0)
-  const indexRef = useRef(0)
-  const [playing, setPlaying] = useState<Game | null>(null)
-  const [shaderReady, setShaderReady] = useState(false)
-  const [presented, setPresented] = useState(false)
-  const [bootMounted, setBootMounted] = useState(true)
-  const [entrance, setEntrance] = useState(true)
-  const [controlsOpen, setControlsOpen] = useState(false)
-  const [query, setQuery] = useState("")
-  const [region, setRegion] = useState("All")
-  const [favoritesOnly, setFavoritesOnly] = useState(false)
-  const [versionSelectGroup, setVersionSelectGroup] = useState<GameGroup | null>(null)
+  const inputMode = useInputMode();
+  const { isFavorite, favoritesCount } = useFavorites();
+  const library = useLibrary(initialGames);
+  const games = library.data ?? null;
+  const failed = library.isError && !library.isFetching;
+  const [customGames, setCustomGames] = useState<Game[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [index, setIndex] = useState(0);
+  const indexRef = useRef(0);
+  const [playing, setPlaying] = useState<Game | null>(null);
+  const [shaderReady, setShaderReady] = useState(false);
+  const [presented, setPresented] = useState(false);
+  const [bootMounted, setBootMounted] = useState(true);
+  const [entrance, setEntrance] = useState(true);
+  const [controlsOpen, setControlsOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [region, setRegion] = useState("All");
+  const [favoritesOnly, setFavoritesOnly] = useState(false);
+  const [versionSelectGroup, setVersionSelectGroup] =
+    useState<GameGroup | null>(null);
 
   const handleLoadRomFile = useCallback((file: File) => {
-    const name = file.name
-    const isNes = name.toLowerCase().endsWith(".nes")
-    const isZip = name.toLowerCase().endsWith(".zip")
+    const name = file.name;
+    const isNes = name.toLowerCase().endsWith(".nes");
+    const isZip = name.toLowerCase().endsWith(".zip");
 
     if (!isNes && !isZip) {
-      setLoadError("Please select a valid NES ROM file (.nes or .zip)")
-      playUiSound("error")
-      return
+      setLoadError("Please select a valid NES ROM file (.nes or .zip)");
+      playUiSound("error");
+      return;
     }
 
-    setLoadError(null)
-    const parsed = parseRomFile(name)
+    setLoadError(null);
+    const parsed = parseRomFile(name);
     const customGame: Game = {
       ...parsed,
       id: `custom-${Date.now()}-${name}`,
       file: name,
       tags: [...parsed.tags, "Local ROM"],
       customRom: file,
-    }
+    };
 
     setCustomGames((prev) => {
-      const filtered = prev.filter((g) => g.file !== name)
-      return [customGame, ...filtered]
-    })
+      const filtered = prev.filter((g) => g.file !== name);
+      return [customGame, ...filtered];
+    });
 
-    playUiSound("game_start")
-    setPlaying(customGame)
-  }, [])
-
-  useEffect(() => {
-    if (!loadError) return
-    const timer = window.setTimeout(() => setLoadError(null), 4000)
-    return () => window.clearTimeout(timer)
-  }, [loadError])
+    playUiSound("game_start");
+    setPlaying(customGame);
+  }, []);
 
   useEffect(() => {
-    if (failed) playUiSound("error")
-  }, [failed])
+    if (!loadError) return;
+    const timer = window.setTimeout(() => setLoadError(null), 4000);
+    return () => window.clearTimeout(timer);
+  }, [loadError]);
 
   useEffect(() => {
-    const id = window.setTimeout(() => setShaderReady(true), 2500)
-    return () => window.clearTimeout(id)
-  }, [])
+    if (failed) playUiSound("error");
+  }, [failed]);
 
   useEffect(() => {
-    if (!presented) return
-    const trimmed = query.trim()
-    if (!trimmed) return
-    const id = window.setTimeout(() => playUiSound("navigation"), 450)
-    return () => window.clearTimeout(id)
-  }, [presented, query])
+    const id = window.setTimeout(() => setShaderReady(true), 2500);
+    return () => window.clearTimeout(id);
+  }, []);
+
+  useEffect(() => {
+    if (!presented) return;
+    const trimmed = query.trim();
+    if (!trimmed) return;
+    const id = window.setTimeout(() => playUiSound("navigation"), 450);
+    return () => window.clearTimeout(id);
+  }, [presented, query]);
 
   const allGames = useMemo(() => {
-    if (!games) return customGames.length > 0 ? customGames : null
-    return [...customGames, ...games]
-  }, [customGames, games])
+    if (!games) return customGames.length > 0 ? customGames : null;
+    return [...customGames, ...games];
+  }, [customGames, games]);
 
   const groupedGames = useMemo(() => {
-    if (!allGames) return null
-    return groupGames(allGames)
-  }, [allGames])
+    if (!allGames) return null;
+    return groupGames(allGames);
+  }, [allGames]);
 
   const regions = useMemo(() => {
-    const found = new Set<string>()
+    const found = new Set<string>();
     for (const group of groupedGames ?? []) {
-      for (const r of group.regions) found.add(r)
+      for (const r of group.regions) found.add(r);
     }
-    return ["All", ...[...found].sort()]
-  }, [groupedGames])
+    return ["All", ...[...found].sort()];
+  }, [groupedGames]);
 
   const visible = useMemo(() => {
-    if (!groupedGames) return []
-    const needle = query.trim().toLowerCase()
+    if (!groupedGames) return [];
+    const needle = query.trim().toLowerCase();
     return groupedGames.filter((group) => {
-      if (favoritesOnly && !isFavorite(group)) return false
-      const regionMatches = region === "All" || group.regions.includes(region)
-      const versionFiles = group.versions.map((v) => `${v.file} ${v.tags.join(" ")}`).join(" ")
-      const text = `${group.title} ${group.tags.join(" ")} ${versionFiles}`.toLowerCase()
-      return regionMatches && (needle.length === 0 || text.includes(needle))
-    })
-  }, [groupedGames, query, region, favoritesOnly, isFavorite])
+      if (favoritesOnly && !isFavorite(group)) return false;
+      const regionMatches = region === "All" || group.regions.includes(region);
+      const versionFiles = group.versions
+        .map((v) => `${v.file} ${v.tags.join(" ")}`)
+        .join(" ");
+      const text =
+        `${group.title} ${group.tags.join(" ")} ${versionFiles}`.toLowerCase();
+      return regionMatches && (needle.length === 0 || text.includes(needle));
+    });
+  }, [groupedGames, query, region, favoritesOnly, isFavorite]);
 
-  const count = visible.length
-  const selected = visible[index] ?? null
+  const count = visible.length;
+  const selected = visible[index] ?? null;
 
   const move = useCallback(
     (direction: -1 | 1) => {
-      const current = indexRef.current
-      const next = current + direction
-      if (next < 0 || next > count - 1) return
-      indexRef.current = next
-      setIndex(next)
-      playUiSound("navigation")
+      const current = indexRef.current;
+      const next = current + direction;
+      if (next < 0 || next > count - 1) return;
+      indexRef.current = next;
+      setIndex(next);
+      playUiSound("navigation");
     },
     [count],
-  )
+  );
 
   const jump = useCallback(
     (step: number) => {
-      const current = indexRef.current
-      const next = Math.max(0, Math.min(count - 1, current + step))
-      if (next === current) return
-      indexRef.current = next
-      setIndex(next)
-      playUiSound("navigation")
+      const current = indexRef.current;
+      const next = Math.max(0, Math.min(count - 1, current + step));
+      if (next === current) return;
+      indexRef.current = next;
+      setIndex(next);
+      playUiSound("navigation");
     },
     [count],
-  )
+  );
 
   const launch = useCallback(
     (targetIndex?: number) => {
-      const target = targetIndex !== undefined ? visible[targetIndex] : selected
-      if (!target) return
+      const target =
+        targetIndex !== undefined ? visible[targetIndex] : selected;
+      if (!target) return;
 
       if (target.versions && target.versions.length > 1) {
-        playUiSound("option_selected")
-        setVersionSelectGroup(target)
-        return
+        playUiSound("option_selected");
+        setVersionSelectGroup(target);
+        return;
       }
 
-      playUiSound("game_start")
-      setPlaying(target.versions[0] ?? target)
+      playUiSound("game_start");
+      setPlaying(target.versions[0] ?? target);
     },
     [visible, selected],
-  )
+  );
 
   const revealShelf = useCallback(() => {
-    enableUiSounds()
-    setPresented(true)
-  }, [])
+    enableUiSounds();
+    setPresented(true);
+  }, []);
 
   const toggleControls = useCallback(() => {
-    setControlsOpen((prev) => !prev)
-  }, [])
+    setControlsOpen((prev) => !prev);
+  }, []);
 
   // Hook handles Keyboard, Gamepad (Xbox/PlayStation/generic), and mouse wheel
   useShelfNavigation({
@@ -216,32 +232,32 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
     jump,
     launch,
     onToggleControls: toggleControls,
-  })
+  });
 
   return (
     <div
       onDragOver={(e) => {
-        e.preventDefault()
-        e.stopPropagation()
-        setIsDragging(true)
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(true);
       }}
       onDragEnter={(e) => {
-        e.preventDefault()
-        e.stopPropagation()
-        setIsDragging(true)
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(true);
       }}
       onDragLeave={(e) => {
-        e.preventDefault()
-        e.stopPropagation()
-        if (e.currentTarget.contains(e.relatedTarget as Node)) return
-        setIsDragging(false)
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+        setIsDragging(false);
       }}
       onDrop={(e) => {
-        e.preventDefault()
-        e.stopPropagation()
-        setIsDragging(false)
-        const file = e.dataTransfer.files?.[0]
-        if (file) handleLoadRomFile(file)
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(false);
+        const file = e.dataTransfer.files?.[0];
+        if (file) handleLoadRomFile(file);
       }}
       className="relative flex h-dvh flex-col overflow-hidden outline-none"
     >
@@ -253,9 +269,9 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
         aria-hidden="true"
         className="hidden"
         onChange={(e) => {
-          const file = e.target.files?.[0]
-          if (file) handleLoadRomFile(file)
-          e.target.value = ""
+          const file = e.target.files?.[0];
+          if (file) handleLoadRomFile(file);
+          e.target.value = "";
         }}
       />
 
@@ -313,7 +329,7 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
           ease: [0.16, 1, 0.3, 1],
         }}
         onAnimationComplete={() => {
-          if (presented) setEntrance(false)
+          if (presented) setEntrance(false);
         }}
         aria-hidden={!presented}
         className={`relative z-20 flex min-h-0 flex-1 origin-center flex-col will-change-[opacity,transform] ${
@@ -358,9 +374,9 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
                   value={query}
                   placeholder="Search cartridges"
                   onChange={(event) => {
-                    setQuery(event.target.value)
-                    indexRef.current = 0
-                    setIndex(0)
+                    setQuery(event.target.value);
+                    indexRef.current = 0;
+                    setIndex(0);
                   }}
                 />
               </InputGroup>
@@ -401,10 +417,10 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
               variant={favoritesOnly ? "default" : "outline"}
               size="sm"
               onClick={() => {
-                setFavoritesOnly((prev) => !prev)
-                indexRef.current = 0
-                setIndex(0)
-                playUiSound("option_selected")
+                setFavoritesOnly((prev) => !prev);
+                indexRef.current = 0;
+                setIndex(0);
+                playUiSound("option_selected");
               }}
               className={cn(
                 "h-8 gap-1.5 px-3 text-xs font-semibold shrink-0 transition-all duration-200 cursor-pointer border",
@@ -413,13 +429,20 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
                   : "border-white/10 bg-white/[0.04] text-white/75 hover:border-white/20 hover:text-white hover:bg-white/[0.08]",
               )}
             >
-              <HeartIcon className={cn("size-3.5 transition-colors", favoritesOnly ? "fill-current text-white" : "text-rose-400")} />
+              <HeartIcon
+                className={cn(
+                  "size-3.5 transition-colors",
+                  favoritesOnly ? "fill-current text-white" : "text-rose-400",
+                )}
+              />
               <span>Favorites</span>
               {favoritesCount > 0 ? (
                 <span
                   className={cn(
                     "rounded-full px-1.5 py-0.5 text-[10px] font-bold tabular-nums leading-none",
-                    favoritesOnly ? "bg-white/25 text-white" : "bg-white/10 text-white/70",
+                    favoritesOnly
+                      ? "bg-white/25 text-white"
+                      : "bg-white/10 text-white/70",
                   )}
                 >
                   {favoritesCount}
@@ -433,12 +456,12 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
               spacing={1}
               value={[region]}
               onValueChange={(next) => {
-                const value = next.at(-1) ?? "All"
-                if (value === region) return
-                setRegion(value)
-                indexRef.current = 0
-                setIndex(0)
-                playUiSound("navigation")
+                const value = next.at(-1) ?? "All";
+                if (value === region) return;
+                setRegion(value);
+                indexRef.current = 0;
+                setIndex(0);
+                playUiSound("navigation");
               }}
               className="max-w-full flex-wrap"
             >
@@ -469,14 +492,15 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
                     </EmptyMedia>
                     <EmptyTitle>The library did not load</EmptyTitle>
                     <EmptyDescription>
-                      Could not fetch cartridges from the server. You can still load and play local ROMs.
+                      Could not fetch cartridges from the server. You can still
+                      load and play local ROMs.
                     </EmptyDescription>
                   </EmptyHeader>
                   <div className="mt-4 flex justify-center gap-2">
                     <Button
                       variant="outline"
                       onClick={() => {
-                        void library.refetch()
+                        void library.refetch();
                       }}
                     >
                       Retry
@@ -519,7 +543,8 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
                     </EmptyMedia>
                     <EmptyTitle>No cartridges yet</EmptyTitle>
                     <EmptyDescription>
-                      Upload NES ROM files to the R2 bucket or load your own ROM locally to play immediately.
+                      Upload NES ROM files to the R2 bucket or load your own ROM
+                      locally to play immediately.
                     </EmptyDescription>
                   </EmptyHeader>
                   <div className="mt-4 flex justify-center">
@@ -546,9 +571,17 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
                 <Empty>
                   <EmptyHeader>
                     <EmptyMedia variant="icon">
-                      {favoritesOnly ? <HeartIcon className="text-rose-400 fill-rose-500/20" /> : <SearchIcon />}
+                      {favoritesOnly ? (
+                        <HeartIcon className="text-rose-400 fill-rose-500/20" />
+                      ) : (
+                        <SearchIcon />
+                      )}
                     </EmptyMedia>
-                    <EmptyTitle>{favoritesOnly ? "No favorite cartridges" : "Nothing matches"}</EmptyTitle>
+                    <EmptyTitle>
+                      {favoritesOnly
+                        ? "No favorite cartridges"
+                        : "Nothing matches"}
+                    </EmptyTitle>
                     <EmptyDescription>
                       {favoritesOnly
                         ? "You haven't added any cartridges to your favorites yet. Click the heart on any cartridge to pin it here."
@@ -560,8 +593,8 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
                       <Button
                         variant="outline"
                         onClick={() => {
-                          setFavoritesOnly(false)
-                          playUiSound("navigation")
+                          setFavoritesOnly(false);
+                          playUiSound("navigation");
                         }}
                         className="gap-2"
                       >
@@ -586,10 +619,10 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
                     games={visible}
                     selectedIndex={index}
                     onSelectIndex={(next) => {
-                      if (next === indexRef.current) return
-                      indexRef.current = next
-                      setIndex(next)
-                      playUiSound("navigation")
+                      if (next === indexRef.current) return;
+                      indexRef.current = next;
+                      setIndex(next);
+                      playUiSound("navigation");
                     }}
                     onLaunch={(next) => launch(next)}
                   />
@@ -597,10 +630,7 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
 
                 {/* Right Column: Selected game preview and details (Tablet/Desktop) */}
                 <div className="hidden shrink-0 md:flex flex-col justify-center min-h-0 max-h-full">
-                  <GameDetailsPanel
-                    game={selected}
-                    onLaunch={() => launch()}
-                  />
+                  <GameDetailsPanel game={selected} onLaunch={() => launch()} />
                 </div>
               </motion.div>
             ) : null}
@@ -613,12 +643,19 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
               <>
                 <span className="flex items-center gap-1.5">
                   <GamepadKey button="D-Pad" size="sm" />
-                  <span className="text-xs font-medium text-foreground/80">Navigate</span>
+                  <span className="text-xs font-medium text-foreground/80">
+                    Navigate
+                  </span>
                 </span>
-                <Separator orientation="vertical" className="hidden h-4 sm:block" />
+                <Separator
+                  orientation="vertical"
+                  className="hidden h-4 sm:block"
+                />
                 <span className="flex items-center gap-1.5">
                   <GamepadKey button="A" size="sm" />
-                  <span className="text-xs font-medium text-foreground/80">Play</span>
+                  <span className="text-xs font-medium text-foreground/80">
+                    Play
+                  </span>
                 </span>
               </>
             ) : (
@@ -628,12 +665,19 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
                     <Kbd size="sm">↑</Kbd>
                     <Kbd size="sm">↓</Kbd>
                   </span>
-                  <span className="text-xs font-medium text-foreground/80">Navigate</span>
+                  <span className="text-xs font-medium text-foreground/80">
+                    Navigate
+                  </span>
                 </span>
-                <Separator orientation="vertical" className="hidden h-4 sm:block" />
+                <Separator
+                  orientation="vertical"
+                  className="hidden h-4 sm:block"
+                />
                 <span className="flex items-center gap-1.5">
                   <Kbd size="sm">Enter</Kbd>
-                  <span className="text-xs font-medium text-foreground/80">Play</span>
+                  <span className="text-xs font-medium text-foreground/80">
+                    Play
+                  </span>
                 </span>
               </>
             )}
@@ -647,17 +691,6 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
             </span>
           </div>
           <div className="ml-auto flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="lg"
-              onClick={() => fileInputRef.current?.click()}
-              className="gap-2 cursor-pointer"
-              aria-label="Load ROM from device"
-            >
-              <FolderOpenIcon className="size-4" />
-              <span className="hidden sm:inline">Load ROM</span>
-              <span className="sm:hidden">ROM</span>
-            </Button>
             <ControlsDialog
               open={controlsOpen}
               onOpenChange={setControlsOpen}
@@ -665,7 +698,11 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
             <Tooltip>
               <TooltipTrigger
                 render={
-                  <Button size="lg" disabled={!selected || allGames === null} onClick={() => launch()} />
+                  <Button
+                    size="lg"
+                    disabled={!selected || allGames === null}
+                    onClick={() => launch()}
+                  />
                 }
               >
                 <PlayIcon data-icon="inline-start" />
@@ -681,11 +718,11 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
         group={versionSelectGroup}
         open={Boolean(versionSelectGroup)}
         onOpenChange={(openState) => {
-          if (!openState) setVersionSelectGroup(null)
+          if (!openState) setVersionSelectGroup(null);
         }}
         onSelectVersion={(version) => {
-          setVersionSelectGroup(null)
-          setPlaying(version)
+          setVersionSelectGroup(null);
+          setPlaying(version);
         }}
       />
 
@@ -707,5 +744,5 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
         />
       ) : null}
     </div>
-  )
+  );
 }

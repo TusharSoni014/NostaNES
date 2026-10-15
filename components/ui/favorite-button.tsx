@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useState } from "react"
+import { memo, useCallback, useState } from "react"
 import { HeartIcon } from "lucide-react"
 import { motion, AnimatePresence } from "motion/react"
 import { useFavorites } from "@/hooks/use-favorites"
@@ -27,7 +27,7 @@ const BURST_PARTICLES = [
   { x: -14, y: -8, delay: 0.02 },
 ]
 
-export function FavoriteButton({
+export const FavoriteButton = memo(function FavoriteButton({
   game,
   variant = "icon",
   size = "md",
@@ -87,7 +87,7 @@ export function FavoriteButton({
         )}
       >
         <span className="relative flex items-center justify-center">
-          <HeartAnimation isFav={isFav} burstKey={burstKey} iconClass={iconSizes[size]} />
+          <HeartAnimation isFav={isFav} burstKey={burstKey} iconClass={iconSizes[size]} animated />
         </span>
         <span className="truncate">
           {showLabel ? (isFav ? "Favorited" : "Add to Fav") : isFav ? "Favorited" : "Favorite"}
@@ -100,19 +100,16 @@ export function FavoriteButton({
     return (
       <button
         type="button"
-        role="button"
         aria-pressed={isFav}
         aria-label={isFav ? `Remove ${title} from favorites` : `Add ${title} to favorites`}
         onClick={handleToggle}
         className={cn(
-          "group/fav relative inline-flex items-center justify-center p-1.5 rounded-full transition-all cursor-pointer",
-          isFav
-            ? "text-rose-400 hover:text-rose-300 hover:scale-110"
-            : "text-white/40 hover:text-white hover:scale-110",
+          "group/fav relative inline-flex items-center justify-center rounded-full p-1.5 transition-colors cursor-pointer",
+          isFav ? "text-rose-500 hover:text-rose-400" : "text-current opacity-60 hover:text-rose-400 hover:opacity-100",
           className,
         )}
       >
-        <HeartAnimation isFav={isFav} burstKey={burstKey} iconClass={iconSizes[size]} />
+        <HeartIcon className={cn(iconSizes[size], isFav ? "fill-current stroke-[2.2]" : "stroke-[1.8]")} />
       </button>
     )
   }
@@ -133,20 +130,26 @@ export function FavoriteButton({
         className,
       )}
     >
-      <HeartAnimation isFav={isFav} burstKey={burstKey} iconClass={iconSizes[size]} />
+      <HeartAnimation isFav={isFav} burstKey={burstKey} iconClass={iconSizes[size]} animated />
     </button>
   )
-}
+})
 
 function HeartAnimation({
   isFav,
   burstKey,
   iconClass,
+  animated,
 }: {
   isFav: boolean
   burstKey: number
   iconClass: string
+  animated: boolean
 }) {
+  if (!animated) {
+    return <HeartIcon className={cn(iconClass, isFav ? "fill-current stroke-[2.2]" : "stroke-[1.8]")} />
+  }
+
   return (
     <span className="relative inline-flex items-center justify-center">
       {/* Expanding Ripple Shockwave Ring when Favorited */}
