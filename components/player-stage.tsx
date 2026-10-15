@@ -22,10 +22,11 @@ import type { Game } from "@/lib/games"
 
 type PlayerStageProps = {
   game: Game
+  initialSlot?: number
   onExit: () => void
 }
 
-export const PlayerStage = ({ game, onExit }: PlayerStageProps) => {
+export const PlayerStage = ({ game, initialSlot, onExit }: PlayerStageProps) => {
   const stageRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
@@ -55,6 +56,7 @@ export const PlayerStage = ({ game, onExit }: PlayerStageProps) => {
   } = useNostalgistEmulator({
     game, canvasRef, onPhaseChange: setPhase, reloadKey: romKey,
     isPaused: inGameMenuOpen || confirmingExit,
+    initialSlot,
   })
 
   useKeyboardControls({

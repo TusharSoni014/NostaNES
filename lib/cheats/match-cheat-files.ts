@@ -38,8 +38,27 @@ const REGION_PATTERNS: Record<string, RegExp> = {
 
 const REGION_LETTERS = new Set(["j", "u", "e", "w"])
 
+const TOKEN_ALIASES: Record<string, string> = {
+  bros: "brother",
+  brother: "brother",
+  brothers: "brother",
+  dr: "doctor",
+  doctor: "doctor",
+  jr: "junior",
+  junior: "junior",
+  sr: "senior",
+  senior: "senior",
+  vs: "versus",
+  versus: "versus",
+  mr: "mister",
+  mister: "mister",
+  st: "saint",
+  saint: "saint",
+}
+
 export function cleanForSearch(name: string): string {
-  return name
+  const withoutDottedAcronyms = name.replace(/\b(?:[A-Za-z]\.){2,}/g, (match) => match.replace(/\./g, ""))
+  return withoutDottedAcronyms
     .replace(/\.(cht|nes|zip)$/i, "")
     .replace(/\s*\((?:rev|revision|ver|version)\s*[^)]*\)/gi, " ")
     .replace(/\s*\((?:game genie|action replay)\)/gi, " ")
@@ -54,10 +73,15 @@ export function cleanForSearch(name: string): string {
     .trim()
 }
 
+function normalizeToken(word: string): string {
+  const roman = ROMAN_NUMERALS[word] ?? word
+  return TOKEN_ALIASES[roman] ?? roman
+}
+
 function contentTokens(name: string): string[] {
   return cleanForSearch(name)
     .split(" ")
-    .map((word) => ROMAN_NUMERALS[word] ?? word)
+    .map((word) => normalizeToken(word))
     .filter((word) => Boolean(word) && !STOP_WORDS.has(word) && !META_TOKENS.has(word) && !REGION_LETTERS.has(word))
 }
 
@@ -113,9 +137,11 @@ function mentionsRegion(name: string, region: string): boolean {
 }
 
 function tokenMatches(token: string, query: string): boolean {
-  if (token === query) return true
-  if (query.length < 3) return false
-  return token.startsWith(query) || (query.length >= 4 && token.includes(query))
+  const canonToken = normalizeToken(token)
+  const canonQuery = normalizeToken(query)
+  if (canonToken === canonQuery) return true
+  if (canonQuery.length < 3) return false
+  return canonToken.startsWith(canonQuery) || (canonQuery.length >= 4 && canonToken.includes(canonQuery))
 }
 
 export function matchSearchQuery(name: string, query: string): boolean {
@@ -146,6 +172,10 @@ function scoreCheatFile(
   const cleanName = cleanForSearch(name)
   if (cleanName === cleanTitle || cleanName === cleanRom) return 960
   if (cheatTokens.join(" ") === gameTokens.join(" ")) return 940
+
+  const compactCheat = cheatTokens.join("")
+  const compactGame = gameTokens.join("")
+  if (compactCheat.length >= 6 && compactCheat === compactGame) return 930
 
   const leadingTokens = contentTokens(leadingTitle(name))
   const hasSubtitle = /\s+-\s+|:\s+/.test(nameWithoutExt)
@@ -192,17 +222,23 @@ export function matchCheatFiles(
   title: string,
   romFile = "",
 ): CheatFileMatch[] {
-  const source = title || romFile
-  const gameTokens = contentTokens(source)
   const cleanTitle = cleanForSearch(title)
   const cleanRom = cleanForSearch(romFile)
   const romBase = romFile.replace(/\.(nes|zip)$/i, "")
   const romRegion = detectRegion(`${romFile} ${title}`)
+  const titleTokens = contentTokens(title)
+  const romTokens = contentTokens(romFile)
+  const tokenSets = [titleTokens]
+  if (romTokens.join(" ") !== titleTokens.join(" ")) tokenSets.push(romTokens)
 
   const scored: { name: string; score: number; exactFile: boolean }[] = []
 
   for (const name of names) {
-    const baseScore = scoreCheatFile(name, gameTokens, cleanTitle, cleanRom, romBase)
+    let baseScore = 0
+    for (const gameTokens of tokenSets) {
+      if (gameTokens.length === 0) continue
+      baseScore = Math.max(baseScore, scoreCheatFile(name, gameTokens, cleanTitle, cleanRom, romBase))
+    }
     if (baseScore < 500) continue
     const nameWithoutExt = name.replace(/\.cht$/i, "")
     scored.push({

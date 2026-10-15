@@ -12,7 +12,7 @@ import Image from "next/image";
 import { BootScreen } from "@/components/boot-screen";
 import { Clock } from "@/components/clock";
 import { ControlsDialog } from "@/components/controls-dialog";
-import { GameDetailsPanel } from "@/components/game-details-panel";
+import { GameHub } from "@/components/game-hub/game-hub";
 import { GameList } from "@/components/game-list";
 import { GameListSkeleton } from "@/components/game-list-skeleton";
 import { GamepadStatusIndicator } from "@/components/gamepad-status-indicator";
@@ -55,6 +55,10 @@ import {
 import { VersionSelectDialog } from "@/components/version-select-dialog";
 import { cn } from "@/lib/utils";
 
+function isGameGroup(game: Game | GameGroup): game is GameGroup {
+  return "versions" in game && Array.isArray((game as GameGroup).versions);
+}
+
 export type HomeStageProps = {
   initialGames?: Game[];
 };
@@ -71,7 +75,7 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [index, setIndex] = useState(0);
   const indexRef = useRef(0);
-  const [playing, setPlaying] = useState<Game | null>(null);
+  const [playing, setPlaying] = useState<{ game: Game; slot?: number } | null>(null);
   const [shaderReady, setShaderReady] = useState(false);
   const [presented, setPresented] = useState(false);
   const [bootMounted, setBootMounted] = useState(true);
@@ -110,7 +114,7 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
     });
 
     playUiSound("game_start");
-    setPlaying(customGame);
+    setPlaying({ game: customGame });
   }, []);
 
   useEffect(() => {
@@ -197,19 +201,21 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
   );
 
   const launch = useCallback(
-    (targetIndex?: number) => {
+    (targetIndex?: number, specificGame?: Game, slot?: number) => {
       const target =
-        targetIndex !== undefined ? visible[targetIndex] : selected;
+        specificGame ??
+        (targetIndex !== undefined ? visible[targetIndex] : selected);
       if (!target) return;
 
-      if (target.versions && target.versions.length > 1) {
+      if (!specificGame && isGameGroup(target) && target.versions.length > 1 && !slot) {
         playUiSound("option_selected");
         setVersionSelectGroup(target);
         return;
       }
 
       playUiSound("game_start");
-      setPlaying(target.versions[0] ?? target);
+      const gameToPlay = isGameGroup(target) ? (target.versions[0] ?? target) : target;
+      setPlaying({ game: specificGame ?? gameToPlay, slot });
     },
     [visible, selected],
   );
@@ -628,9 +634,12 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
                   />
                 </div>
 
-                {/* Right Column: Selected game preview and details (Tablet/Desktop) */}
-                <div className="hidden shrink-0 md:flex flex-col justify-center min-h-0 max-h-full">
-                  <GameDetailsPanel game={selected} onLaunch={() => launch()} />
+                {/* Right Column: Interactive Game Hub (Tablet/Desktop) */}
+                <div className="hidden shrink-0 md:flex flex-col h-full min-h-0">
+                  <GameHub
+                    game={selected}
+                    onLaunch={(ver, slot) => launch(undefined, ver, slot)}
+                  />
                 </div>
               </motion.div>
             ) : null}
@@ -722,15 +731,16 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
         }}
         onSelectVersion={(version) => {
           setVersionSelectGroup(null);
-          setPlaying(version);
+          setPlaying({ game: version });
         }}
       />
 
       <AnimatePresence>
         {playing ? (
           <PlayerStage
-            key={playing.id || playing.file}
-            game={playing}
+            key={(playing.game.id || playing.game.file) + (playing.slot ? `_slot${playing.slot}` : "")}
+            game={playing.game}
+            initialSlot={playing.slot}
             onExit={() => setPlaying(null)}
           />
         ) : null}

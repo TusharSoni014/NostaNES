@@ -9,6 +9,7 @@ import { applyCheatSession } from "@/lib/cheats/apply-cheat-session"
 import type { AppliedCheat, EmulatorCheatControls } from "@/lib/cheats/emulator-cheats"
 import type { Game } from "@/lib/games"
 import { getCheatSession } from "@/lib/storage/cheat-storage"
+import { loadGameState } from "@/lib/storage/save-state-storage"
 
 type UseNostalgistOptions = {
   game: Game
@@ -16,6 +17,7 @@ type UseNostalgistOptions = {
   onPhaseChange: (phase: "loading" | "ready" | "error") => void
   reloadKey?: number
   isPaused?: boolean
+  initialSlot?: number
 }
 
 // Guarantee NES loader displays for at least one second
@@ -36,7 +38,7 @@ function setAudioContextState(emu: Nostalgist | null, state: "suspend" | "resume
 }
 
 export function useNostalgistEmulator({
-  game, canvasRef, onPhaseChange, reloadKey = 0, isPaused = false,
+  game, canvasRef, onPhaseChange, reloadKey = 0, isPaused = false, initialSlot,
 }: UseNostalgistOptions) {
   const instanceRef = useRef<Nostalgist | null>(null)
   const isPausedRef = useRef(Boolean(isPaused))
@@ -199,6 +201,18 @@ export function useNostalgistEmulator({
               }
               if (stoppedRef.current) return
 
+              if (initialSlot && !stoppedRef.current) {
+                try {
+                  const saveRecord = await loadGameState(game.file, initialSlot)
+                  if (saveRecord?.stateBlob && !stoppedRef.current) {
+                    await emu.loadState(saveRecord.stateBlob)
+                  }
+                } catch (err) {
+                  console.error("Failed to load initial save state slot", initialSlot, err)
+                }
+              }
+              if (stoppedRef.current) return
+
               if (isPausedRef.current) {
                 try {
                   emu.pause()
@@ -239,7 +253,7 @@ export function useNostalgistEmulator({
     return () => {
       unload()
     }
-  }, [canvasRef, game.file, game.customRom, onPhaseChange, reloadKey, unload])
+  }, [canvasRef, game.file, game.customRom, initialSlot, onPhaseChange, reloadKey, unload])
 
   return {
     pause, resume, saveState, loadState, unload, pressDown, pressUp,
