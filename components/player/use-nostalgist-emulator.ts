@@ -85,12 +85,12 @@ export function useNostalgistEmulator({
     }
   }
 
-  const pressDown = useCallback((action: string) => {
-    try { instanceRef.current?.pressDown?.(action) } catch {}
+  const pressDown = useCallback((action: string, player = 1) => {
+    try { instanceRef.current?.pressDown?.({ button: action, player }) } catch {}
   }, [])
 
-  const pressUp = useCallback((action: string) => {
-    try { instanceRef.current?.pressUp?.(action) } catch {}
+  const pressUp = useCallback((action: string, player = 1) => {
+    try { instanceRef.current?.pressUp?.({ button: action, player }) } catch {}
   }, [])
 
   const loadCheats = useCallback(async (content: string) => {

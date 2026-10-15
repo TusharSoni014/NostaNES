@@ -2,23 +2,42 @@
 
 import { useEffect, useState } from "react"
 import {
-  assignControlInput,
-  getCustomControls,
-  resetCustomControls,
-  saveCustomControls,
-  type CustomControlsConfig,
+  assignGamepadBinding,
+  assignKeyboardBinding,
+  controlsSlot,
+  getControlsProfile,
+  resetPlayerControls,
+  saveControlsProfile,
+  type ControlsProfile,
   type NesActionKey,
+  type PlayerSlot,
 } from "@/lib/storage/controls-storage"
 import { playUiSound } from "@/lib/ui-sounds"
 import { normalizeKeyboardEvent } from "./controls-helpers"
 import { getRawGamepads } from "@/lib/gamepad/gamepad-remapper"
 
-export function useControlRebinding(activeTab: "keyboard" | "gamepad") {
-  const [config, setConfig] = useState<CustomControlsConfig>(getCustomControls())
+function connectedGamepads(): Gamepad[] {
+  return Array.from(getRawGamepads()).filter((pad): pad is Gamepad => Boolean(pad?.connected))
+}
+
+/** Player 2 prefers the second pad. One connected pad can still pick button indexes. */
+function padForPlayer(player: PlayerSlot): Gamepad | undefined {
+  const pads = connectedGamepads()
+  return pads[player - 1] ?? (player === 2 ? pads[0] : undefined)
+}
+
+export function useControlRebinding(player: PlayerSlot, activeTab: "keyboard" | "gamepad") {
+  const [profile, setProfile] = useState<ControlsProfile>(getControlsProfile())
   const [listeningKey, setListeningKey] = useState<NesActionKey | null>(null)
   const [savedNotice, setSavedNotice] = useState(false)
 
-  // Listen for keyboard input when rebinding
+  const config = profile[controlsSlot(player)]
+
+  const markSaved = () => {
+    setSavedNotice(true)
+    window.setTimeout(() => setSavedNotice(false), 2500)
+  }
+
   useEffect(() => {
     if (!listeningKey || activeTab !== "keyboard") return
 
@@ -28,32 +47,27 @@ export function useControlRebinding(activeTab: "keyboard" | "gamepad") {
       e.stopPropagation()
       e.stopImmediatePropagation()
 
-      if (e.key === "Escape") {
+      if (e.key === "Escape" && !e.code.startsWith("Numpad")) {
         setListeningKey(null)
         playUiSound("back_cancel")
         return
       }
 
       const normalized = normalizeKeyboardEvent(e)
-      if (normalized) {
-        const newConfig: CustomControlsConfig = {
-          ...config,
-          keyboard: assignControlInput(config.keyboard, listeningKey, normalized.retroarchKey),
-        }
-        setConfig(newConfig)
-        saveCustomControls(newConfig)
-        setListeningKey(null)
-        setSavedNotice(true)
-        playUiSound("option_selected")
-        window.setTimeout(() => setSavedNotice(false), 2500)
-      }
+      if (!normalized) return
+
+      const next = assignKeyboardBinding(profile, player, listeningKey, normalized.retroarchKey)
+      setProfile(next)
+      saveControlsProfile(next)
+      setListeningKey(null)
+      markSaved()
+      playUiSound("option_selected")
     }
 
     window.addEventListener("keydown", onKey, true)
     return () => window.removeEventListener("keydown", onKey, true)
-  }, [activeTab, config, listeningKey])
+  }, [activeTab, listeningKey, player, profile])
 
-  // Listen for gamepad input when rebinding with edge-detection
   useEffect(() => {
     if (!listeningKey || activeTab !== "gamepad") return
 
@@ -61,21 +75,16 @@ export function useControlRebinding(activeTab: "keyboard" | "gamepad") {
     let heldAtStart: Set<number> | null = null
 
     const commitGamepadBind = (code: string) => {
-      const newConfig: CustomControlsConfig = {
-        ...config,
-        gamepad: assignControlInput(config.gamepad, listeningKey, code),
-      }
-      setConfig(newConfig)
-      saveCustomControls(newConfig)
+      const next = assignGamepadBinding(profile, player, listeningKey, code)
+      setProfile(next)
+      saveControlsProfile(next)
       setListeningKey(null)
-      setSavedNotice(true)
+      markSaved()
       playUiSound("option_selected")
-      window.setTimeout(() => setSavedNotice(false), 2500)
     }
 
     const poll = () => {
-      const pads = getRawGamepads()
-      const pad = Array.from(pads).find((p): p is Gamepad => Boolean(p?.connected))
+      const pad = padForPlayer(player)
 
       if (pad) {
         if (heldAtStart === null) {
@@ -127,18 +136,17 @@ export function useControlRebinding(activeTab: "keyboard" | "gamepad") {
 
     animId = requestAnimationFrame(poll)
     return () => cancelAnimationFrame(animId)
-  }, [activeTab, config, listeningKey])
+  }, [activeTab, listeningKey, player, profile])
 
   const handleSave = () => {
-    saveCustomControls(config)
+    saveControlsProfile(profile)
     setSavedNotice(true)
     playUiSound("game_start")
     window.setTimeout(() => setSavedNotice(false), 3000)
   }
 
   const handleReset = () => {
-    const defaults = resetCustomControls()
-    setConfig(defaults)
+    setProfile(resetPlayerControls(player))
     setSavedNotice(true)
     playUiSound("navigation")
     window.setTimeout(() => setSavedNotice(false), 3000)

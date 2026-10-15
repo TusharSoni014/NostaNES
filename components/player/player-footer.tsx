@@ -79,6 +79,14 @@ export const PlayerFooter = ({ isFullscreen }: PlayerFooterProps) => {
         )}
         <span className="text-foreground/85 font-medium ml-0.5">Menu</span>
       </span>
+
+      <Separator orientation="vertical" className="hidden h-3.5 sm:block" />
+
+      <span className="text-[11px] text-foreground/70 shrink-0">
+        {inputMode === "gamepad"
+          ? "P2: second controller"
+          : "P2: Numpad 5·2·1·3 / 7 A · 8 B · + −"}
+      </span>
     </motion.footer>
   )
 }

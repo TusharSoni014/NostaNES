@@ -3,19 +3,33 @@
 import { useEffect, useRef } from "react"
 import {
   DEFAULT_KEYBOARD_CONTROLS,
-  getCustomControls,
+  DEFAULT_KEYBOARD_CONTROLS_P2,
+  getControlsProfile,
   type NesActionKey,
+  type PlayerSlot,
 } from "@/lib/storage/controls-storage"
 import { normalizeKeyboardEvent } from "./in-game-menu/controls-helpers"
 import { NES_TO_RETROARCH_ACTION } from "./use-gamepad-controls"
 
+type PressFn = (action: string, player?: number) => void
+
 type UseKeyboardControlsOptions = {
   enabled: boolean
-  pressDown: (action: string) => void
-  pressUp: (action: string) => void
+  pressDown: PressFn
+  pressUp: PressFn
 }
 
-const CANONICAL_KEYS = new Set(Object.values(DEFAULT_KEYBOARD_CONTROLS))
+const CANONICAL_KEYS = new Set([
+  ...Object.values(DEFAULT_KEYBOARD_CONTROLS),
+  ...Object.values(DEFAULT_KEYBOARD_CONTROLS_P2),
+])
+
+function findAction(
+  map: Record<NesActionKey, string>,
+  retroarchKey: string,
+): NesActionKey | undefined {
+  return (Object.keys(map) as NesActionKey[]).find((key) => map[key] === retroarchKey)
+}
 
 export function useKeyboardControls({
   enabled,
@@ -31,8 +45,7 @@ export function useKeyboardControls({
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
-      // Critical: Synthetic events dispatched programmatically by Nostalgist
-      // must pass directly to the RetroArch canvas without being re-intercepted
+      // Synthetic events dispatched by Nostalgist must reach RetroArch as-is.
       if (!e.isTrusted) return
 
       const { enabled: isEnabled, pressDown: onDown, pressUp: onUp } = handlersRef.current
@@ -44,34 +57,37 @@ export function useKeyboardControls({
       const norm = normalizeKeyboardEvent(e)
       if (!norm) return
 
-      const custom = getCustomControls().keyboard
-      const boundAction = (Object.keys(custom) as NesActionKey[]).find(
-        (k) => custom[k] === norm.retroarchKey,
-      )
+      const profile = getControlsProfile()
+      const player1Action = findAction(profile.player1.keyboard, norm.retroarchKey)
+      const player2Action = findAction(profile.player2.keyboard, norm.retroarchKey)
+      const match: { action: NesActionKey; player: PlayerSlot } | null = player1Action
+        ? { action: player1Action, player: 1 }
+        : player2Action
+          ? { action: player2Action, player: 2 }
+          : null
 
-      if (boundAction) {
-        // Prevent browser default behavior & prevent the raw physical key from
-        // reaching RetroArch directly (eliminates double-key conflict)
+      if (match) {
         e.preventDefault()
         e.stopPropagation()
         e.stopImmediatePropagation()
 
-        const raAction = NES_TO_RETROARCH_ACTION[boundAction]
+        const raAction = NES_TO_RETROARCH_ACTION[match.action]
+        const id = `${match.player}:${raAction}`
         if (e.type === "keydown") {
-          if (!activeActionsRef.current.has(raAction)) {
-            activeActionsRef.current.add(raAction)
-            onDown(raAction)
+          if (!activeActionsRef.current.has(id)) {
+            activeActionsRef.current.add(id)
+            onDown(raAction, match.player)
           }
         } else if (e.type === "keyup") {
-          if (activeActionsRef.current.has(raAction)) {
-            activeActionsRef.current.delete(raAction)
-            onUp(raAction)
+          if (activeActionsRef.current.has(id)) {
+            activeActionsRef.current.delete(id)
+            onUp(raAction, match.player)
           }
         }
         return
       }
 
-      // If user unmapped this canonical key from its default action, stop raw event
+      // An unbound default key must not leak through as a raw RetroArch binding.
       if (CANONICAL_KEYS.has(norm.retroarchKey)) {
         e.preventDefault()
         e.stopPropagation()
@@ -81,8 +97,11 @@ export function useKeyboardControls({
 
     const releaseAll = () => {
       const { pressUp: onUp } = handlersRef.current
-      for (const action of activeActionsRef.current) {
-        onUp(action)
+      for (const id of activeActionsRef.current) {
+        const splitAt = id.indexOf(":")
+        const player = Number(id.slice(0, splitAt))
+        const action = id.slice(splitAt + 1)
+        onUp(action, player)
       }
       activeActionsRef.current.clear()
     }

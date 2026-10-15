@@ -16,6 +16,7 @@ export type MenuNavigationOptions<T> = {
   onNavigateRight?: (item: T, index: number) => void
   onPageUp?: () => void
   onPageDown?: () => void
+  onAux?: () => void
   loop?: boolean
   soundEnabled?: boolean
 }
@@ -37,6 +38,7 @@ export function useMenuNavigation<T>({
   onNavigateRight,
   onPageUp,
   onPageDown,
+  onAux,
   loop = false,
   soundEnabled = true,
 }: MenuNavigationOptions<T>) {
@@ -51,6 +53,7 @@ export function useMenuNavigation<T>({
     onNavigateRight,
     onPageUp,
     onPageDown,
+    onAux,
     loop,
     soundEnabled,
   })
@@ -71,6 +74,7 @@ export function useMenuNavigation<T>({
       onNavigateRight,
       onPageUp,
       onPageDown,
+      onAux,
       loop,
       soundEnabled,
     }
@@ -114,6 +118,9 @@ export function useMenuNavigation<T>({
 
       // If an input is focused inside the modal, allow typing; ignore outside inputs
       if (inInput && inModal) return
+
+      // Number-pad keys belong to player 2 and never move menus.
+      if (event.code.startsWith("Numpad")) return
 
       const isVertical = event.key === "ArrowUp" || event.key === "ArrowDown"
       const isHorizontal = event.key === "ArrowLeft" || event.key === "ArrowRight"
@@ -205,6 +212,8 @@ export function useMenuNavigation<T>({
         opts.onPageUp?.()
       } else if (action === "PAGE_DOWN") {
         opts.onPageDown?.()
+      } else if (action === "TOGGLE_CONTROLS") {
+        opts.onAux?.()
       }
     })
 

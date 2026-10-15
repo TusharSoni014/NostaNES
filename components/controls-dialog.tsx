@@ -19,6 +19,7 @@ import {
   GAMEPAD_NES_CONTROLS,
   KEYBOARD_LIBRARY_CONTROLS,
   KEYBOARD_NES_CONTROLS,
+  KEYBOARD_P2_CONTROLS,
   type ControlItem,
 } from "@/components/controls-data"
 import { GamepadDispatcher } from "@/lib/gamepad/gamepad-dispatcher"
@@ -198,6 +199,18 @@ export const ControlsDialog = ({ open, onOpenChange }: ControlsDialogProps) => {
             {nesControls.map((ctrl) => (
               <ControlRow key={ctrl.label} {...ctrl} mode={tab} />
             ))}
+
+            {tab === "keyboard" ? (
+              <>
+                <Separator className="my-1" />
+                <p className="text-[11px] font-semibold text-primary uppercase tracking-wider">
+                  Player 2 Keyboard
+                </p>
+                {KEYBOARD_P2_CONTROLS.map((ctrl) => (
+                  <ControlRow key={ctrl.label} {...ctrl} mode={tab} />
+                ))}
+              </>
+            ) : null}
           </div>
         </div>
 

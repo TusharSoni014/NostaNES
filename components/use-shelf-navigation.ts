@@ -73,6 +73,9 @@ export const useShelfNavigation = ({
         return
       }
 
+      // Player 2's number pad plays games. It does not scroll or launch from the library.
+      if (event.code.startsWith("Numpad")) return
+
       const onControl =
         target instanceof HTMLElement &&
         Boolean(target.closest("button, a, textarea"))

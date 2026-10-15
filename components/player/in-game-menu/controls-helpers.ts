@@ -33,6 +33,7 @@ export function getGamepadButtonName(btnCode: string): string {
 export function getKeyboardKeyName(key: string): string {
   if (!key) return "None"
   const k = key.toLowerCase()
+  if (/^num\d$/.test(k)) return `Num ${k.slice(3)}`
   const names: Record<string, string> = {
     up: "↑ Arrow Up",
     down: "↓ Arrow Down",
@@ -49,12 +50,29 @@ export function getKeyboardKeyName(key: string): string {
     backspace: "Backspace",
     capslock: "Caps Lock",
     escape: "Esc",
+    kp_plus: "Num Add",
+    kp_minus: "Num Minus",
+    kp_enter: "Num Enter",
+    kp_period: "Num .",
   }
   return names[k] ?? key.toUpperCase()
 }
 
 export function normalizeKeyboardEvent(e: KeyboardEvent): { retroarchKey: string; label: string } | null {
   if (e.key === "Escape") return null
+
+  // Number pad is its own device so it can be player 2 without colliding with the digit row.
+  if (e.code.startsWith("Numpad")) {
+    if (e.code === "NumpadAdd") return { retroarchKey: "kp_plus", label: "Num Add" }
+    if (e.code === "NumpadSubtract") return { retroarchKey: "kp_minus", label: "Num Minus" }
+    if (e.code === "NumpadEnter") return { retroarchKey: "kp_enter", label: "Num Enter" }
+    if (e.code === "NumpadDecimal") return { retroarchKey: "kp_period", label: "Num ." }
+    if (/^Numpad\d$/.test(e.code)) {
+      const digit = e.code.slice(6)
+      return { retroarchKey: `num${digit}`, label: `Num ${digit}` }
+    }
+    return null
+  }
 
   // Arrow keys
   if (e.code === "ArrowUp" || e.key === "ArrowUp") return { retroarchKey: "up", label: "↑ Arrow Up" }
@@ -64,7 +82,7 @@ export function normalizeKeyboardEvent(e: KeyboardEvent): { retroarchKey: string
 
   // Modifiers & special
   if (e.code === "Space" || e.key === " ") return { retroarchKey: "space", label: "Space" }
-  if (e.code === "Enter" || e.key === "Enter") return { retroarchKey: "enter", label: "Enter" }
+  if (e.code === "Enter") return { retroarchKey: "enter", label: "Enter" }
   if (e.code === "ShiftLeft" || e.code === "ShiftRight" || e.key === "Shift") return { retroarchKey: "shift", label: "Shift" }
   if (e.code === "ControlLeft" || e.code === "ControlRight" || e.key === "Control") return { retroarchKey: "ctrl", label: "Ctrl" }
   if (e.code === "AltLeft" || e.code === "AltRight" || e.key === "Alt") return { retroarchKey: "alt", label: "Alt" }

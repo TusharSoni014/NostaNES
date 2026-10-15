@@ -135,6 +135,7 @@ export function VersionSelectDialog({
         role="listbox"
         aria-label="Available editions"
         onKeyDown={(e) => {
+          if (e.code.startsWith("Numpad")) return
           if (e.key === "Enter" && selected) {
             e.preventDefault()
             e.stopPropagation()

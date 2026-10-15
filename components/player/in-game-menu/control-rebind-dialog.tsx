@@ -5,18 +5,20 @@ import { motion } from "motion/react"
 import { Button } from "@/components/ui/button"
 import { Kbd, GamepadKey } from "@/components/ui/kbd"
 import { useInputMode } from "@/hooks/use-input-mode"
-import { ACTION_LABELS, type NesActionKey } from "@/lib/storage/controls-storage"
+import { ACTION_LABELS, type NesActionKey, type PlayerSlot } from "@/lib/storage/controls-storage"
 import { playUiSound } from "@/lib/ui-sounds"
 
 type ControlRebindDialogProps = {
   actionKey: NesActionKey | null
   activeTab: "keyboard" | "gamepad"
+  player: PlayerSlot
   onCancel: () => void
 }
 
 export function ControlRebindDialog({
   actionKey,
   activeTab,
+  player,
   onCancel,
 }: ControlRebindDialogProps) {
   const inputMode = useInputMode()
@@ -63,7 +65,7 @@ export function ControlRebindDialog({
 
           <div className="flex flex-col gap-1">
             <h4 className="text-base font-bold text-white tracking-tight">
-              Rebind: {label}
+              Rebind Player {player}: {label}
             </h4>
             <p className="text-xs text-white/60">{desc}</p>
           </div>
@@ -71,11 +73,17 @@ export function ControlRebindDialog({
           <div className="w-full my-2 rounded-xl border border-blue-400/30 bg-blue-500/5 p-3.5 flex flex-col items-center gap-1.5">
             <p className="text-xs font-semibold text-blue-300 animate-pulse">
               {activeTab === "gamepad"
-                ? "Press any button or D-Pad on your controller..."
-                : "Press any key on your keyboard..."}
+                ? player === 2
+                  ? "Press a button on the second controller..."
+                  : "Press a button on the first controller..."
+                : player === 2
+                  ? "Press a key. Player 2 defaults are on the number pad."
+                  : "Press any key on your keyboard..."}
             </p>
             <p className="text-[11px] text-white/40">
-              Assigned only to this action. Anything else using it is cleared.
+              {activeTab === "keyboard"
+                ? "Taken off every other action, including the other player."
+                : "Taken off every other action on this player."}
             </p>
           </div>
 

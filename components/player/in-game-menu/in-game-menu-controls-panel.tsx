@@ -3,8 +3,8 @@
 import { useEffect, useRef, useState } from "react"
 import { CheckCircle2Icon, RotateCcwIcon, SaveIcon, SlidersIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { GamepadKey } from "@/components/ui/kbd"
-import { ACTION_LABELS, type NesActionKey } from "@/lib/storage/controls-storage"
+import { GamepadKey, Kbd } from "@/components/ui/kbd"
+import { ACTION_LABELS, type NesActionKey, type PlayerSlot } from "@/lib/storage/controls-storage"
 import { scrollNearestIntoView } from "@/lib/motion/scroll-into-view"
 import { playUiSound } from "@/lib/ui-sounds"
 import { useInputMode } from "@/hooks/use-input-mode"
@@ -36,12 +36,23 @@ export const InGameMenuControlsPanel = ({
   onNavigateLeft,
 }: InGameMenuControlsPanelProps) => {
   const inputMode = useInputMode()
+  const [player, setPlayerSlot] = useState<PlayerSlot>(1)
   const [activeTab, setActiveTab] = useState<"keyboard" | "gamepad">(inputMode)
   const [selectedItem, setSelectedItem] = useState<PanelItem>("up")
   const listRef = useRef<HTMLDivElement>(null)
+  const playerRef = useRef<PlayerSlot>(1)
+  playerRef.current = player
 
   const { config, listeningKey, setListeningKey, savedNotice, handleSave, handleReset } =
-    useControlRebinding(activeTab)
+    useControlRebinding(player, activeTab)
+
+  const setPlayer = (next: PlayerSlot) => {
+    setListeningKey(null)
+    if (playerRef.current === next) return
+    playerRef.current = next
+    setPlayerSlot(next)
+    playUiSound("navigation")
+  }
 
   // Auto-scroll selected row into view
   useEffect(() => {
@@ -74,7 +85,23 @@ export const InGameMenuControlsPanel = ({
     },
     onPageUp: () => setTab("keyboard"),
     onPageDown: () => setTab("gamepad"),
+    onAux: () => setPlayer(playerRef.current === 1 ? 2 : 1),
   })
+
+  useEffect(() => {
+    if (!isFocused || listeningKey) return
+
+    const onKey = (event: KeyboardEvent) => {
+      if (event.repeat || event.code.startsWith("Numpad")) return
+      if (event.key !== "[" && event.key !== "]") return
+      event.preventDefault()
+      event.stopPropagation()
+      setPlayer(event.key === "[" ? 1 : 2)
+    }
+
+    window.addEventListener("keydown", onKey, true)
+    return () => window.removeEventListener("keydown", onKey, true)
+  }, [isFocused, listeningKey])
 
   return (
     <div className="flex flex-col flex-1 h-full min-h-0 w-full min-w-0 gap-3.5">
@@ -85,9 +112,37 @@ export const InGameMenuControlsPanel = ({
             Remap Controls
           </h3>
           <p className="text-xs text-white/60">
-            Customize controls for this game. Changes save automatically & apply to gameplay.
+            {player === 1
+              ? "Arrows and the first controller. Only Player 1 moves menus."
+              : "Number pad and the second controller. Player 2 does not move menus."}
           </p>
         </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-1.5 bg-white/5 p-1 rounded-xl border border-white/10">
+            <Button
+              variant={player === 1 ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setPlayer(1)}
+              className="text-xs h-7 px-2.5 gap-1.5"
+            >
+              Player 1
+              {inputMode === "gamepad" ? null : <Kbd size="sm">[</Kbd>}
+            </Button>
+            <Button
+              variant={player === 2 ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setPlayer(2)}
+              className="text-xs h-7 px-2.5 gap-1.5"
+            >
+              Player 2
+              {inputMode === "gamepad" ? (
+                <GamepadKey button="Y" size="sm" className="hidden sm:inline-flex" />
+              ) : (
+                <Kbd size="sm">]</Kbd>
+              )}
+            </Button>
+          </div>
 
         <div className="flex items-center gap-1.5 bg-white/5 p-1 rounded-xl border border-white/10">
           <Button
@@ -112,6 +167,7 @@ export const InGameMenuControlsPanel = ({
               <GamepadKey button="RB" size="sm" className="hidden sm:inline-flex" />
             ) : null}
           </Button>
+        </div>
         </div>
       </div>
 
@@ -165,7 +221,7 @@ export const InGameMenuControlsPanel = ({
           )}
         >
           <RotateCcwIcon className="size-3.5" />
-          <span>Reset Defaults</span>
+          <span>Reset Player {player}</span>
         </Button>
 
         <Button
@@ -185,6 +241,7 @@ export const InGameMenuControlsPanel = ({
       <ControlRebindDialog
         actionKey={listeningKey}
         activeTab={activeTab}
+        player={player}
         onCancel={() => setListeningKey(null)}
       />
     </div>

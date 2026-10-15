@@ -36,6 +36,7 @@ export const InGameMenuControlRow = ({
       data-control-row={action}
       onClick={onClick}
       onKeyDown={(e) => {
+        if (e.code.startsWith("Numpad")) return
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault()
           onClick()
