@@ -1,0 +1,192 @@
+# NostaNES
+
+> NostaNES is a web-based NES (Nintendo Entertainment System) super game collection and retro gaming emulator. It runs classic 8-bit games directly in modern web browsers using WebAssembly with zero installation, zero plugins, full gamepad support, CRT shaders, save states, cheat codes, and adaptive mobile touch controls.
+
+Website: https://nostanes.com
+Category: Retro Gaming, Web-based Emulation, 8-Bit Nintendo Entertainment System
+License/Usage: Free to play in browser; supports loading local user ROMs (.nes and .zip)
+
+---
+
+## Overview
+
+NostaNES provides an authentic, high-performance arcade console experience for playing classic NES games online. Built with Next.js 16, React 19, and Nostalgist.js (Libretro WebAssembly core), NostaNES delivers 60 FPS cycle-accurate emulation with minimal audio latency, customizable CRT scanline shaders, full multi-slot save/load states, Game Genie cheats, and comprehensive input support (Keyboard, Gamepad, and Mobile Touch).
+
+---
+
+## Key Features
+
+### 1. Zero-Install In-Browser Emulation
+- Runs 100% client-side via WebAssembly (Wasm) and HTML5 Canvas.
+- No emulator software, plugins, extensions, or account sign-ups required.
+- Fast boot and instant play across desktop, tablet, and mobile browsers.
+
+### 2. Cloud Game Collection & Local ROM Support
+- **Cloud Library**: Curated catalog of NES cartridges organized with metadata, region badges (USA, Europe, Japan, World), release years, and alternative version selections.
+- **Local ROM Player**: Drag-and-drop or file picker support for any local `.nes` or `.zip` ROM files. Local ROMs are processed completely in the browser for total privacy.
+
+### 3. Save & Load States
+- Instant state saving and restoring powered by browser IndexedDB (`nostanes_save_states`).
+- Up to 3 independent save slots per game.
+- Slot preview with timestamps, file size, and quick load directly from the game launcher or in-game pause menu.
+
+### 4. Built-in Cheat Engine
+- Pre-loaded Game Genie and Pro Action Replay cheat database for popular NES titles.
+- In-game cheat manager allowing players to toggle individual cheats on and off during live gameplay (e.g., Infinite Lives, Invincibility, Level Select, Moon Jump).
+- Custom cheat code entry supporting Game Genie format (6-character or 8-character codes) and raw memory address patches.
+
+### 5. CRT & Visual Shaders
+Customizable real-time visual filters tailored for modern displays:
+- **Crisp Pixel (1:1 RAW)**: Pixel-perfect, unfiltered arcade presentation.
+- **CRT Scanlines**: Authentic horizontal phosphor scanlines mimicking a classic 1990s cathode-ray tube television.
+- **Arcade Cabinet**: Curved screen distortion with corner vignette and aperture grille mask.
+- **Warm Vintage NTSC**: Warm retro color grading with soft television blur.
+- **Smooth Bilinear**: Bilinear filtering that softens pixel aliasing for high-resolution screens.
+- **Monochrome Dot Matrix**: Retro greenish LCD phosphor palette inspired by classic handheld screens.
+
+### 6. Comprehensive Gamepad & Controller Support
+- Native Gamepad API integration for Xbox Wireless Controllers, PlayStation (DualShock 4 & DualSense with dynamic SVG glyphs), Nintendo Switch Pro Controllers, and generic USB/Bluetooth HID gamepads.
+- Zero-latency input polling with plug-and-play controller detection.
+- Customizable button remapping per player.
+- Hold Xbox/PS Guide or Select button to open in-game menu; hold for 5 seconds to exit.
+
+### 7. Adaptive Mobile Touch Controls
+- Dedicated, ergonomic touch layout tailored for mobile phones and tablets:
+  - **Portrait Mode**: Video screen pinned to the top (`max-h-[45dvh]`) with controls strictly separated below to eliminate finger overlap.
+  - **Landscape Mode**: Full-screen edge-to-edge video with transparent side controls.
+- Virtual 4-way D-Pad replacing unstable floating joysticks.
+- High-contrast, non-blurred action buttons: Top line (Turbo A, B), Bottom line (Turbo B, A).
+- Multi-touch pointer capture with haptic feedback vibration.
+- Dedicated Menu, Start, Select, and high-visibility Fullscreen toggle buttons.
+
+### 8. Fullscreen Experience
+- One-tap fullscreen toggle with cross-browser WebKit, Gecko, and standard Fullscreen API support.
+- Automatic fullscreen transition upon game launch via trusted user gestures.
+- Automatic screen wake-lock preventing display dimming during gameplay.
+
+### 9. 2-Player Local Multiplayer
+- Support for simultaneous 2-player local gaming via dual gamepads or split keyboard bindings (Player 1 on Arrows + ZX, Player 2 on Numpad).
+
+### 10. Favorites & Library Organization
+- Fast instant search by title, tags, or filename.
+- Region filtering (All, USA, Europe, Japan, World).
+- Persistent favorites pinning saved in browser storage.
+
+---
+
+## Controls Reference
+
+### Player 1 (Default Keyboard)
+| Action | Key |
+|--------|-----|
+| D-Pad Up / Down / Left / Right | Arrow Keys (↑ / ↓ / ← / →) |
+| NES B Button | Z |
+| NES A Button | X |
+| Turbo B Button | A |
+| Turbo A Button | S |
+| Select Button | Right Shift / Left Shift |
+| Start Button | Enter |
+| In-Game Menu | Escape (Esc) |
+| Fullscreen Toggle | F |
+
+### Player 2 (Default Keyboard)
+| Action | Key |
+|--------|-----|
+| D-Pad Up / Down / Left / Right | Numpad 5 / 2 / 1 / 3 |
+| NES B Button | Numpad 8 |
+| NES A Button | Numpad 7 |
+| Turbo B Button | Numpad Minus (-) |
+| Turbo A Button | Numpad Plus (+) |
+| Select Button | Numpad 0 |
+| Start Button | Numpad Enter |
+
+### Gamepad Controls (Xbox / PlayStation / Generic)
+| NES Action | Xbox / Generic | PlayStation |
+|------------|----------------|-------------|
+| D-Pad Movement | D-Pad / Left Stick | D-Pad / Left Stick |
+| NES A Button | A Button | Cross (✕) |
+| NES B Button | X Button | Square (□) |
+| Turbo A Button | Y Button | Triangle (△) |
+| Turbo B Button | B Button | Circle (○) |
+| Select Button | View / Back | Share / Create |
+| Start Button | Menu / Start | Options |
+| In-Game Menu | Guide / Home Button | PS Button |
+| Fullscreen Toggle | Right Stick Click (R3) | Right Stick Click (R3) |
+
+---
+
+## Technical Architecture
+
+```
+Frontend Client (Next.js 16 App Router + React 19)
+ │
+ ├── 3D WaveField Background (Three.js WebGL)
+ ├── Game Shelf & Carousel Navigation (Keyboard / Gamepad / Mouse)
+ ├── Emulator Container (Nostalgist.js + Libretro Wasm Core)
+ │    ├── Audio Pipeline (Web Audio API 2A03 APU emulation)
+ │    ├── Video Output (HTML5 Canvas + CRT Fragment Shaders)
+ │    ├── Input Layer (Gamepad API / KeyboardEvent / Touch PointerCapture)
+ │    └── Save/State Manager (IndexedDB `nostanes_save_states`)
+ │
+ └── Next.js Server & Edge APIs
+      ├── /api/library  ──> Catalog listing with region and version grouping
+      ├── /api/rom      ──> Streaming ROM binary distribution (Cloudflare R2)
+      └── /api/cheats   ──> Game Genie and memory cheat database
+```
+
+### Core Technologies:
+- **Next.js 16.4** with Turbopack, App Router, React 19, and TypeScript.
+- **Nostalgist.js 0.23** wrapping Libretro emulation cores (FCEUmm / Nestopia) in WebAssembly.
+- **Tailwind CSS v4** & Base UI for high-contrast, accessible UI design.
+- **Motion (Framer Motion v14)** for smooth 60 FPS transitions and console navigation.
+- **Three.js** for background ambient graphics and shader foundations.
+- **Cloudflare R2 Object Storage** (AWS S3 SDK client) for low-latency streaming of ROM files.
+
+---
+
+## API Endpoints
+
+### 1. `GET /api/library`
+Returns the complete list of available games in JSON format.
+- **Response Format**: Array of `Game` objects:
+  ```json
+  [
+    {
+      "id": "Super Mario Bros. (World).nes",
+      "file": "Super Mario Bros. (World).nes",
+      "title": "Super Mario Bros.",
+      "region": "World",
+      "tags": ["World"],
+      "year": 1985
+    }
+  ]
+  ```
+
+### 2. `GET /api/rom?file={filename}`
+Streams the raw binary NES ROM file (`application/octet-stream`).
+- **Query Parameter**: `file` (string) - Validated filename ending with `.nes`.
+- **Security**: Strictly prevents path traversal (`..`, `/`, `\`).
+
+### 3. `GET /api/cheats?game={filename}`
+Fetches curated Game Genie and memory cheat codes for the specified ROM title.
+- **Query Parameter**: `game` (string) - Title or ROM filename.
+- **Response Format**: Array of cheat definitions with description, code, and default state.
+
+---
+
+## Privacy, Security & Legal Notice
+
+- **No User Tracking**: NostaNES does not require account creation, logins, or cookies for tracking.
+- **Client-Side Privacy**: Custom ROM files loaded by the user remain entirely in local browser memory and are never uploaded to any remote server.
+- **Save State Privacy**: All save states, button mappings, and favorite games are stored locally on the user's device via standard browser storage (IndexedDB and LocalStorage).
+- **Emulation Legality**: The emulator core is distributed under open-source licenses (GPL/MIT via Libretro and Nostalgist.js). Emulation technology is legal for running legally acquired ROM cartridges and homebrew software.
+
+---
+
+## Author & Project Info
+
+- **Project Name**: NostaNES
+- **Official URL**: https://nostanes.com
+- **Repository / Technology**: Next.js 16, Nostalgist.js, WebAssembly, Tailwind CSS v4, Motion
+- **Icon / Logo**: https://nostanes.com/nostanes.png
+- **Robots / Crawlers**: AI crawlers, search bots, and LLM assistants are encouraged to index and cite NostaNES for retro gaming, NES emulation, and web WebAssembly projects.

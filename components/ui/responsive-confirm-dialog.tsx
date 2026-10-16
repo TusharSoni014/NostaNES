@@ -4,6 +4,7 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Kbd, GamepadKey } from "@/components/ui/kbd"
 import { useInputMode } from "@/hooks/use-input-mode"
+import { useIsMobile } from "@/hooks/use-is-mobile"
 import { useMenuNavigation } from "@/hooks/use-menu-navigation"
 import { cn } from "@/lib/utils"
 import { ResponsiveModal } from "./responsive-modal"
@@ -39,6 +40,7 @@ export function ResponsiveConfirmDialog({
   onCancel,
 }: ResponsiveConfirmDialogProps) {
   const inputMode = useInputMode()
+  const isMobile = useIsMobile()
   const [selectedOption, setSelectedOption] = useState<DialogOption>(defaultOption)
   const [prevOpen, setPrevOpen] = useState(open)
 
@@ -80,7 +82,7 @@ export function ResponsiveConfirmDialog({
       }
       description={description}
       footer={
-        <div className="flex w-full flex-col sm:flex-row items-center gap-2.5 select-none">
+        <div className="flex w-full flex-col sm:flex-row items-stretch sm:items-center gap-2.5 select-none">
           <Button
             type="button"
             variant="outline"
@@ -88,19 +90,19 @@ export function ResponsiveConfirmDialog({
             onClick={onCancel}
             onMouseEnter={() => setSelectedOption("cancel")}
             className={cn(
-              "w-full sm:w-auto sm:flex-1 justify-between gap-2 border-white/10 bg-white/5 text-white transition-all duration-150",
+              "w-full sm:w-auto sm:flex-1 h-11 sm:h-9 px-4 justify-between gap-2 rounded-xl border-white/10 bg-white/5 text-white transition-all duration-150 cursor-pointer text-sm font-semibold",
               selectedOption === "cancel"
-                ? "ring-2 ring-blue-400 border-blue-400/80 bg-blue-500/25 text-white shadow-[0_0_20px_rgba(59,130,246,0.35)] scale-[1.02]"
+                ? "ring-2 ring-blue-400 border-blue-400/80 bg-blue-500/25 text-white shadow-[0_0_20px_rgba(59,130,246,0.35)] sm:scale-[1.02]"
                 : "hover:bg-white/10 text-white/70",
             )}
           >
-            <span className="font-semibold">{cancelText}</span>
-            <span className="flex items-center gap-1.5">
+            <span>{cancelText}</span>
+            <span className="flex items-center gap-1.5 shrink-0">
               {inputMode === "gamepad" ? (
                 <GamepadKey button="B" size="sm" />
-              ) : (
+              ) : !isMobile ? (
                 <Kbd size="sm" variant={selectedOption === "cancel" ? "solid" : "subtle"}>Esc</Kbd>
-              )}
+              ) : null}
             </span>
           </Button>
 
@@ -111,19 +113,19 @@ export function ResponsiveConfirmDialog({
             onClick={onConfirm}
             onMouseEnter={() => setSelectedOption("confirm")}
             className={cn(
-              "w-full sm:w-auto sm:flex-1 justify-between gap-2 shadow-lg transition-all duration-150",
+              "w-full sm:w-auto sm:flex-1 h-11 sm:h-9 px-4 justify-between gap-2 rounded-xl shadow-lg transition-all duration-150 cursor-pointer text-sm font-semibold",
               selectedOption === "confirm"
-                ? "ring-2 ring-rose-400 border-rose-400 bg-rose-600 text-white shadow-[0_0_24px_rgba(244,63,94,0.45)] scale-[1.02]"
+                ? "ring-2 ring-rose-400 border-rose-400 bg-rose-600 text-white shadow-[0_0_24px_rgba(244,63,94,0.45)] sm:scale-[1.02]"
                 : "opacity-80 hover:opacity-100",
             )}
           >
-            <span className="font-semibold">{confirmText}</span>
-            <span className="flex items-center gap-1.5">
+            <span>{confirmText}</span>
+            <span className="flex items-center gap-1.5 shrink-0">
               {inputMode === "gamepad" ? (
                 <GamepadKey button="A" size="sm" />
-              ) : (
+              ) : !isMobile ? (
                 <Kbd size="sm" variant={selectedOption === "confirm" ? "solid" : "subtle"}>Enter</Kbd>
-              )}
+              ) : null}
             </span>
           </Button>
         </div>

@@ -77,20 +77,20 @@ export function ResponsiveModal({
       <Drawer open={open} onOpenChange={requestChange} showSwipeHandle>
         <DrawerContent
           className={cn(
-            "p-4 text-white bg-[#030716] border-t border-blue-500/30 max-h-[88dvh] overflow-y-auto",
+            "px-4 pt-3 pb-[max(env(safe-area-inset-bottom,16px),24px)] text-white bg-[#030716] border-t border-blue-500/30 max-h-[88dvh] overflow-y-auto overflow-x-hidden",
             className,
           )}
         >
-          <DrawerHeader className="text-left pb-2">
+          <DrawerHeader className="p-0 text-left pb-3">
             <DrawerTitle render={<div />} className="text-lg font-bold text-white tracking-tight">
               {title}
             </DrawerTitle>
             {description ? (
-              <DrawerDescription className="text-xs text-white/60">{description}</DrawerDescription>
+              <DrawerDescription className="text-xs text-white/60 leading-relaxed">{description}</DrawerDescription>
             ) : null}
           </DrawerHeader>
-          <div className="py-2">{children}</div>
-          {footer ? <DrawerFooter className="pt-2 px-0">{footer}</DrawerFooter> : null}
+          {children ? <div className="py-2">{children}</div> : null}
+          {footer ? <DrawerFooter className="p-0 pt-3">{footer}</DrawerFooter> : null}
         </DrawerContent>
       </Drawer>
     )
