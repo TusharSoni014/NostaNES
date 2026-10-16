@@ -71,13 +71,29 @@ export const PlayerFooter = ({ isFullscreen }: PlayerFooterProps) => {
 
       <Separator orientation="vertical" className="hidden h-3.5 sm:block" />
 
+      {/* In-Game Menu Tip */}
+      <span className="flex items-center gap-1.5 text-xs shrink-0 font-medium">
+        {inputMode === "gamepad" ? (
+          <span className="flex items-center gap-1">
+            <GamepadKey button={isPS ? "Share" : "View"} size="sm" />
+            <span className="text-muted-foreground text-[10px]">+</span>
+            <GamepadKey button={isPS ? "Options" : "Menu"} size="sm" />
+          </span>
+        ) : (
+          <Kbd size="sm" className="border-blue-500/50 text-blue-300 bg-blue-950/40">F1</Kbd>
+        )}
+        <span className="text-blue-200 font-semibold ml-0.5">In-Game Menu</span>
+      </span>
+
+      <Separator orientation="vertical" className="hidden h-3.5 sm:block" />
+
       <span className="flex items-center gap-1.5 text-xs shrink-0">
         {inputMode === "gamepad" ? (
-          <GamepadKey button="Guide" size="sm" />
+          <span className="text-[11px] text-muted-foreground font-mono">Hold Select 5s</span>
         ) : (
           <Kbd size="sm">Esc</Kbd>
         )}
-        <span className="text-foreground/85 font-medium ml-0.5">Menu</span>
+        <span className="text-foreground/85 font-medium ml-0.5">Exit</span>
       </span>
 
       <Separator orientation="vertical" className="hidden h-3.5 sm:block" />

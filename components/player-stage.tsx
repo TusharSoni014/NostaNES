@@ -220,6 +220,7 @@ export const PlayerStage = ({ game, initialSlot, onExit }: PlayerStageProps) => 
         onToggleFullscreen={toggleFullscreen}
         onRequestExit={handleRequestExit}
         isMobile={isMobile}
+        onToggleMenu={toggleInGameMenu}
       />
 
       {/* Game Stage: Unrounded, zero-lag, arcade CRT 4:3 display */}

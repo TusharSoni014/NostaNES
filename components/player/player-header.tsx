@@ -1,7 +1,7 @@
 "use client"
 
 import Image from "next/image"
-import { Maximize2Icon, Minimize2Icon, RotateCcwIcon, XIcon } from "lucide-react"
+import { Maximize2Icon, Minimize2Icon, RotateCcwIcon, SlidersIcon, XIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Tooltip,
@@ -18,6 +18,7 @@ type PlayerHeaderProps = {
   isMobile?: boolean
   onToggleRotate?: () => void
   isRotated?: boolean
+  onToggleMenu?: () => void
 }
 
 export const PlayerHeader = ({
@@ -28,6 +29,7 @@ export const PlayerHeader = ({
   isMobile = false,
   onToggleRotate,
   isRotated = false,
+  onToggleMenu,
 }: PlayerHeaderProps) => {
   // Mobile requirement: when the game is full-screened, the header should not be there
   if (isMobile && isFullscreen) {
@@ -82,6 +84,25 @@ export const PlayerHeader = ({
             <RotateCcwIcon className="size-4" />
           </TooltipTrigger>
           <TooltipContent>{isRotated ? "Restore normal orientation" : "Rotate into landscape"}</TooltipContent>
+        </Tooltip>
+      ) : null}
+
+      {onToggleMenu ? (
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Button
+                variant="outline"
+                size="icon"
+                aria-label="In-Game Menu (F1)"
+                onClick={onToggleMenu}
+                className="size-8 sm:size-9 bg-black/40 border-white/20 text-white hover:bg-white/10"
+              />
+            }
+          >
+            <SlidersIcon className="size-4 text-blue-400" />
+          </TooltipTrigger>
+          <TooltipContent>In-Game Menu (F1)</TooltipContent>
         </Tooltip>
       ) : null}
 

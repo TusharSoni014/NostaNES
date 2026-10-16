@@ -334,14 +334,19 @@ export function MobileTouchControls({
       {/* Top Utility Bar (Portrait) */}
       {isPortrait && !isCustomizing && (
         <div className="flex items-center justify-between w-full px-3 pt-2 z-20 pointer-events-auto">
-          <button
-            type="button"
-            onClick={onToggleMenu}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-white text-xs font-semibold active:scale-95 transition-transform cursor-pointer shadow-sm select-none"
-          >
-            <SlidersIcon className="size-3.5 text-blue-400" />
-            <span>MENU</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onToggleMenu}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-white text-xs font-semibold active:scale-95 transition-transform cursor-pointer shadow-sm select-none"
+            >
+              <SlidersIcon className="size-3.5 text-blue-400" />
+              <span>MENU</span>
+            </button>
+            <span className="text-[10px] text-zinc-400 font-mono tracking-tight hidden xs:inline">
+              Saves, Shaders & Controls
+            </span>
+          </div>
 
           <div className="flex items-center gap-2">
             {renderFullscreenButton()}
@@ -352,14 +357,19 @@ export function MobileTouchControls({
       {/* Top Utility Bar (Landscape) */}
       {!isPortrait && !isCustomizing && (
         <div className="pointer-events-auto absolute top-2 inset-x-0 flex items-center justify-between px-3 sm:px-6 pt-[env(safe-area-inset-top,0px)] z-40">
-          <button
-            type="button"
-            onClick={onToggleMenu}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-white text-xs font-semibold active:scale-95 transition-transform cursor-pointer shadow-md select-none"
-          >
-            <SlidersIcon className="size-3.5 text-blue-400" />
-            <span>MENU</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onToggleMenu}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-white text-xs font-semibold active:scale-95 transition-transform cursor-pointer shadow-md select-none"
+            >
+              <SlidersIcon className="size-3.5 text-blue-400" />
+              <span>MENU</span>
+            </button>
+            <span className="text-[10px] text-zinc-400 font-mono hidden md:inline">
+              In-Game Menu (Saves, CRT, Layout)
+            </span>
+          </div>
 
           <div className="flex items-center gap-2">
             {gamepadConnected ? (
@@ -368,7 +378,7 @@ export function MobileTouchControls({
                 onClick={() => setShowOverride(false)}
                 className="text-[10px] font-medium px-2.5 py-1 rounded-full bg-zinc-900 text-white/70 border border-zinc-700 cursor-pointer"
               >
-                Gamepad Connected
+                Gamepad: Select + Start for Menu
               </button>
             ) : null}
 
@@ -578,6 +588,15 @@ export function MobileTouchControls({
           else handleButtonUp("start", "start", e)
         }}
       />
+
+      {/* In-Game Menu Tip Footer for On-Screen Controls */}
+      {isPortrait && !isCustomizing && (
+        <div className="absolute bottom-1 inset-x-0 flex items-center justify-center pointer-events-none select-none px-4 z-10">
+          <span className="text-[10px] font-mono text-zinc-400/80 bg-zinc-950/80 px-2.5 py-0.5 rounded-full border border-zinc-800/80 backdrop-blur-sm shadow-sm">
+            Tip: Tap <strong className="text-blue-400 font-bold">MENU</strong> above for Save States, CRT Filters & Layout
+          </span>
+        </div>
+      )}
     </div>
   )
 }
