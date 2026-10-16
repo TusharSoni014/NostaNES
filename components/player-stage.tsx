@@ -14,7 +14,7 @@ import { usePlayerInput } from "@/components/player/use-player-input"
 import { useKeyboardControls } from "@/components/player/use-keyboard-controls"
 import { useGamepadControls } from "@/components/player/use-gamepad-controls"
 import { MobileTouchControls } from "@/components/player/mobile-touch-controls"
-import { useIsMobile } from "@/hooks/use-is-mobile"
+import { useIsMobile, useIsPortrait } from "@/hooks/use-is-mobile"
 import { useGamepadStatus } from "@/hooks/use-gamepad-status"
 import { getSavedShader, saveShader, type GameShader } from "@/lib/storage/shader-storage"
 import type { GamepadHoldState } from "@/lib/gamepad/gamepad-dispatcher"
@@ -34,28 +34,9 @@ export const PlayerStage = ({ game, initialSlot, onExit }: PlayerStageProps) => 
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   const isMobile = useIsMobile()
+  const isPortrait = useIsPortrait()
+  const isMobilePortrait = isMobile && isPortrait
   const { connected: gamepadConnected } = useGamepadStatus()
-
-  // Screen orientation lock for mobile devices
-  useEffect(() => {
-    if (!isMobile) return
-
-    try {
-      const orientation = screen.orientation as unknown as { lock?: (type: string) => Promise<void> } | undefined
-      if (orientation && typeof orientation.lock === "function") {
-        void orientation.lock("landscape").catch(() => {})
-      }
-    } catch {}
-
-    return () => {
-      try {
-        const orientation = screen.orientation as unknown as { unlock?: () => void } | undefined
-        if (orientation && typeof orientation.unlock === "function") {
-          orientation.unlock()
-        }
-      } catch {}
-    }
-  }, [isMobile])
 
   const [phase, setPhase] = useState<"loading" | "ready" | "error">("loading")
   const [isFullscreen, setIsFullscreen] = useState(true)
@@ -199,14 +180,33 @@ export const PlayerStage = ({ game, initialSlot, onExit }: PlayerStageProps) => 
         isMobile={isMobile}
       />
 
-      {/* Game Stage: Unrounded, zero-lag, arcade CRT 4:3 display mathematically centered */}
-      <div className="relative flex min-h-0 flex-1 w-full items-center justify-center p-0 bg-black overflow-hidden [container-type:size]">
+      {/* Game Stage: Unrounded, zero-lag, arcade CRT 4:3 display */}
+      <div
+        className={cn(
+          "relative flex w-full items-center justify-center p-0 bg-black overflow-hidden",
+          isMobilePortrait
+            ? "shrink-0 pt-[env(safe-area-inset-top,0px)]"
+            : "min-h-0 flex-1 [container-type:size]",
+        )}
+      >
         <div
-          className="relative aspect-[4/3] max-w-full max-h-full overflow-hidden bg-black flex items-center justify-center"
-          style={{
-            width: "min(100cqw, calc(100cqh * 4 / 3))",
-            height: "min(100cqh, calc(100cqw * 3 / 4))",
-          }}
+          className={cn(
+            "relative aspect-[4/3] overflow-hidden bg-black flex items-center justify-center",
+            isMobilePortrait
+              ? "w-full max-w-md border-b border-zinc-900"
+              : "max-w-full max-h-full",
+          )}
+          style={
+            isMobilePortrait
+              ? {
+                  width: "100%",
+                  maxHeight: "45dvh",
+                }
+              : {
+                  width: "min(100cqw, calc(100cqh * 4 / 3))",
+                  height: "min(100cqh, calc(100cqw * 3 / 4))",
+                }
+          }
         >
           <canvas
             key={romKey}
@@ -224,16 +224,34 @@ export const PlayerStage = ({ game, initialSlot, onExit }: PlayerStageProps) => 
           <PlayerOverlay game={game} phase={phase} onExit={handleConfirmExit} />
         </div>
 
-        {/* On-screen controls on mobile */}
-        {isMobile && !inGameMenuOpen ? (
+        {/* On-screen controls on mobile landscape */}
+        {!isMobilePortrait && isMobile && !inGameMenuOpen ? (
           <MobileTouchControls
             pressDown={pressDown}
             pressUp={pressUp}
             onToggleMenu={toggleInGameMenu}
             gamepadConnected={gamepadConnected}
+            isPortrait={false}
+            isFullscreen={isFullscreen}
+            onToggleFullscreen={toggleFullscreen}
           />
         ) : null}
       </div>
+
+      {/* On-screen controls on mobile portrait: Strictly BELOW the game screen. No intersection! */}
+      {isMobilePortrait && !inGameMenuOpen ? (
+        <div className="relative flex min-h-0 flex-1 w-full bg-zinc-950">
+          <MobileTouchControls
+            pressDown={pressDown}
+            pressUp={pressUp}
+            onToggleMenu={toggleInGameMenu}
+            gamepadConnected={gamepadConnected}
+            isPortrait={true}
+            isFullscreen={isFullscreen}
+            onToggleFullscreen={toggleFullscreen}
+          />
+        </div>
+      ) : null}
 
       <PlayerFooter isFullscreen={isFullscreen || isMobile} />
     </motion.div>

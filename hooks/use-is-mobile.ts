@@ -49,12 +49,17 @@ export function useIsPortrait(): boolean {
       const media = window.matchMedia("(orientation: portrait)")
       media.addEventListener("change", callback)
       window.addEventListener("resize", callback)
+      window.addEventListener("orientationchange", callback)
       return () => {
         media.removeEventListener("change", callback)
         window.removeEventListener("resize", callback)
+        window.removeEventListener("orientationchange", callback)
       }
     },
-    () => (typeof window !== "undefined" ? window.matchMedia("(orientation: portrait)").matches : false),
+    () => {
+      if (typeof window === "undefined") return false
+      return window.matchMedia("(orientation: portrait)").matches || window.innerHeight > window.innerWidth
+    },
     () => false,
   )
 }

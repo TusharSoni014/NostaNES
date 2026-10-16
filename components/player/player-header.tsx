@@ -28,17 +28,23 @@ export const PlayerHeader = ({
   isMobile = false,
   onToggleRotate,
   isRotated = false,
-}: PlayerHeaderProps) => (
-  <header
-    className={cn(
-      "flex shrink-0 items-center justify-between gap-2 sm:gap-4 px-3 py-2 sm:px-10 sm:py-3 transition-opacity duration-200 z-30",
-      isMobile
-        ? "bg-black/70 backdrop-blur-md border-b border-white/10"
-        : isFullscreen
-          ? "absolute top-0 inset-x-0 opacity-0 hover:opacity-100 focus-within:opacity-100 bg-gradient-to-b from-black/90 via-black/40 to-transparent"
-          : "bg-black/90",
-    )}
-  >
+}: PlayerHeaderProps) => {
+  // Mobile requirement: when the game is full-screened, the header should not be there
+  if (isMobile && isFullscreen) {
+    return null
+  }
+
+  return (
+    <header
+      className={cn(
+        "flex shrink-0 items-center justify-between gap-2 sm:gap-4 px-3 py-2 sm:px-10 sm:py-3 transition-opacity duration-200 z-30",
+        isMobile
+          ? "bg-zinc-950 border-b border-zinc-800"
+          : isFullscreen
+            ? "absolute top-0 inset-x-0 opacity-0 hover:opacity-100 focus-within:opacity-100 bg-gradient-to-b from-black/90 via-black/40 to-transparent"
+            : "bg-black/90 border-b border-white/10",
+      )}
+    >
     <div className="flex min-w-0 items-center gap-3">
       <Image
         src="/nostanes.png"
@@ -119,4 +125,6 @@ export const PlayerHeader = ({
       </Tooltip>
     </div>
   </header>
-)
+  )
+}
+

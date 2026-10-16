@@ -1,9 +1,9 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { motion, AnimatePresence } from "motion/react"
-import { SlidersIcon } from "lucide-react"
-import { VirtualJoystick } from "./virtual-joystick"
+import { SlidersIcon, Maximize2Icon, Minimize2Icon } from "lucide-react"
+import { MobileDpad } from "./mobile-dpad"
+import { useIsPortrait } from "@/hooks/use-is-mobile"
 import { cn } from "@/lib/utils"
 
 export type MobileTouchControlsProps = {
@@ -11,6 +11,9 @@ export type MobileTouchControlsProps = {
   pressUp: (action: string) => void
   onToggleMenu: () => void
   gamepadConnected?: boolean
+  isPortrait?: boolean
+  isFullscreen?: boolean
+  onToggleFullscreen?: () => void
 }
 
 function triggerHaptic(duration = 10) {
@@ -26,7 +29,13 @@ export function MobileTouchControls({
   pressUp,
   onToggleMenu,
   gamepadConnected = false,
+  isPortrait: propIsPortrait,
+  isFullscreen = false,
+  onToggleFullscreen,
 }: MobileTouchControlsProps) {
+  const detectedPortrait = useIsPortrait()
+  const isPortrait = propIsPortrait !== undefined ? propIsPortrait : detectedPortrait
+
   // If gamepad is connected, default to false; user tapping screen can override to true; gamepad input overrides to false.
   const [showOverride, setShowOverride] = useState<boolean | null>(null)
   const visible = showOverride !== null ? showOverride : !gamepadConnected
@@ -98,170 +107,239 @@ export function MobileTouchControls({
     })
   }
 
+  if (!visible) return null
+
+  // Reusable Select Button
+  const renderSelectButton = () => (
+    <button
+      type="button"
+      aria-label="Select button"
+      onPointerDown={(e) => handleButtonDown("select", "select", e)}
+      onPointerUp={(e) => handleButtonUp("select", "select", e)}
+      onPointerCancel={(e) => handleButtonUp("select", "select", e)}
+      className="group flex flex-col items-center gap-1 cursor-pointer active:scale-95 transition-transform p-1 select-none"
+    >
+      <div
+        className={cn(
+          "w-11 sm:w-13 h-4 sm:h-5 rounded-full border transition-colors -rotate-12 flex items-center justify-center",
+          activeButtons.has("select")
+            ? "bg-blue-600 border-blue-400"
+            : "bg-zinc-800 border-zinc-700",
+        )}
+      >
+        <div className="w-6 sm:w-7 h-1 rounded-full bg-zinc-600" />
+      </div>
+      <span className="font-mono text-[9px] sm:text-[10px] font-bold text-zinc-400 tracking-widest uppercase">
+        SELECT
+      </span>
+    </button>
+  )
+
+  // Reusable Start Button
+  const renderStartButton = () => (
+    <button
+      type="button"
+      aria-label="Start button"
+      onPointerDown={(e) => handleButtonDown("start", "start", e)}
+      onPointerUp={(e) => handleButtonUp("start", "start", e)}
+      onPointerCancel={(e) => handleButtonUp("start", "start", e)}
+      className="group flex flex-col items-center gap-1 cursor-pointer active:scale-95 transition-transform p-1 select-none"
+    >
+      <div
+        className={cn(
+          "w-11 sm:w-13 h-4 sm:h-5 rounded-full border transition-colors -rotate-12 flex items-center justify-center",
+          activeButtons.has("start")
+            ? "bg-blue-600 border-blue-400"
+            : "bg-zinc-800 border-zinc-700",
+        )}
+      >
+        <div className="w-6 sm:w-7 h-1 rounded-full bg-zinc-600" />
+      </div>
+      <span className="font-mono text-[9px] sm:text-[10px] font-bold text-zinc-400 tracking-widest uppercase">
+        START
+      </span>
+    </button>
+  )
+
+  // Reusable Action Cluster (Turbo B, Turbo A, B, A) - Crisp, Non-Blurred
+  const renderActionCluster = () => (
+    <div className="relative size-36 sm:size-40 bg-zinc-950 border border-zinc-800 rounded-full p-2 select-none touch-none shadow-md">
+      {/* Turbo B (top-left) */}
+      <button
+        type="button"
+        onPointerDown={(e) => handleButtonDown("y", "turboB", e)}
+        onPointerUp={(e) => handleButtonUp("y", "turboB", e)}
+        onPointerCancel={(e) => handleButtonUp("y", "turboB", e)}
+        aria-label="Turbo B"
+        className={cn(
+          "absolute top-2 left-4 sm:left-5 size-11 sm:size-12 rounded-full border flex flex-col items-center justify-center select-none transition-transform cursor-pointer active:scale-90",
+          activeButtons.has("turboB")
+            ? "bg-amber-500 border-amber-300 text-black scale-95"
+            : "bg-amber-950 border-amber-600/70 text-amber-200",
+        )}
+      >
+        <span className="leading-none text-[8px] sm:text-[9px] font-mono font-bold tracking-tighter">TURBO</span>
+        <span className="leading-none text-xs sm:text-sm font-black">B</span>
+      </button>
+
+      {/* Turbo A (top-right) */}
+      <button
+        type="button"
+        onPointerDown={(e) => handleButtonDown("x", "turboA", e)}
+        onPointerUp={(e) => handleButtonUp("x", "turboA", e)}
+        onPointerCancel={(e) => handleButtonUp("x", "turboA", e)}
+        aria-label="Turbo A"
+        className={cn(
+          "absolute top-3 sm:top-3.5 right-2 size-11 sm:size-12 rounded-full border flex flex-col items-center justify-center select-none transition-transform cursor-pointer active:scale-90",
+          activeButtons.has("turboA")
+            ? "bg-amber-500 border-amber-300 text-black scale-95"
+            : "bg-amber-950 border-amber-600/70 text-amber-200",
+        )}
+      >
+        <span className="leading-none text-[8px] sm:text-[9px] font-mono font-bold tracking-tighter">TURBO</span>
+        <span className="leading-none text-xs sm:text-sm font-black">A</span>
+      </button>
+
+      {/* Normal B (bottom-left) */}
+      <button
+        type="button"
+        onPointerDown={(e) => handleButtonDown("b", "b", e)}
+        onPointerUp={(e) => handleButtonUp("b", "b", e)}
+        onPointerCancel={(e) => handleButtonUp("b", "b", e)}
+        aria-label="Button B"
+        className={cn(
+          "absolute bottom-3 sm:bottom-3.5 left-2 size-12 sm:size-13 rounded-full border flex items-center justify-center font-black text-base sm:text-lg select-none transition-transform cursor-pointer active:scale-90",
+          activeButtons.has("b")
+            ? "bg-rose-500 border-white text-white scale-95"
+            : "bg-rose-900 border-rose-600/80 text-rose-100",
+        )}
+      >
+        B
+      </button>
+
+      {/* Normal A (bottom-right) */}
+      <button
+        type="button"
+        onPointerDown={(e) => handleButtonDown("a", "a", e)}
+        onPointerUp={(e) => handleButtonUp("a", "a", e)}
+        onPointerCancel={(e) => handleButtonUp("a", "a", e)}
+        aria-label="Button A"
+        className={cn(
+          "absolute bottom-2 right-4 sm:right-5 size-12 sm:size-13 rounded-full border flex items-center justify-center font-black text-base sm:text-lg select-none transition-transform cursor-pointer active:scale-90",
+          activeButtons.has("a")
+            ? "bg-rose-500 border-white text-white scale-95"
+            : "bg-rose-900 border-rose-600/80 text-rose-100",
+        )}
+      >
+        A
+      </button>
+    </div>
+  )
+
+  // --------------------------------------------------------------------------
+  // PORTRAIT MODE: Controllers strictly BELOW the game screen. No intersection!
+  // --------------------------------------------------------------------------
+  if (isPortrait) {
+    return (
+      <div
+        className="size-full flex flex-col justify-between p-3 pb-[max(env(safe-area-inset-bottom,12px),16px)] select-none touch-none bg-zinc-950 border-t border-zinc-800"
+        style={{ touchAction: "none" }}
+      >
+        {/* Top bar of controllers area: Menu, Select, Start */}
+        <div className="flex items-center justify-between w-full px-2 pt-1">
+          <button
+            type="button"
+            onClick={onToggleMenu}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-white text-xs font-semibold active:scale-95 transition-transform cursor-pointer"
+          >
+            <SlidersIcon className="size-3.5 text-blue-400" />
+            <span>MENU</span>
+          </button>
+
+          {/* Centered Select & Start */}
+          <div className="flex items-center gap-4">
+            {renderSelectButton()}
+            {renderStartButton()}
+          </div>
+
+          {/* Right action / Fullscreen toggle */}
+          {onToggleFullscreen ? (
+            <button
+              type="button"
+              onClick={onToggleFullscreen}
+              aria-label={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
+              className="p-1.5 rounded-full bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-300 cursor-pointer"
+            >
+              {isFullscreen ? <Minimize2Icon className="size-3.5" /> : <Maximize2Icon className="size-3.5" />}
+            </button>
+          ) : (
+            <div className="w-8" />
+          )}
+        </div>
+
+        {/* Lower row: D-Pad on Left, Action cluster on Right */}
+        <div className="flex items-center justify-between w-full px-1 sm:px-4">
+          <MobileDpad pressDown={pressDown} pressUp={pressUp} />
+          {renderActionCluster()}
+        </div>
+      </div>
+    )
+  }
+
+  // --------------------------------------------------------------------------
+  // LANDSCAPE MODE: D-pad instead of joystick, non-blurred buttons on sides
+  // --------------------------------------------------------------------------
   return (
-    <AnimatePresence>
-      {visible ? (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.98 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.98 }}
-          transition={{ duration: 0.18, ease: "easeOut" }}
-          className="pointer-events-none absolute inset-0 z-30 select-none overflow-hidden touch-none"
-          style={{ touchAction: "none" }}
+    <div
+      className="pointer-events-none absolute inset-0 z-30 select-none overflow-hidden touch-none"
+      style={{ touchAction: "none" }}
+    >
+      {/* Top Bar: Menu & Gamepad Status Indicator */}
+      <div className="pointer-events-auto absolute top-2 inset-x-0 flex items-center justify-between px-3 sm:px-6 pt-[env(safe-area-inset-top,0px)] z-40">
+        <button
+          type="button"
+          onClick={onToggleMenu}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-white text-xs font-semibold active:scale-95 transition-transform cursor-pointer shadow-md"
         >
-          {/* Top Bar Quick Controls: Menu & Controls visibility indicator */}
-          <div className="pointer-events-auto absolute top-2 inset-x-0 flex items-center justify-between px-3 sm:px-4 pt-[env(safe-area-inset-top,0px)] z-40">
+          <SlidersIcon className="size-3.5 text-blue-400" />
+          <span>MENU</span>
+        </button>
+
+        <div className="flex items-center gap-2">
+          {gamepadConnected ? (
             <button
               type="button"
-              onClick={onToggleMenu}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/60 hover:bg-black/80 backdrop-blur-md border border-white/20 text-white text-xs font-semibold shadow-lg active:scale-95 transition-all cursor-pointer"
+              onClick={() => setShowOverride(false)}
+              className="text-[10px] font-medium px-2.5 py-1 rounded-full bg-zinc-900 text-white/70 border border-zinc-700 cursor-pointer"
             >
-              <SlidersIcon className="size-3.5 text-blue-400" />
-              <span>MENU</span>
+              Gamepad Connected (Tap to hide)
             </button>
+          ) : null}
 
-            {gamepadConnected ? (
-              <button
-                type="button"
-                onClick={() => setShowOverride(false)}
-                className="text-[10px] font-medium px-2.5 py-1 rounded-full bg-black/50 text-white/70 border border-white/10 backdrop-blur-md cursor-pointer"
-              >
-                Gamepad Connected (Tap to hide)
-              </button>
-            ) : null}
-          </div>
-
-          {/* Bottom Left: Select Button (above) + Virtual Joystick (below) */}
-          <div className="pointer-events-auto absolute bottom-2 left-2 sm:bottom-5 sm:left-5 pb-[env(safe-area-inset-bottom,0px)] pl-[env(safe-area-inset-left,0px)] z-40 flex flex-col items-center gap-1.5 sm:gap-2">
-            {/* SELECT BUTTON above Joystick Controller */}
+          {onToggleFullscreen ? (
             <button
               type="button"
-              aria-label="Select button"
-              onPointerDown={(e) => handleButtonDown("select", "select", e)}
-              onPointerUp={(e) => handleButtonUp("select", "select", e)}
-              onPointerCancel={(e) => handleButtonUp("select", "select", e)}
-              className="group flex flex-col items-center gap-0.5 cursor-pointer active:scale-95 transition-transform p-1 select-none"
+              onClick={onToggleFullscreen}
+              aria-label={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
+              className="p-1.5 rounded-full bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-300 cursor-pointer"
             >
-              <div
-                className={cn(
-                  "w-12 sm:w-14 h-4 sm:h-5 rounded-full border transition-all -rotate-12 flex items-center justify-center shadow-md",
-                  activeButtons.has("select")
-                    ? "bg-blue-500 border-blue-300 shadow-[0_0_14px_#3b82f6] scale-95"
-                    : "bg-zinc-800/90 border-zinc-600/80 hover:border-zinc-500 backdrop-blur-sm",
-                )}
-              >
-                <div className="w-6 sm:w-8 h-1 rounded-full bg-white/20" />
-              </div>
-              <span className="font-mono text-[9px] sm:text-[10px] font-bold text-white/70 tracking-widest uppercase">
-                SELECT
-              </span>
+              {isFullscreen ? <Minimize2Icon className="size-3.5" /> : <Maximize2Icon className="size-3.5" />}
             </button>
+          ) : null}
+        </div>
+      </div>
 
-            {/* VIRTUAL JOYSTICK */}
-            <VirtualJoystick pressDown={pressDown} pressUp={pressUp} />
-          </div>
+      {/* Bottom Left: Select Button (above) + Mobile D-Pad (below) */}
+      <div className="pointer-events-auto absolute bottom-2 left-2 sm:bottom-4 sm:left-4 pb-[env(safe-area-inset-bottom,0px)] pl-[env(safe-area-inset-left,0px)] z-40 flex flex-col items-center gap-1.5">
+        {renderSelectButton()}
+        <MobileDpad pressDown={pressDown} pressUp={pressUp} />
+      </div>
 
-          {/* Bottom Right: Start Button (above) + Action Buttons Cluster (below) */}
-          <div className="pointer-events-auto absolute bottom-2 right-2 sm:bottom-5 sm:right-5 pb-[env(safe-area-inset-bottom,0px)] pr-[env(safe-area-inset-right,0px)] z-40 flex flex-col items-center gap-1.5 sm:gap-2">
-            {/* START BUTTON above Turbo buttons */}
-            <button
-              type="button"
-              aria-label="Start button"
-              onPointerDown={(e) => handleButtonDown("start", "start", e)}
-              onPointerUp={(e) => handleButtonUp("start", "start", e)}
-              onPointerCancel={(e) => handleButtonUp("start", "start", e)}
-              className="group flex flex-col items-center gap-0.5 cursor-pointer active:scale-95 transition-transform p-1 select-none"
-            >
-              <div
-                className={cn(
-                  "w-12 sm:w-14 h-4 sm:h-5 rounded-full border transition-all -rotate-12 flex items-center justify-center shadow-md",
-                  activeButtons.has("start")
-                    ? "bg-blue-500 border-blue-300 shadow-[0_0_14px_#3b82f6] scale-95"
-                    : "bg-zinc-800/90 border-zinc-600/80 hover:border-zinc-500 backdrop-blur-sm",
-                )}
-              >
-                <div className="w-6 sm:w-8 h-1 rounded-full bg-white/20" />
-              </div>
-              <span className="font-mono text-[9px] sm:text-[10px] font-bold text-white/70 tracking-widest uppercase">
-                START
-              </span>
-            </button>
-
-            {/* ACTION & TURBO BUTTONS CLUSTER */}
-            <div className="relative size-38 sm:size-44 bg-black/45 backdrop-blur-md rounded-full border border-white/15 p-2 shadow-[0_8px_32px_rgba(0,0,0,0.6)] ring-1 ring-white/5">
-              {/* Turbo B (top-left) */}
-              <button
-                type="button"
-                onPointerDown={(e) => handleButtonDown("y", "turboB", e)}
-                onPointerUp={(e) => handleButtonUp("y", "turboB", e)}
-                onPointerCancel={(e) => handleButtonUp("y", "turboB", e)}
-                aria-label="Turbo B"
-                className={cn(
-                  "absolute top-2 left-5 sm:left-6 size-12 sm:size-14 rounded-full border-2 flex flex-col items-center justify-center font-bold text-xs select-none transition-all cursor-pointer active:scale-90",
-                  activeButtons.has("turboB")
-                    ? "bg-amber-500 border-amber-300 text-black shadow-[0_0_16px_#f59e0b] scale-95"
-                    : "bg-amber-950/70 border-amber-500/50 text-amber-200 shadow-md",
-                )}
-              >
-                <span className="leading-none text-[9px] sm:text-[10px] font-mono text-amber-400">TURBO</span>
-                <span className="leading-none text-sm sm:text-base font-black">B</span>
-              </button>
-
-              {/* Turbo A (top-right) */}
-              <button
-                type="button"
-                onPointerDown={(e) => handleButtonDown("x", "turboA", e)}
-                onPointerUp={(e) => handleButtonUp("x", "turboA", e)}
-                onPointerCancel={(e) => handleButtonUp("x", "turboA", e)}
-                aria-label="Turbo A"
-                className={cn(
-                  "absolute top-4 sm:top-5 right-2 size-12 sm:size-14 rounded-full border-2 flex flex-col items-center justify-center font-bold text-xs select-none transition-all cursor-pointer active:scale-90",
-                  activeButtons.has("turboA")
-                    ? "bg-amber-500 border-amber-300 text-black shadow-[0_0_16px_#f59e0b] scale-95"
-                    : "bg-amber-950/70 border-amber-500/50 text-amber-200 shadow-md",
-                )}
-              >
-                <span className="leading-none text-[9px] sm:text-[10px] font-mono text-amber-400">TURBO</span>
-                <span className="leading-none text-sm sm:text-base font-black">A</span>
-              </button>
-
-              {/* Normal B (bottom-left) */}
-              <button
-                type="button"
-                onPointerDown={(e) => handleButtonDown("b", "b", e)}
-                onPointerUp={(e) => handleButtonUp("b", "b", e)}
-                onPointerCancel={(e) => handleButtonUp("b", "b", e)}
-                aria-label="Button B"
-                className={cn(
-                  "absolute bottom-4 sm:bottom-5 left-2 size-13 sm:size-15 rounded-full border-2 flex items-center justify-center font-black text-lg sm:text-xl select-none transition-all cursor-pointer active:scale-90",
-                  activeButtons.has("b")
-                    ? "bg-rose-600 border-rose-300 text-white shadow-[0_0_18px_#e11d48] scale-95"
-                    : "bg-rose-950/70 border-rose-500/60 text-rose-200 shadow-md",
-                )}
-              >
-                B
-              </button>
-
-              {/* Normal A (bottom-right) */}
-              <button
-                type="button"
-                onPointerDown={(e) => handleButtonDown("a", "a", e)}
-                onPointerUp={(e) => handleButtonUp("a", "a", e)}
-                onPointerCancel={(e) => handleButtonUp("a", "a", e)}
-                aria-label="Button A"
-                className={cn(
-                  "absolute bottom-2 right-5 sm:right-6 size-13 sm:size-15 rounded-full border-2 flex items-center justify-center font-black text-lg sm:text-xl select-none transition-all cursor-pointer active:scale-90",
-                  activeButtons.has("a")
-                    ? "bg-rose-600 border-rose-300 text-white shadow-[0_0_18px_#e11d48] scale-95"
-                    : "bg-rose-950/70 border-rose-500/60 text-rose-200 shadow-md",
-                )}
-              >
-                A
-              </button>
-            </div>
-          </div>
-        </motion.div>
-      ) : null}
-    </AnimatePresence>
+      {/* Bottom Right: Start Button (above) + Action Buttons Cluster (below) */}
+      <div className="pointer-events-auto absolute bottom-2 right-2 sm:bottom-4 sm:right-4 pb-[env(safe-area-inset-bottom,0px)] pr-[env(safe-area-inset-right,0px)] z-40 flex flex-col items-center gap-1.5">
+        {renderStartButton()}
+        {renderActionCluster()}
+      </div>
+    </div>
   )
 }

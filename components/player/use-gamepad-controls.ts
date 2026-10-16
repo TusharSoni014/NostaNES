@@ -82,6 +82,7 @@ export function useGamepadControls({
     if (!enabled) return
 
     let animId = 0
+    let isPolling = false
     const active: Record<PlayerSlot, Set<string>> = { 1: new Set(), 2: new Set() }
 
     const release = (player: PlayerSlot, onUp: PressFn) => {
@@ -109,10 +110,18 @@ export function useGamepadControls({
       if (!isEnabled) {
         release(1, onUp)
         release(2, onUp)
+        isPolling = false
         return
       }
 
       const pads = connectedGamepads()
+      if (pads.length === 0) {
+        release(1, onUp)
+        release(2, onUp)
+        isPolling = false
+        return
+      }
+
       const profile = getControlsProfile()
       const assignments: Array<{ pad: Gamepad; player: PlayerSlot; map: CustomGamepadMap }> = []
       if (pads[0]) assignments.push({ pad: pads[0], player: 1, map: profile.player1.gamepad })
@@ -138,10 +147,33 @@ export function useGamepadControls({
       animId = requestAnimationFrame(poll)
     }
 
-    animId = requestAnimationFrame(poll)
+    const startPollingIfNeeded = () => {
+      if (!isPolling && connectedGamepads().length > 0) {
+        isPolling = true
+        animId = requestAnimationFrame(poll)
+      }
+    }
+
+    startPollingIfNeeded()
+
+    const onPadConnect = () => startPollingIfNeeded()
+    const onPadDisconnect = () => {
+      const { pressUp: onUp } = handlersRef.current
+      if (connectedGamepads().length === 0) {
+        release(1, onUp)
+        release(2, onUp)
+        if (animId) cancelAnimationFrame(animId)
+        isPolling = false
+      }
+    }
+
+    window.addEventListener("gamepadconnected", onPadConnect)
+    window.addEventListener("gamepaddisconnected", onPadDisconnect)
 
     return () => {
-      cancelAnimationFrame(animId)
+      window.removeEventListener("gamepadconnected", onPadConnect)
+      window.removeEventListener("gamepaddisconnected", onPadDisconnect)
+      if (animId) cancelAnimationFrame(animId)
       const { pressUp: onUp } = handlersRef.current
       release(1, onUp)
       release(2, onUp)
