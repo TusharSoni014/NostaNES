@@ -72,6 +72,17 @@ export function MobileTouchControls({
   // Current active orientation layout
   const currentLayout = gameLayout[orientation]
 
+  // Flip every pressed-state once inside a single task so the first real tap does not
+  // pay for the first style recalculation. Nothing paints in between.
+  useEffect(() => {
+    const root = containerRef.current
+    if (!root) return
+    const targets = root.querySelectorAll<HTMLElement>("[data-pressed]")
+    targets.forEach((el) => { el.dataset.pressed = "true" })
+    void root.offsetWidth
+    targets.forEach((el) => { el.dataset.pressed = "false" })
+  }, [])
+
   // Gamepad override state
   const [showOverride, setShowOverride] = useState<boolean | null>(null)
   const visible = showOverride !== null ? showOverride : !gamepadConnected

@@ -344,6 +344,20 @@ export function useNostalgistEmulator({
 
               readyTimerRef.current = setTimeout(() => {
                 if (!stoppedRef.current) {
+                  // Pay the first-call cost of the input path and audio resume now,
+                  // behind the loader, instead of on the player's first tap.
+                  // A real key, down and up inside one task, so the core never polls it as held.
+                  // An unbound key returns before the lazily compiled WASM handler runs.
+                  for (const code of ["KeyZ", "ArrowLeft", "Enter"]) {
+                    dispatchEmulatorKey(emu, "keydown", code, canvas)
+                    dispatchEmulatorKey(emu, "keyup", code, canvas)
+                  }
+                  // The library reads and parses its input config on the first lookup.
+                  try {
+                    emu.pressDown("b")
+                    emu.pressUp("b")
+                  } catch {}
+                  setAudioContextState(emu, "resume")
                   onPhaseChange("ready")
                   if (!isPausedRef.current) canvas.focus()
                 }
