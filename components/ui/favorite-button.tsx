@@ -89,9 +89,11 @@ export const FavoriteButton = memo(function FavoriteButton({
         <span className="relative flex items-center justify-center">
           <HeartAnimation isFav={isFav} burstKey={burstKey} iconClass={iconSizes[size]} animated />
         </span>
-        <span className="truncate">
-          {showLabel ? (isFav ? "Favorited" : "Add to Fav") : isFav ? "Favorited" : "Favorite"}
-        </span>
+        {showLabel ? (
+          <span className="truncate">
+            {isFav ? "Favorited" : "Favorite"}
+          </span>
+        ) : null}
       </button>
     )
   }

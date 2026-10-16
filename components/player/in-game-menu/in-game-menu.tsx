@@ -17,6 +17,8 @@ import { InGameMenuSidebar } from "./in-game-menu-sidebar"
 import type { InGameMenuProps, InGameMenuTab } from "./types"
 import { useInputMode } from "@/hooks/use-input-mode"
 import { useMenuNavigation } from "@/hooks/use-menu-navigation"
+import { useIsMobile } from "@/hooks/use-is-mobile"
+import { useGamepadStatus } from "@/hooks/use-gamepad-status"
 import { playUiSound } from "@/lib/ui-sounds"
 
 const MENU_TABS: readonly InGameMenuTab[] = [
@@ -36,6 +38,8 @@ export const InGameMenu = ({
   cheats,
 }: InGameMenuProps) => {
   const inputMode = useInputMode()
+  const isMobile = useIsMobile()
+  const { connected: gamepadConnected } = useGamepadStatus()
   const [activeTab, setActiveTab] = useState<InGameMenuTab>("resume")
   const [focusPane, setFocusPane] = useState<"sidebar" | "content">("sidebar")
   const [prevOpen, setPrevOpen] = useState(open)
@@ -182,28 +186,40 @@ export const InGameMenu = ({
           </main>
         </div>
 
-        {/* Global Navigation Hints Footer */}
-        <div className="shrink-0 flex items-center justify-between border-t border-white/10 px-6 py-2.5 bg-black/40 text-xs text-white/60 select-none">
-          {inputMode === "gamepad" ? (
-            <>
-              <div className="flex items-center gap-3">
+        {/* Navigation Hints Footer */}
+        <div className="shrink-0 flex items-center justify-between border-t border-white/10 px-3 sm:px-6 py-2 sm:py-2.5 pb-[max(env(safe-area-inset-bottom,0px),8px)] bg-zinc-950/90 text-xs text-white/60 select-none">
+          {isMobile && !gamepadConnected ? (
+            <div className="flex items-center justify-between w-full px-1">
+              <span className="text-[11px] text-white/50">Tap option to configure</span>
+              <button
+                type="button"
+                onClick={onResume}
+                className="text-[11px] font-medium text-blue-400 hover:text-blue-300 flex items-center gap-1 cursor-pointer active:opacity-75 transition-opacity"
+              >
+                <span>Back to Game</span>
+                <span>→</span>
+              </button>
+            </div>
+          ) : inputMode === "gamepad" || gamepadConnected ? (
+            <div className="flex items-center justify-between w-full">
+              <div className="flex items-center gap-2 sm:gap-3">
                 <span className="flex items-center gap-1.5">
                   <GamepadKey button="D-Pad" size="sm" />
-                  <span className="text-[11px] text-white/80">Navigate</span>
+                  <span className="text-[10px] sm:text-[11px] text-white/80">Navigate</span>
                 </span>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 sm:gap-3">
                 <span className="flex items-center gap-1.5">
                   <GamepadKey button="A" size="sm" />
-                  <span className="text-[11px] text-white/80">Select</span>
+                  <span className="text-[10px] sm:text-[11px] text-white/80">Select</span>
                 </span>
                 <span className="text-white/20">•</span>
                 <span className="flex items-center gap-1.5">
                   <GamepadKey button="B" size="sm" />
-                  <span className="text-[11px] text-white/80">Back / Resume</span>
+                  <span className="text-[10px] sm:text-[11px] text-white/80">Back</span>
                 </span>
               </div>
-            </>
+            </div>
           ) : (
             <>
               <div className="flex items-center gap-3">
