@@ -34,6 +34,8 @@ export const PlayerFooter = ({ isFullscreen }: PlayerFooterProps) => {
   const { profile } = useGamepadStatus()
   const isPS = profile.family === "playstation"
 
+  if (isFullscreen) return null
+
   return (
     <motion.footer
       initial={{ opacity: 0, y: 16 }}

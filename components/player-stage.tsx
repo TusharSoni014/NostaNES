@@ -71,6 +71,7 @@ export const PlayerStage = ({ game, initialSlot, onExit }: PlayerStageProps) => 
     game, canvasRef, onPhaseChange: setPhase, reloadKey: romKey,
     isPaused: inGameMenuOpen || confirmingExit,
     initialSlot,
+    isMobile,
   })
 
   useKeyboardControls({

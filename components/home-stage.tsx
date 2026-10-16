@@ -7,6 +7,7 @@ import {
   HeartIcon,
   PlayIcon,
   SearchIcon,
+  XIcon,
 } from "lucide-react";
 import Image from "next/image";
 import { BootScreen } from "@/components/boot-screen";
@@ -406,6 +407,23 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
                   }}
                   className="h-8 sm:h-9 text-xs sm:text-sm"
                 />
+                {query.length > 0 ? (
+                  <InputGroupAddon align="inline-end">
+                    <button
+                      type="button"
+                      aria-label="Clear search"
+                      onClick={() => {
+                        setQuery("");
+                        indexRef.current = 0;
+                        setIndex(0);
+                        playUiSound("navigation");
+                      }}
+                      className="flex size-5 items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-white/10 active:scale-90 transition-all cursor-pointer"
+                    >
+                      <XIcon className="size-3.5" />
+                    </button>
+                  </InputGroupAddon>
+                ) : null}
               </InputGroup>
             </Field>
 

@@ -6,10 +6,26 @@ export const PLAYER2_KEYBOARD_WIRES = ["i", "k", "j", "l", "u", "o", "h", "n"] a
  * Fully supports Xbox, PlayStation, Nintendo, and standard USB/Bluetooth gamepads out of the box,
  * and sets up canonical baseline mappings for live in-memory input translation.
  */
-export const getRetroArchInputConfig = () => ({
+export const getRetroArchInputConfig = (isMobile = false) => ({
     video_smooth: false,
     video_force_aspect: true,
     audio_enable: true,
+    audio_sync: true,
+    // Buffer size in ms: 128ms on mobile provides safety cushion against buffer underflow and GC stalls
+    audio_latency: isMobile ? 128 : 96,
+    // Linear audio resampler reduces DRC CPU usage by ~80% compared to heavy sinc interpolation
+    audio_resampler: "linear",
+    audio_resampler_quality: 1,
+    audio_rate_control: true,
+    audio_rate_control_delta: 0.005,
+    audio_max_timing_skew: 0.05,
+    // Threaded video keeps the emulation core decoupled from browser UI and compositor hiccups
+    video_threaded: true,
+    video_vsync: true,
+    video_frame_delay: 0,
+    video_max_swapchain_images: isMobile ? 3 : 2,
+    pause_nonactive: false,
+    fps_update_interval: 60,
     input_exit_emulator: "nul",
     input_exit_emulator_btn: "nul",
     input_menu_toggle: "nul",
@@ -112,7 +128,12 @@ export const getRetroArchInputConfig = () => ({
  * Core-level options for NES emulators (e.g. FCEUmm).
  * Explicitly enables Turbo buttons for both players and sets rapid-fire delay.
  */
-export const getRetroArchCoreConfig = () => ({
+export const getRetroArchCoreConfig = (isMobile = false) => ({
   fceumm_turbo_enable: "Both",
   fceumm_turbo_delay: "3",
+  // "Low" sound quality prevents complex audio synthesis / expansion chips (MMC5, VRC6/7) from stuttering on mobile
+  fceumm_sndquality: isMobile ? "Low" : "High",
+  fceumm_overclocking: "Disabled",
+  fceumm_nospritelimit: "Disabled",
+  fceumm_region: "Auto",
 })

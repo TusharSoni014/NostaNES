@@ -34,6 +34,7 @@ export class GamepadDispatcher {
   private selectHoldStartTime = 0
   private selectHoldCompleted = false
   private selectStartComboActive = false
+  private isPolling = false
 
   constructor(callback: GamepadListenerCallback, options?: GamepadDispatcherOptions) {
     this.callback = (action) => {
@@ -44,26 +45,61 @@ export class GamepadDispatcher {
     this.onSelectHoldComplete = options?.onSelectHoldComplete
   }
 
-  start = (): void => {
-    if (this.running) return
-    this.running = true
-    const pads = getRawGamepads()
-    const pad = Array.from(pads).find((p): p is Gamepad => Boolean(p && p.connected))
-    if (pad) {
-      pad.buttons.forEach((btn, idx) => {
-        const isPressed = typeof btn === "object" ? btn.pressed : Boolean(btn)
-        if (isPressed) this.buttonPreviousStates.set(idx, true)
-      })
-    }
-    this.tick(performance.now())
+  private onGamepadConnected = (): void => {
+    if (!this.running) return
+    this.startPollingIfNeeded()
   }
 
-  stop = (): void => {
-    this.running = false
+  private onGamepadDisconnected = (): void => {
+    if (!this.running) return
+    const pads = getRawGamepads()
+    const pad = Array.from(pads).find((p): p is Gamepad => Boolean(p && p.connected))
+    if (!pad) {
+      this.stopPolling()
+    }
+  }
+
+  private startPollingIfNeeded = (): void => {
+    if (this.isPolling) return
+    const pads = getRawGamepads()
+    const pad = Array.from(pads).find((p): p is Gamepad => Boolean(p && p.connected))
+    if (!pad) return
+
+    this.isPolling = true
+    pad.buttons.forEach((btn, idx) => {
+      const isPressed = typeof btn === "object" ? btn.pressed : Boolean(btn)
+      if (isPressed) this.buttonPreviousStates.set(idx, true)
+    })
+    this.frameId = requestAnimationFrame(this.tick)
+  }
+
+  private stopPolling = (): void => {
     if (this.frameId) {
       cancelAnimationFrame(this.frameId)
       this.frameId = 0
     }
+    this.isPolling = false
+  }
+
+  start = (): void => {
+    if (this.running) return
+    this.running = true
+
+    if (typeof window !== "undefined") {
+      window.addEventListener("gamepadconnected", this.onGamepadConnected)
+      window.addEventListener("gamepaddisconnected", this.onGamepadDisconnected)
+    }
+
+    this.startPollingIfNeeded()
+  }
+
+  stop = (): void => {
+    this.running = false
+    if (typeof window !== "undefined") {
+      window.removeEventListener("gamepadconnected", this.onGamepadConnected)
+      window.removeEventListener("gamepaddisconnected", this.onGamepadDisconnected)
+    }
+    this.stopPolling()
     this.buttonPreviousStates.clear()
     this.activeDirection = null
     this.pressStartTime = 0
@@ -80,7 +116,7 @@ export class GamepadDispatcher {
     const pad = Array.from(pads).find((p): p is Gamepad => Boolean(p && p.connected))
 
     if (!pad) {
-      this.frameId = requestAnimationFrame(this.tick)
+      this.stopPolling()
       return
     }
 

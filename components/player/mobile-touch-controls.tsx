@@ -23,12 +23,9 @@ import { TouchControlsEditorBar } from "./touch-controls/touch-controls-editor-b
 import type { DragState, MobileTouchControlsProps } from "./touch-controls/types"
 import { cn } from "@/lib/utils"
 
-function triggerHaptic(duration = 10) {
-  try {
-    if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
-      navigator.vibrate(duration)
-    }
-  } catch {}
+// Hardware vibration disabled to prevent Android Chrome IPC thread hitching and frame freezes
+function triggerHaptic(_duration?: number) {
+  void _duration
 }
 
 export function MobileTouchControls({
@@ -78,7 +75,6 @@ export function MobileTouchControls({
   // Gamepad override state
   const [showOverride, setShowOverride] = useState<boolean | null>(null)
   const visible = showOverride !== null ? showOverride : !gamepadConnected
-  const [activeButtons, setActiveButtons] = useState<Set<string>>(new Set())
 
   // Hide touch controls if gamepad input detected
   useEffect(() => {
@@ -117,36 +113,32 @@ export function MobileTouchControls({
     return () => window.removeEventListener("pointerdown", handleScreenTap)
   }, [visible])
 
-  // Gameplay Button Down/Up
+  // Gameplay Button Down/Up with direct zero-latency DOM updates (0 React re-renders)
   const handleButtonDown = useCallback(
-    (action: string, btnKey: string, e: React.PointerEvent) => {
+    (action: string, _btnKey: string, e: React.PointerEvent) => {
       e.preventDefault()
       e.stopPropagation()
       try {
         ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
       } catch {}
+      ;(e.currentTarget as HTMLElement).dataset.pressed = "true"
 
       pressDown(action)
-      triggerHaptic(12)
-      setActiveButtons((prev) => new Set(prev).add(btnKey))
+      triggerHaptic(8)
     },
     [pressDown],
   )
 
   const handleButtonUp = useCallback(
-    (action: string, btnKey: string, e: React.PointerEvent) => {
+    (action: string, _btnKey: string, e: React.PointerEvent) => {
       e.preventDefault()
       e.stopPropagation()
       try {
         ;(e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId)
       } catch {}
+      ;(e.currentTarget as HTMLElement).dataset.pressed = "false"
 
       pressUp(action)
-      setActiveButtons((prev) => {
-        const next = new Set(prev)
-        next.delete(btnKey)
-        return next
-      })
     },
     [pressUp],
   )
@@ -455,7 +447,6 @@ export function MobileTouchControls({
         pos={currentLayout.a}
         isCustomizing={isCustomizing}
         isSelected={selectedKey === "a"}
-        isPressed={activeButtons.has("a")}
         onPointerDown={(e: React.PointerEvent) => {
           if (isCustomizing) handleElementPointerDown("a", e)
           else handleButtonDown("a", "a", e)
@@ -479,7 +470,6 @@ export function MobileTouchControls({
         pos={currentLayout.b}
         isCustomizing={isCustomizing}
         isSelected={selectedKey === "b"}
-        isPressed={activeButtons.has("b")}
         onPointerDown={(e: React.PointerEvent) => {
           if (isCustomizing) handleElementPointerDown("b", e)
           else handleButtonDown("b", "b", e)
@@ -503,7 +493,6 @@ export function MobileTouchControls({
         pos={currentLayout.turboA}
         isCustomizing={isCustomizing}
         isSelected={selectedKey === "turboA"}
-        isPressed={activeButtons.has("turboA")}
         onPointerDown={(e: React.PointerEvent) => {
           if (isCustomizing) handleElementPointerDown("turboA", e)
           else handleButtonDown("x", "turboA", e)
@@ -527,7 +516,6 @@ export function MobileTouchControls({
         pos={currentLayout.turboB}
         isCustomizing={isCustomizing}
         isSelected={selectedKey === "turboB"}
-        isPressed={activeButtons.has("turboB")}
         onPointerDown={(e: React.PointerEvent) => {
           if (isCustomizing) handleElementPointerDown("turboB", e)
           else handleButtonDown("y", "turboB", e)
@@ -551,7 +539,6 @@ export function MobileTouchControls({
         pos={currentLayout.select}
         isCustomizing={isCustomizing}
         isSelected={selectedKey === "select"}
-        isPressed={activeButtons.has("select")}
         onPointerDown={(e: React.PointerEvent) => {
           if (isCustomizing) handleElementPointerDown("select", e)
           else handleButtonDown("select", "select", e)
@@ -575,7 +562,6 @@ export function MobileTouchControls({
         pos={currentLayout.start}
         isCustomizing={isCustomizing}
         isSelected={selectedKey === "start"}
-        isPressed={activeButtons.has("start")}
         onPointerDown={(e: React.PointerEvent) => {
           if (isCustomizing) handleElementPointerDown("start", e)
           else handleButtonDown("start", "start", e)

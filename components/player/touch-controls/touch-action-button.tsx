@@ -10,7 +10,7 @@ export type TouchActionButtonProps = {
   pos: TouchElementPlacement
   isCustomizing: boolean
   isSelected: boolean
-  isPressed: boolean
+  isPressed?: boolean
   onPointerDown: (e: React.PointerEvent) => void
   onPointerMove?: (e: React.PointerEvent) => void
   onPointerUp: (e: React.PointerEvent) => void
@@ -70,6 +70,7 @@ export function TouchActionButton({
 
       <button
         type="button"
+        data-pressed={isPressed ? "true" : "false"}
         aria-label={name}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
@@ -80,16 +81,12 @@ export function TouchActionButton({
           e.stopPropagation()
         }}
         className={cn(
-          "size-13 rounded-full border flex flex-col items-center justify-center select-none shadow-md transition-all active:scale-90 cursor-pointer",
+          "size-13 rounded-full border flex flex-col items-center justify-center select-none shadow-md transition-transform duration-75 active:scale-90 cursor-pointer",
           isCustomizing && isSelected && "ring-2 ring-blue-400 ring-offset-2 ring-offset-black scale-105",
           isCustomizing && !isSelected && "border-dashed border-zinc-500/80 hover:border-zinc-300",
           isTurbo
-            ? isPressed
-              ? "bg-amber-500 border-amber-300 text-black scale-95"
-              : "bg-amber-950 border-amber-600/70 text-amber-200"
-            : isPressed
-              ? "bg-rose-500 border-white text-white scale-95"
-              : "bg-rose-900 border-rose-600/80 text-rose-100",
+            ? "bg-amber-950 border-amber-600/70 text-amber-200 data-[pressed=true]:bg-amber-500 data-[pressed=true]:border-amber-300 data-[pressed=true]:text-black data-[pressed=true]:scale-95"
+            : "bg-rose-900 border-rose-600/80 text-rose-100 data-[pressed=true]:bg-rose-500 data-[pressed=true]:border-white data-[pressed=true]:text-white data-[pressed=true]:scale-95",
         )}
       >
         {isTurbo ? (

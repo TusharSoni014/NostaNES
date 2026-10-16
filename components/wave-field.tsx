@@ -119,6 +119,7 @@ export function WaveField({ shift, paused = false, onReady }: WaveFieldProps) {
   const shiftRef = useRef(shift)
   const pausedRef = useRef(Boolean(paused))
   const onReadyRef = useRef(onReady)
+  const loopControllerRef = useRef<((isPaused: boolean) => void) | null>(null)
 
   useEffect(() => {
     shiftRef.current = shift
@@ -126,6 +127,7 @@ export function WaveField({ shift, paused = false, onReady }: WaveFieldProps) {
 
   useEffect(() => {
     pausedRef.current = Boolean(paused)
+    loopControllerRef.current?.(Boolean(paused))
   }, [paused])
 
   useEffect(() => {
@@ -213,13 +215,8 @@ export function WaveField({ shift, paused = false, onReady }: WaveFieldProps) {
       let elapsed = uniforms.u_time.value
       let last = performance.now()
       let wasPaused = false
-      renderer.render(scene, camera)
-      notifyReady()
-      renderer.setAnimationLoop(() => {
-        if (pausedRef.current) {
-          wasPaused = true
-          return
-        }
+      const render = () => {
+        if (pausedRef.current) return
         const now = performance.now()
         if (wasPaused) {
           last = now
@@ -235,9 +232,35 @@ export function WaveField({ shift, paused = false, onReady }: WaveFieldProps) {
           (shiftRef.current - uniforms.u_shift.value) *
           (1 - Math.exp(-2.5 * dt))
         renderer.render(scene, camera)
-      })
+      }
+
+      const updateLoopState = (isPaused: boolean) => {
+        if (stopped) return
+        if (isPaused) {
+          wasPaused = true
+          renderer.setAnimationLoop(null)
+          renderer.domElement.style.display = "none"
+        } else {
+          last = performance.now()
+          renderer.domElement.style.display = "block"
+          resize()
+          renderer.setAnimationLoop(render)
+        }
+      }
+
+      loopControllerRef.current = updateLoopState
+
+      renderer.render(scene, camera)
+      notifyReady()
+
+      if (!pausedRef.current) {
+        renderer.setAnimationLoop(render)
+      } else {
+        updateLoopState(true)
+      }
 
       cleanup = () => {
+        loopControllerRef.current = null
         renderer.setAnimationLoop(null)
         window.removeEventListener("pointermove", onPointer)
         observer.disconnect()

@@ -13,13 +13,6 @@ export type MobileDpadProps = {
   disabled?: boolean
 }
 
-function triggerHaptic(duration = 6) {
-  try {
-    if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
-      navigator.vibrate(duration)
-    }
-  } catch {}
-}
 
 export function MobileDpad({
   pressDown,
@@ -148,25 +141,31 @@ export function MobileDpad({
     const el = baseRef.current
     if (!el || disabled) return
 
-    const handlePointerDown = (e: PointerEvent) => {
-      if (e.button !== 0 && e.pointerType === "mouse") return
-      e.preventDefault()
-      e.stopPropagation()
-
-      pointerIdRef.current = e.pointerId
-
+    const measure = () => {
       const rect = el.getBoundingClientRect()
       rectRef.current = rect
       centerRef.current = {
         x: rect.left + rect.width / 2,
         y: rect.top + rect.height / 2,
       }
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(el)
 
-      // Gentle haptic feedback ONLY on initial touch-down from idle state
-      if (activeDirectionsRef.current.size === 0) {
-        triggerHaptic(6)
-      }
+    let lastX = 0
+    let lastY = 0
 
+    const handlePointerDown = (e: PointerEvent) => {
+      if (e.button !== 0 && e.pointerType === "mouse") return
+      e.preventDefault()
+      e.stopPropagation()
+
+      pointerIdRef.current = e.pointerId
+      if (!centerRef.current) measure()
+
+      lastX = e.clientX
+      lastY = e.clientY
       updatePosition(e.clientX, e.clientY)
 
       // Listen on window during active drag so sliding slightly outside bounds never drops input
@@ -179,6 +178,11 @@ export function MobileDpad({
       if (pointerIdRef.current !== e.pointerId) return
       e.preventDefault()
       e.stopPropagation()
+
+      // Skip micro-movements to reduce event handling pressure during 120Hz/240Hz touch sampling
+      if (Math.abs(e.clientX - lastX) < 1.5 && Math.abs(e.clientY - lastY) < 1.5) return
+      lastX = e.clientX
+      lastY = e.clientY
       updatePosition(e.clientX, e.clientY)
     }
 
@@ -188,8 +192,6 @@ export function MobileDpad({
       e.stopPropagation()
 
       pointerIdRef.current = null
-      rectRef.current = null
-      centerRef.current = null
 
       window.removeEventListener("pointermove", handlePointerMove)
       window.removeEventListener("pointerup", handlePointerUp)
@@ -201,6 +203,7 @@ export function MobileDpad({
     el.addEventListener("pointerdown", handlePointerDown, { passive: false })
 
     return () => {
+      observer.disconnect()
       el.removeEventListener("pointerdown", handlePointerDown)
       window.removeEventListener("pointermove", handlePointerMove)
       window.removeEventListener("pointerup", handlePointerUp)

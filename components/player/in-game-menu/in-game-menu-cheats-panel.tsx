@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react"
-import { BanIcon, RotateCcwIcon, SearchIcon, Trash2Icon, UploadIcon, Wand2Icon } from "lucide-react"
+import { BanIcon, RotateCcwIcon, SearchIcon, Trash2Icon, UploadIcon, Wand2Icon, XIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
@@ -474,8 +474,18 @@ function CheatFiles({
           onChange={(event) => onFileQuery(event.target.value)}
           placeholder="Search cheat files"
           aria-label="Search cheat files"
-          className="h-8 border-white/15 bg-white/5 pl-8 text-xs text-white placeholder:text-white/40"
+          className="h-8 border-white/15 bg-white/5 pl-8 pr-8 text-xs text-white placeholder:text-white/40"
         />
+        {fileQuery.length > 0 ? (
+          <button
+            type="button"
+            aria-label="Clear cheat files search"
+            onClick={() => onFileQuery("")}
+            className="absolute right-2 top-1/2 -translate-y-1/2 flex size-5 items-center justify-center rounded-full text-white/40 hover:text-white hover:bg-white/10 active:scale-90 transition-all cursor-pointer"
+          >
+            <XIcon className="size-3.5" />
+          </button>
+        ) : null}
       </label>
       {actionError ? <p className="shrink-0 text-xs text-red-300">{actionError}</p> : null}
       <div className="min-h-0 flex-1 overflow-y-auto pr-1">
@@ -659,8 +669,18 @@ function CheatCodes({
           onChange={(event) => onCheatQuery(event.target.value)}
           placeholder="Search cheats"
           aria-label="Search cheats"
-          className="h-8 border-white/15 bg-white/5 pl-8 text-xs text-white placeholder:text-white/40"
+          className="h-8 border-white/15 bg-white/5 pl-8 pr-8 text-xs text-white placeholder:text-white/40"
         />
+        {cheatQuery.length > 0 ? (
+          <button
+            type="button"
+            aria-label="Clear cheats search"
+            onClick={() => onCheatQuery("")}
+            className="absolute right-2 top-1/2 -translate-y-1/2 flex size-5 items-center justify-center rounded-full text-white/40 hover:text-white hover:bg-white/10 active:scale-90 transition-all cursor-pointer"
+          >
+            <XIcon className="size-3.5" />
+          </button>
+        ) : null}
       </label>
       {actionError ? <p className="shrink-0 text-xs text-red-300">{actionError}</p> : null}
 

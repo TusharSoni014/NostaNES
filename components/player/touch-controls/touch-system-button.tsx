@@ -10,7 +10,7 @@ export type TouchSystemButtonProps = {
   pos: TouchElementPlacement
   isCustomizing: boolean
   isSelected: boolean
-  isPressed: boolean
+  isPressed?: boolean
   onPointerDown: (e: React.PointerEvent) => void
   onPointerMove?: (e: React.PointerEvent) => void
   onPointerUp: (e: React.PointerEvent) => void
@@ -65,6 +65,7 @@ export function TouchSystemButton({
 
       <button
         type="button"
+        data-pressed={isPressed ? "true" : "false"}
         aria-label={`${label} button`}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
@@ -75,17 +76,14 @@ export function TouchSystemButton({
           e.stopPropagation()
         }}
         className={cn(
-          "group flex flex-col items-center gap-1 cursor-pointer active:scale-95 transition-all p-1 select-none",
+          "group flex flex-col items-center gap-1 cursor-pointer active:scale-95 transition-transform duration-75 p-1 select-none",
           isCustomizing && isSelected && "ring-2 ring-blue-400 ring-offset-2 ring-offset-black rounded-lg",
           isCustomizing && !isSelected && "border border-dashed border-zinc-600/70 rounded-lg",
         )}
       >
         <div
           className={cn(
-            "w-11 sm:w-13 h-4 sm:h-5 rounded-full border transition-colors -rotate-12 flex items-center justify-center",
-            isPressed
-              ? "bg-blue-600 border-blue-400"
-              : "bg-zinc-800 border-zinc-700",
+            "w-11 sm:w-13 h-4 sm:h-5 rounded-full border transition-colors duration-75 -rotate-12 flex items-center justify-center bg-zinc-800 border-zinc-700 group-data-[pressed=true]:bg-blue-600 group-data-[pressed=true]:border-blue-400",
           )}
         >
           <div className="w-6 sm:w-7 h-1 rounded-full bg-zinc-600" />

@@ -18,6 +18,7 @@ type UseNostalgistOptions = {
   reloadKey?: number
   isPaused?: boolean
   initialSlot?: number
+  isMobile?: boolean
 }
 
 // Guarantee NES loader displays for at least one second
@@ -38,7 +39,7 @@ function setAudioContextState(emu: Nostalgist | null, state: "suspend" | "resume
 }
 
 export function useNostalgistEmulator({
-  game, canvasRef, onPhaseChange, reloadKey = 0, isPaused = false, initialSlot,
+  game, canvasRef, onPhaseChange, reloadKey = 0, isPaused = false, initialSlot, isMobile,
 }: UseNostalgistOptions) {
   const instanceRef = useRef<Nostalgist | null>(null)
   const isPausedRef = useRef(Boolean(isPaused))
@@ -190,11 +191,26 @@ export function useNostalgistEmulator({
     cancelWakeLockRef.current = preventScreenSleep()
     const loadStartTime = performance.now()
 
+    const isMobileDevice = Boolean(
+      isMobile ??
+      (typeof window !== "undefined" &&
+        (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || window.innerWidth < 768))
+    )
+
     const rect = frame.getBoundingClientRect()
     const scale = Math.max(
       1,
       Math.floor(Math.min((rect.width || 768) / 256, (rect.height || 576) / 240)),
     )
+    // On mobile devices, native 256x240 lets hardware GPU scale crisply at minimum VRAM & fill-rate
+    const effectiveScale = isMobileDevice ? 1 : scale
+
+    const handleFirstTouch = () => {
+      if (instanceRef.current) {
+        setAudioContextState(instanceRef.current, "resume")
+      }
+    }
+    window.addEventListener("pointerdown", handleFirstTouch, { once: true, passive: true })
 
     ;(async () => {
       try {
@@ -213,10 +229,10 @@ export function useNostalgistEmulator({
           element: canvas,
           signal: controller.signal,
           cache: game.customRom ? { core: true, rom: false } : { core: true, rom: true },
-          size: { width: 256 * scale, height: 240 * scale },
+          size: { width: 256 * effectiveScale, height: 240 * effectiveScale },
           style: { width: "100%", height: "100%", display: "block", backgroundColor: "black" },
-          retroarchConfig: getRetroArchInputConfig(),
-          retroarchCoreConfig: getRetroArchCoreConfig(),
+          retroarchConfig: getRetroArchInputConfig(isMobileDevice),
+          retroarchCoreConfig: getRetroArchCoreConfig(isMobileDevice),
           onLaunch(emu) {
             if (stoppedRef.current) return
             instanceRef.current = emu
@@ -287,9 +303,10 @@ export function useNostalgistEmulator({
     })()
 
     return () => {
+      window.removeEventListener("pointerdown", handleFirstTouch)
       unload()
     }
-  }, [canvasRef, game.file, game.customRom, initialSlot, onPhaseChange, reloadKey, unload])
+  }, [canvasRef, game.file, game.customRom, initialSlot, isMobile, onPhaseChange, reloadKey, unload])
 
   return {
     pause, resume, saveState, loadState, unload, pressDown, pressUp,
