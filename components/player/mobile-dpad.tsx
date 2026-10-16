@@ -5,6 +5,11 @@ import { cn } from "@/lib/utils"
 
 export type DpadDirection = "up" | "down" | "left" | "right"
 
+const DIR_UP = 1
+const DIR_DOWN = 2
+const DIR_LEFT = 4
+const DIR_RIGHT = 8
+
 export type MobileDpadProps = {
   pressDown: (action: string) => void
   pressUp: (action: string) => void
@@ -25,7 +30,7 @@ export function MobileDpad({
   const pointerIdRef = useRef<number | null>(null)
   const centerRef = useRef<{ x: number; y: number } | null>(null)
   const rectRef = useRef<DOMRect | null>(null)
-  const activeDirectionsRef = useRef<Set<DpadDirection>>(new Set())
+  const activeMaskRef = useRef(0)
 
   // Arm element references for direct, zero-latency DOM updates without React re-renders
   const upArmRef = useRef<HTMLDivElement>(null)
@@ -33,17 +38,36 @@ export function MobileDpad({
   const leftArmRef = useRef<HTMLDivElement>(null)
   const rightArmRef = useRef<HTMLDivElement>(null)
 
-  const updateVisuals = useCallback((dirs: Set<DpadDirection>) => {
-    const isUp = dirs.has("up")
-    const isDown = dirs.has("down")
-    const isLeft = dirs.has("left")
-    const isRight = dirs.has("right")
+  const applyMask = useCallback((mask: number) => {
+    const current = activeMaskRef.current
+    if (current === mask) return
 
-    if (upArmRef.current) upArmRef.current.dataset.active = isUp ? "true" : "false"
-    if (downArmRef.current) downArmRef.current.dataset.active = isDown ? "true" : "false"
-    if (leftArmRef.current) leftArmRef.current.dataset.active = isLeft ? "true" : "false"
-    if (rightArmRef.current) rightArmRef.current.dataset.active = isRight ? "true" : "false"
-  }, [])
+    // Release inactive directions FIRST so opposite directions (e.g. left and right)
+    // are NEVER registered simultaneously in the NES emulator core.
+    if ((current & DIR_UP) && !(mask & DIR_UP)) pressUp("up")
+    if ((current & DIR_DOWN) && !(mask & DIR_DOWN)) pressUp("down")
+    if ((current & DIR_LEFT) && !(mask & DIR_LEFT)) pressUp("left")
+    if ((current & DIR_RIGHT) && !(mask & DIR_RIGHT)) pressUp("right")
+
+    if (!(current & DIR_UP) && (mask & DIR_UP)) pressDown("up")
+    if (!(current & DIR_DOWN) && (mask & DIR_DOWN)) pressDown("down")
+    if (!(current & DIR_LEFT) && (mask & DIR_LEFT)) pressDown("left")
+    if (!(current & DIR_RIGHT) && (mask & DIR_RIGHT)) pressDown("right")
+
+    activeMaskRef.current = mask
+    if ((current & DIR_UP) !== (mask & DIR_UP) && upArmRef.current) {
+      upArmRef.current.dataset.active = mask & DIR_UP ? "true" : "false"
+    }
+    if ((current & DIR_DOWN) !== (mask & DIR_DOWN) && downArmRef.current) {
+      downArmRef.current.dataset.active = mask & DIR_DOWN ? "true" : "false"
+    }
+    if ((current & DIR_LEFT) !== (mask & DIR_LEFT) && leftArmRef.current) {
+      leftArmRef.current.dataset.active = mask & DIR_LEFT ? "true" : "false"
+    }
+    if ((current & DIR_RIGHT) !== (mask & DIR_RIGHT) && rightArmRef.current) {
+      rightArmRef.current.dataset.active = mask & DIR_RIGHT ? "true" : "false"
+    }
+  }, [pressDown, pressUp])
 
   const updatePosition = useCallback(
     (clientX: number, clientY: number) => {
@@ -60,83 +84,37 @@ export function MobileDpad({
 
       const absX = Math.abs(dx)
       const absY = Math.abs(dy)
-      const nextDirs = new Set<DpadDirection>()
+      let mask = 0
 
       // 1. HORIZONTAL ARM (Running forward & backward)
       // When within the horizontal bar's vertical band (|dy| <= halfArmWidth),
       // the player is physically on the horizontal arm: UP and DOWN are strictly suppressed,
       // completely eliminating accidental ducking, crouching, or jumping while running.
       if (absY <= halfArmWidth) {
-        if (absX >= deadzone) {
-          if (dx > 0) nextDirs.add("right")
-          else nextDirs.add("left")
-        }
+        if (absX >= deadzone) mask = dx > 0 ? DIR_RIGHT : DIR_LEFT
       }
       // 2. VERTICAL ARM (Climbing & ducking)
       // When within the vertical bar's horizontal band (|dx| <= halfArmWidth),
       // the player is physically on the vertical arm: LEFT and RIGHT are strictly suppressed.
       else if (absX <= halfArmWidth) {
-        if (absY >= deadzone) {
-          if (dy > 0) nextDirs.add("down")
-          else nextDirs.add("up")
-        }
+        if (absY >= deadzone) mask = dy > 0 ? DIR_DOWN : DIR_UP
       }
       // 3. DIAGONAL CORNERS (Intentional 8-way diagonal input)
       // Outside both cardinal arm bands: thumb is pushed intentionally into the diagonal corners.
       else {
-        if (dx > 0) nextDirs.add("right")
-        else nextDirs.add("left")
-
-        if (dy > 0) nextDirs.add("down")
-        else nextDirs.add("up")
+        mask = (dx > 0 ? DIR_RIGHT : DIR_LEFT) | (dy > 0 ? DIR_DOWN : DIR_UP)
       }
 
-      const current = activeDirectionsRef.current
-
-      // Check if directions changed
-      let hasChanges = current.size !== nextDirs.size
-      if (!hasChanges) {
-        for (const dir of nextDirs) {
-          if (!current.has(dir)) {
-            hasChanges = true
-            break
-          }
-        }
-      }
-
-      if (!hasChanges) return
-
-      // CRITICAL FOR ZERO STUTTER & ZERO LATENCY:
-      // 1. Release inactive directions FIRST so opposite directions (e.g. left and right)
-      // are NEVER registered simultaneously in the NES emulator core.
-      for (const dir of current) {
-        if (!nextDirs.has(dir)) {
-          pressUp(dir)
-        }
-      }
-
-      // 2. Press new directions SECOND
-      for (const dir of nextDirs) {
-        if (!current.has(dir)) {
-          pressDown(dir)
-        }
-      }
-
-      activeDirectionsRef.current = nextDirs
-      updateVisuals(nextDirs)
+      applyMask(mask)
     },
-    [pressDown, pressUp, updateVisuals],
+    [applyMask],
   )
 
   const resetDpad = useCallback(() => {
-    for (const dir of activeDirectionsRef.current) {
-      pressUp(dir)
-    }
-    activeDirectionsRef.current = new Set()
-    updateVisuals(new Set())
-  }, [pressUp, updateVisuals])
+    applyMask(0)
+  }, [applyMask])
 
-  // Native event listeners with { passive: false } for absolute 0ms input latency
+  // Native listeners. Moves stay passive so a held direction cannot block the game frame.
   useEffect(() => {
     const el = baseRef.current
     if (!el || disabled) return
@@ -168,30 +146,36 @@ export function MobileDpad({
       lastY = e.clientY
       updatePosition(e.clientX, e.clientY)
 
-      // Listen on window during active drag so sliding slightly outside bounds never drops input
-      window.addEventListener("pointermove", handlePointerMove, { passive: false })
-      window.addEventListener("pointerup", handlePointerUp, { passive: false })
-      window.addEventListener("pointercancel", handlePointerUp, { passive: false })
+      // touch-action: none already blocks scrolling, so these stay passive and
+      // cannot stall the emulator frame the way a preventDefault listener does.
+      window.addEventListener("pointermove", handlePointerMove, { passive: true })
+      window.addEventListener("pointerup", handlePointerUp, { passive: true })
+      window.addEventListener("pointercancel", handlePointerUp, { passive: true })
+    }
+
+    let moveFrame = 0
+    const flushMove = () => {
+      moveFrame = 0
+      if (pointerIdRef.current === null) return
+      updatePosition(lastX, lastY)
     }
 
     const handlePointerMove = (e: PointerEvent) => {
       if (pointerIdRef.current !== e.pointerId) return
-      e.preventDefault()
-      e.stopPropagation()
-
-      // Skip micro-movements to reduce event handling pressure during 120Hz/240Hz touch sampling
-      if (Math.abs(e.clientX - lastX) < 1.5 && Math.abs(e.clientY - lastY) < 1.5) return
+      // One direction sample per frame. Phones emit pointermove at 120–240Hz,
+      // and each sample was reaching the emulator on the same thread as the game.
+      if (Math.abs(e.clientX - lastX) < 2 && Math.abs(e.clientY - lastY) < 2) return
       lastX = e.clientX
       lastY = e.clientY
-      updatePosition(e.clientX, e.clientY)
+      if (moveFrame) return
+      moveFrame = requestAnimationFrame(flushMove)
     }
 
     const handlePointerUp = (e: PointerEvent) => {
       if (pointerIdRef.current !== e.pointerId) return
-      e.preventDefault()
-      e.stopPropagation()
-
       pointerIdRef.current = null
+      if (moveFrame) cancelAnimationFrame(moveFrame)
+      moveFrame = 0
 
       window.removeEventListener("pointermove", handlePointerMove)
       window.removeEventListener("pointerup", handlePointerUp)
@@ -203,6 +187,7 @@ export function MobileDpad({
     el.addEventListener("pointerdown", handlePointerDown, { passive: false })
 
     return () => {
+      if (moveFrame) cancelAnimationFrame(moveFrame)
       observer.disconnect()
       el.removeEventListener("pointerdown", handlePointerDown)
       window.removeEventListener("pointermove", handlePointerMove)

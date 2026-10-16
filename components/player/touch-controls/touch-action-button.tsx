@@ -42,7 +42,7 @@ export function TouchActionButton({
       style={{
         left: `${pos.x}%`,
         top: `${pos.y}%`,
-        transform: `translate(-50%, -50%) scale(${pos.scale})`,
+        transform: `translate3d(-50%, -50%, 0) scale(${pos.scale})`,
         touchAction: "none",
       }}
       className={cn(
@@ -73,7 +73,7 @@ export function TouchActionButton({
         data-pressed={isPressed ? "true" : "false"}
         aria-label={name}
         onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
+        onPointerMove={isCustomizing ? onPointerMove : undefined}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerCancel}
         onContextMenu={(e) => {
@@ -81,12 +81,12 @@ export function TouchActionButton({
           e.stopPropagation()
         }}
         className={cn(
-          "size-13 rounded-full border flex flex-col items-center justify-center select-none shadow-md transition-transform duration-75 active:scale-90 cursor-pointer",
+          "size-13 rounded-full border flex flex-col items-center justify-center select-none shadow-md cursor-pointer [transform:translateZ(0)]",
           isCustomizing && isSelected && "ring-2 ring-blue-400 ring-offset-2 ring-offset-black scale-105",
           isCustomizing && !isSelected && "border-dashed border-zinc-500/80 hover:border-zinc-300",
           isTurbo
-            ? "bg-amber-950 border-amber-600/70 text-amber-200 data-[pressed=true]:bg-amber-500 data-[pressed=true]:border-amber-300 data-[pressed=true]:text-black data-[pressed=true]:scale-95"
-            : "bg-rose-900 border-rose-600/80 text-rose-100 data-[pressed=true]:bg-rose-500 data-[pressed=true]:border-white data-[pressed=true]:text-white data-[pressed=true]:scale-95",
+            ? "bg-amber-950 border-amber-600/70 text-amber-200 data-[pressed=true]:bg-amber-500 data-[pressed=true]:border-amber-300 data-[pressed=true]:text-black"
+            : "bg-rose-900 border-rose-600/80 text-rose-100 data-[pressed=true]:bg-rose-500 data-[pressed=true]:border-white data-[pressed=true]:text-white",
         )}
       >
         {isTurbo ? (

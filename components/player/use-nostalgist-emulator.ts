@@ -24,6 +24,63 @@ type UseNostalgistOptions = {
 // Guarantee NES loader displays for at least one second
 const MIN_LOADER_DURATION_MS = 1000
 
+// Same codes Nostalgist derives from the RetroArch keyboard map. Inlined so a
+// press does not stat the WASM filesystem on the emulator thread.
+const FAST_KEY_CODES: Record<1 | 2, Record<string, string>> = {
+  1: {
+    up: "ArrowUp",
+    down: "ArrowDown",
+    left: "ArrowLeft",
+    right: "ArrowRight",
+    b: "KeyZ",
+    a: "KeyX",
+    y: "KeyA",
+    x: "KeyS",
+    start: "Enter",
+    select: "ShiftLeft",
+  },
+  2: {
+    up: "KeyI",
+    down: "KeyK",
+    left: "KeyJ",
+    right: "KeyL",
+    a: "KeyU",
+    b: "KeyO",
+    x: "NumpadAdd",
+    y: "NumpadSubtract",
+    start: "KeyH",
+    select: "KeyN",
+  },
+}
+
+type EmulatorKeyHandler = {
+  eventListenerFunc: (event: { code: string; target: EventTarget | null }) => void
+  eventTypeString: string
+}
+
+function dispatchEmulatorKey(
+  emu: Nostalgist,
+  type: "keydown" | "keyup",
+  code: string,
+  target: EventTarget | null,
+) {
+  try {
+    const jsEvents = (emu.getEmscripten() as { JSEvents?: { eventHandlers?: EmulatorKeyHandler[] } }).JSEvents
+    const handlers = jsEvents?.eventHandlers
+    if (!handlers) return false
+    let delivered = false
+    for (let i = 0; i < handlers.length; i++) {
+      const handler = handlers[i]
+      if (handler.eventTypeString !== type) continue
+      delivered = true
+      handler.eventListenerFunc({ code, target })
+    }
+    return delivered
+  } catch {
+    return false
+  }
+}
+
 function setAudioContextState(emu: Nostalgist | null, state: "suspend" | "resume" | "close") {
   if (!emu) return
   try {
@@ -99,6 +156,9 @@ export function useNostalgistEmulator({
     }
   }
 
+  const fastKeysRef = useRef(Boolean(isMobile))
+  fastKeysRef.current = Boolean(isMobile)
+
   const pressDown = useCallback((action: string, player = 1) => {
     const key = `${player}:${action}`
     if (activeButtonsRef.current.has(key)) return
@@ -106,10 +166,13 @@ export function useNostalgistEmulator({
     try {
       const emu = instanceRef.current
       if (!emu) return
+      const slot = player === 2 ? 2 : 1
+      const code = FAST_KEY_CODES[slot][action]
+      if (fastKeysRef.current && code && dispatchEmulatorKey(emu, "keydown", code, canvasRef.current)) return
       if (player === 1) emu.pressDown?.(action)
       else emu.pressDown?.({ button: action, player })
     } catch {}
-  }, [])
+  }, [canvasRef])
 
   const pressUp = useCallback((action: string, player = 1) => {
     const key = `${player}:${action}`
@@ -118,10 +181,13 @@ export function useNostalgistEmulator({
     try {
       const emu = instanceRef.current
       if (!emu) return
+      const slot = player === 2 ? 2 : 1
+      const code = FAST_KEY_CODES[slot][action]
+      if (fastKeysRef.current && code && dispatchEmulatorKey(emu, "keyup", code, canvasRef.current)) return
       if (player === 1) emu.pressUp?.(action)
       else emu.pressUp?.({ button: action, player })
     } catch {}
-  }, [])
+  }, [canvasRef])
 
   const loadCheats = useCallback(async (content: string) => {
     const emu = instanceRef.current
@@ -202,25 +268,8 @@ export function useNostalgistEmulator({
       1,
       Math.floor(Math.min((rect.width || 768) / 256, (rect.height || 576) / 240)),
     )
-    // Phones composite a full-screen buffer every frame if the canvas layout box is the
-    // screen. Keep the element at 256×240 so the core's resizer stays there, and scale
-    // it on the GPU with a CSS transform.
+    // On mobile devices, native 256x240 lets hardware GPU scale crisply at minimum VRAM & fill-rate
     const effectiveScale = isMobileDevice ? 1 : scale
-
-    let stopMobileFit = () => {}
-    if (isMobileDevice) {
-      const fit = () => {
-        const box = frame.getBoundingClientRect()
-        const sx = (box.width || 256) / 256
-        const sy = (box.height || 240) / 240
-        canvas.style.transformOrigin = "center center"
-        canvas.style.transform = `translateZ(0) scale(${sx}, ${sy})`
-      }
-      fit()
-      const fitObserver = new ResizeObserver(fit)
-      fitObserver.observe(frame)
-      stopMobileFit = () => fitObserver.disconnect()
-    }
 
     const handleFirstTouch = () => {
       if (instanceRef.current) {
@@ -247,15 +296,7 @@ export function useNostalgistEmulator({
           signal: controller.signal,
           cache: game.customRom ? { core: true, rom: false } : { core: true, rom: true },
           size: { width: 256 * effectiveScale, height: 240 * effectiveScale },
-          style: isMobileDevice
-            ? {
-                width: "256px",
-                height: "240px",
-                display: "block",
-                backgroundColor: "black",
-                transformOrigin: "center center",
-              }
-            : { width: "100%", height: "100%", display: "block", backgroundColor: "black" },
+          style: { width: "100%", height: "100%", display: "block", backgroundColor: "black" },
           retroarchConfig: getRetroArchInputConfig(isMobileDevice),
           retroarchCoreConfig: getRetroArchCoreConfig(isMobileDevice),
           onLaunch(emu) {
@@ -328,7 +369,6 @@ export function useNostalgistEmulator({
     })()
 
     return () => {
-      stopMobileFit()
       window.removeEventListener("pointerdown", handleFirstTouch)
       unload()
     }

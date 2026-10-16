@@ -37,7 +37,7 @@ export function TouchSystemButton({
       style={{
         left: `${pos.x}%`,
         top: `${pos.y}%`,
-        transform: `translate(-50%, -50%) scale(${pos.scale})`,
+        transform: `translate3d(-50%, -50%, 0) scale(${pos.scale})`,
         touchAction: "none",
       }}
       className={cn(
@@ -68,7 +68,7 @@ export function TouchSystemButton({
         data-pressed={isPressed ? "true" : "false"}
         aria-label={`${label} button`}
         onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
+        onPointerMove={isCustomizing ? onPointerMove : undefined}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerCancel}
         onContextMenu={(e) => {
@@ -76,14 +76,14 @@ export function TouchSystemButton({
           e.stopPropagation()
         }}
         className={cn(
-          "group flex flex-col items-center gap-1 cursor-pointer active:scale-95 transition-transform duration-75 p-1 select-none",
+          "group flex flex-col items-center gap-1 cursor-pointer p-1 select-none [transform:translateZ(0)]",
           isCustomizing && isSelected && "ring-2 ring-blue-400 ring-offset-2 ring-offset-black rounded-lg",
           isCustomizing && !isSelected && "border border-dashed border-zinc-600/70 rounded-lg",
         )}
       >
         <div
           className={cn(
-            "w-11 sm:w-13 h-4 sm:h-5 rounded-full border transition-colors duration-75 -rotate-12 flex items-center justify-center bg-zinc-800 border-zinc-700 group-data-[pressed=true]:bg-blue-600 group-data-[pressed=true]:border-blue-400",
+            "w-11 sm:w-13 h-4 sm:h-5 rounded-full border -rotate-12 flex items-center justify-center bg-zinc-800 border-zinc-700 group-data-[pressed=true]:bg-blue-600 group-data-[pressed=true]:border-blue-400",
           )}
         >
           <div className="w-6 sm:w-7 h-1 rounded-full bg-zinc-600" />

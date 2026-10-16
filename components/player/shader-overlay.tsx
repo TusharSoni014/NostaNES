@@ -4,17 +4,15 @@ import type { GameShader } from "@/lib/storage/shader-storage"
 
 type ShaderOverlayProps = {
   shader: GameShader
-  /** Skip blend modes and dense grids. Those force a full-frame composite on every NES frame. */
-  lite?: boolean
 }
 
-export function ShaderOverlay({ shader, lite = false }: ShaderOverlayProps) {
+export function ShaderOverlay({ shader }: ShaderOverlayProps) {
   if (shader === "none") return null
 
   return (
     <div
       aria-hidden
-      className="pointer-events-none absolute inset-0 z-10 overflow-hidden select-none [transform:translateZ(0)]"
+      className="pointer-events-none absolute inset-0 z-10 overflow-hidden select-none"
     >
       {/* CRT Scanline Layer */}
       {shader === "crt-scanlines" && (
@@ -62,8 +60,8 @@ export function ShaderOverlay({ shader, lite = false }: ShaderOverlayProps) {
       {shader === "crt-warm" && (
         <>
           <div
-            className={lite ? "absolute inset-0" : "absolute inset-0 mix-blend-color"}
-            style={{ backgroundColor: lite ? "rgba(255, 175, 75, 0.08)" : "rgba(255, 175, 75, 0.12)" }}
+            className="absolute inset-0 mix-blend-color"
+            style={{ backgroundColor: "rgba(255, 175, 75, 0.12)" }}
           />
           <div
             className="absolute inset-0"
@@ -90,20 +88,18 @@ export function ShaderOverlay({ shader, lite = false }: ShaderOverlayProps) {
       {shader === "gameboy" && (
         <>
           <div
-            className={lite ? "absolute inset-0" : "absolute inset-0 mix-blend-color"}
-            style={{ backgroundColor: lite ? "rgba(139, 172, 15, 0.22)" : "#8bac0f" }}
+            className="absolute inset-0 mix-blend-color"
+            style={{ backgroundColor: "#8bac0f" }}
           />
-          {lite ? null : (
-            <div
-              className="absolute inset-0 mix-blend-multiply"
-              style={{
-                backgroundImage:
-                  "radial-gradient(#9bbc0f 15%, transparent 16%), radial-gradient(#8bac0f 15%, transparent 16%)",
-                backgroundSize: "4px 4px",
-                opacity: 0.25,
-              }}
-            />
-          )}
+          <div
+            className="absolute inset-0 mix-blend-multiply"
+            style={{
+              backgroundImage:
+                "radial-gradient(#9bbc0f 15%, transparent 16%), radial-gradient(#8bac0f 15%, transparent 16%)",
+              backgroundSize: "4px 4px",
+              opacity: 0.25,
+            }}
+          />
         </>
       )}
     </div>

@@ -240,8 +240,8 @@ export const PlayerStage = ({ game, initialSlot, onExit }: PlayerStageProps) => 
               ? "w-full max-w-md border-b border-zinc-900"
               : "max-w-full max-h-full",
           )}
-          style={{
-            ...(isMobilePortrait
+          style={
+            isMobilePortrait
               ? {
                   width: "100%",
                   maxHeight: "45dvh",
@@ -249,12 +249,8 @@ export const PlayerStage = ({ game, initialSlot, onExit }: PlayerStageProps) => 
               : {
                   width: "min(100cqw, calc(100cqh * 4 / 3))",
                   height: "min(100cqh, calc(100cqw * 3 / 4))",
-                }),
-            // Own compositor layer so the browser scales the 256×240 frame on the GPU
-            ...(isMobile
-              ? { transform: "translateZ(0)", contain: "paint" as const }
-              : {}),
-          }}
+                }
+          }
         >
           <canvas
             key={romKey}
@@ -263,13 +259,12 @@ export const PlayerStage = ({ game, initialSlot, onExit }: PlayerStageProps) => 
             aria-label={`${game.title} display`}
             className={cn(
               "size-full outline-none",
-              isMobile && "[transform:translateZ(0)] [backface-visibility:hidden]",
               activeShader === "smooth"
                 ? "[image-rendering:auto]"
                 : "[image-rendering:pixelated]",
             )}
           />
-          <ShaderOverlay shader={activeShader} lite={isMobile} />
+          <ShaderOverlay shader={activeShader} />
           <PlayerOverlay game={game} phase={phase} onExit={handleConfirmExit} />
         </div>
 

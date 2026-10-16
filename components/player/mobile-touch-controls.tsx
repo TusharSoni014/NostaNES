@@ -304,8 +304,8 @@ export function MobileTouchControls({
       className={cn(
         "relative select-none touch-none overflow-hidden",
         isPortrait
-          ? "size-full flex flex-col bg-zinc-950 border-t border-zinc-800"
-          : "pointer-events-none absolute inset-0 z-30",
+          ? "size-full flex flex-col bg-zinc-950 border-t border-zinc-800 [transform:translateZ(0)]"
+          : "pointer-events-none absolute inset-0 z-30 [transform:translateZ(0)]",
         isCustomizing && "ring-1 ring-inset ring-blue-500/40 bg-zinc-950/90",
       )}
       style={{ touchAction: "none" }}
@@ -395,17 +395,17 @@ export function MobileTouchControls({
         style={{
           left: `${currentLayout.dpad.x}%`,
           top: `${currentLayout.dpad.y}%`,
-          transform: `translate(-50%, -50%) scale(${currentLayout.dpad.scale})`,
+          transform: `translate3d(-50%, -50%, 0) scale(${currentLayout.dpad.scale})`,
           touchAction: "none",
         }}
         className={cn(
           "absolute pointer-events-auto select-none touch-none",
           isCustomizing && "cursor-grab active:cursor-grabbing z-30",
         )}
-        onPointerDown={(e) => handleElementPointerDown("dpad", e)}
-        onPointerMove={(e) => handleElementPointerMove("dpad", e)}
-        onPointerUp={(e) => handleElementPointerUp("dpad", e)}
-        onPointerCancel={(e) => handleElementPointerUp("dpad", e)}
+        onPointerDown={isCustomizing ? (e) => handleElementPointerDown("dpad", e) : undefined}
+        onPointerMove={isCustomizing ? (e) => handleElementPointerMove("dpad", e) : undefined}
+        onPointerUp={isCustomizing ? (e) => handleElementPointerUp("dpad", e) : undefined}
+        onPointerCancel={isCustomizing ? (e) => handleElementPointerUp("dpad", e) : undefined}
         onContextMenu={(e) => {
           e.preventDefault()
           e.stopPropagation()
@@ -426,7 +426,7 @@ export function MobileTouchControls({
 
         <div
           className={cn(
-            "transition-all",
+            isCustomizing && "transition-all",
             isCustomizing && selectedKey === "dpad" && "ring-2 ring-blue-400 ring-offset-2 ring-offset-black rounded-xl",
             isCustomizing && selectedKey !== "dpad" && "ring-1 ring-dashed ring-zinc-500 rounded-xl",
           )}
