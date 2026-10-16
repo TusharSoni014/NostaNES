@@ -1,20 +1,27 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { SlidersIcon, Maximize2Icon, Minimize2Icon } from "lucide-react"
+import { useCallback, useEffect, useRef, useState } from "react"
+import {
+  SlidersIcon,
+  Maximize2Icon,
+  Minimize2Icon,
+  Settings2Icon,
+} from "lucide-react"
 import { MobileDpad } from "./mobile-dpad"
 import { useIsPortrait } from "@/hooks/use-is-mobile"
+import {
+  DEFAULT_TOUCH_LAYOUT,
+  getTouchLayout,
+  saveTouchLayout,
+  applyLayoutToAllGames,
+  type TouchElementKey,
+  type GameTouchLayout,
+} from "@/lib/storage/touch-controls-storage"
+import { TouchActionButton } from "./touch-controls/touch-action-button"
+import { TouchSystemButton } from "./touch-controls/touch-system-button"
+import { TouchControlsEditorBar } from "./touch-controls/touch-controls-editor-bar"
+import type { DragState, MobileTouchControlsProps } from "./touch-controls/types"
 import { cn } from "@/lib/utils"
-
-export type MobileTouchControlsProps = {
-  pressDown: (action: string) => void
-  pressUp: (action: string) => void
-  onToggleMenu: () => void
-  gamepadConnected?: boolean
-  isPortrait?: boolean
-  isFullscreen?: boolean
-  onToggleFullscreen?: () => void
-}
 
 function triggerHaptic(duration = 10) {
   try {
@@ -32,19 +39,38 @@ export function MobileTouchControls({
   isPortrait: propIsPortrait,
   isFullscreen = false,
   onToggleFullscreen,
+  game,
 }: MobileTouchControlsProps) {
   const detectedPortrait = useIsPortrait()
   const isPortrait = propIsPortrait !== undefined ? propIsPortrait : detectedPortrait
+  const orientation = isPortrait ? "portrait" : "landscape"
+  const gameKey = game?.file || game?.id || "default"
 
-  // If gamepad is connected, default to false; user tapping screen can override to true; gamepad input overrides to false.
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  // Layout storage state per game
+  const [gameLayout, setGameLayout] = useState<GameTouchLayout>(() => getTouchLayout(gameKey))
+  const [isCustomizing, setIsCustomizing] = useState(false)
+  const [selectedKey, setSelectedKey] = useState<TouchElementKey | null>("dpad")
+  const [dragState, setDragState] = useState<DragState | null>(null)
+  const [saveStatus, setSaveStatus] = useState<string | null>(null)
+
+  // Reload layout when game changes
+  useEffect(() => {
+    setGameLayout(getTouchLayout(gameKey))
+  }, [gameKey])
+
+  // Current active orientation layout
+  const currentLayout = gameLayout[orientation]
+
+  // Gamepad override state
   const [showOverride, setShowOverride] = useState<boolean | null>(null)
   const visible = showOverride !== null ? showOverride : !gamepadConnected
-
   const [activeButtons, setActiveButtons] = useState<Set<string>>(new Set())
 
-  // Polling loop: If user presses any gamepad button or stick, hide touch controls.
+  // Hide touch controls if gamepad input detected
   useEffect(() => {
-    if (!visible || !gamepadConnected) return
+    if (!visible || !gamepadConnected || isCustomizing) return
 
     let animId = 0
     const pollGamepad = () => {
@@ -65,9 +91,9 @@ export function MobileTouchControls({
 
     animId = requestAnimationFrame(pollGamepad)
     return () => cancelAnimationFrame(animId)
-  }, [visible, gamepadConnected])
+  }, [visible, gamepadConnected, isCustomizing])
 
-  // Global screen tap listener: tapping anywhere on the screen shows the controls again
+  // Global screen tap restores controls if hidden by gamepad
   useEffect(() => {
     const handleScreenTap = (e: PointerEvent) => {
       if (!visible && (e.pointerType === "touch" || e.pointerType === "pen" || e.pointerType === "mouse")) {
@@ -79,300 +105,536 @@ export function MobileTouchControls({
     return () => window.removeEventListener("pointerdown", handleScreenTap)
   }, [visible])
 
-  // Action Button handling (A, B, Turbo A, Turbo B, Select, Start)
-  const handleButtonDown = (action: string, btnKey: string, e: React.PointerEvent) => {
+  // Gameplay Button Down/Up
+  const handleButtonDown = useCallback(
+    (action: string, btnKey: string, e: React.PointerEvent) => {
+      e.preventDefault()
+      e.stopPropagation()
+      try {
+        ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+      } catch {}
+
+      pressDown(action)
+      triggerHaptic(12)
+      setActiveButtons((prev) => new Set(prev).add(btnKey))
+    },
+    [pressDown],
+  )
+
+  const handleButtonUp = useCallback(
+    (action: string, btnKey: string, e: React.PointerEvent) => {
+      e.preventDefault()
+      e.stopPropagation()
+      try {
+        ;(e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId)
+      } catch {}
+
+      pressUp(action)
+      setActiveButtons((prev) => {
+        const next = new Set(prev)
+        next.delete(btnKey)
+        return next
+      })
+    },
+    [pressUp],
+  )
+
+  // Drag & drop handlers for customization
+  const handleElementPointerDown = (key: TouchElementKey, e: React.PointerEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    try {
-      ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
-    } catch {}
 
-    pressDown(action)
-    triggerHaptic(12)
-    setActiveButtons((prev) => new Set(prev).add(btnKey))
+    if (isCustomizing) {
+      try {
+        ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+      } catch {}
+
+      setSelectedKey(key)
+      setDragState({
+        key,
+        pointerId: e.pointerId,
+        startX: e.clientX,
+        startY: e.clientY,
+        initialX: currentLayout[key].x,
+        initialY: currentLayout[key].y,
+      })
+      triggerHaptic(15)
+    }
   }
 
-  const handleButtonUp = (action: string, btnKey: string, e: React.PointerEvent) => {
+  const handleElementPointerMove = (key: TouchElementKey, e: React.PointerEvent) => {
+    if (!isCustomizing || !dragState || dragState.key !== key || dragState.pointerId !== e.pointerId) return
     e.preventDefault()
     e.stopPropagation()
-    try {
-      ;(e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId)
-    } catch {}
 
-    pressUp(action)
-    setActiveButtons((prev) => {
-      const next = new Set(prev)
-      next.delete(btnKey)
-      return next
-    })
+    if (!containerRef.current) return
+    const rect = containerRef.current.getBoundingClientRect()
+    if (rect.width === 0 || rect.height === 0) return
+
+    const deltaX = ((e.clientX - dragState.startX) / rect.width) * 100
+    const deltaY = ((e.clientY - dragState.startY) / rect.height) * 100
+
+    const newX = Math.max(5, Math.min(95, Math.round((dragState.initialX + deltaX) * 10) / 10))
+    const newY = Math.max(5, Math.min(95, Math.round((dragState.initialY + deltaY) * 10) / 10))
+
+    setGameLayout((prev) => ({
+      ...prev,
+      [orientation]: {
+        ...prev[orientation],
+        [key]: {
+          ...prev[orientation][key],
+          x: newX,
+          y: newY,
+        },
+      },
+    }))
+  }
+
+  const handleElementPointerUp = (key: TouchElementKey, e: React.PointerEvent) => {
+    if (isCustomizing) {
+      if (dragState && dragState.key === key && dragState.pointerId === e.pointerId) {
+        try {
+          ;(e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId)
+        } catch {}
+        setDragState(null)
+        triggerHaptic(8)
+      }
+    }
+  }
+
+  // Customization Toolbar Actions
+  const handleScaleChange = (newScale: number) => {
+    if (!selectedKey) return
+    setGameLayout((prev) => ({
+      ...prev,
+      [orientation]: {
+        ...prev[orientation],
+        [selectedKey]: {
+          ...prev[orientation][selectedKey],
+          scale: Math.round(newScale * 100) / 100,
+        },
+      },
+    }))
+  }
+
+  const handleResetSelected = () => {
+    if (!selectedKey) return
+    const defaultItem = DEFAULT_TOUCH_LAYOUT[orientation][selectedKey]
+    setGameLayout((prev) => ({
+      ...prev,
+      [orientation]: {
+        ...prev[orientation],
+        [selectedKey]: { ...defaultItem },
+      },
+    }))
+    triggerHaptic(10)
+    setSaveStatus(`Reset ${selectedKey} ✓`)
+    setTimeout(() => setSaveStatus(null), 2000)
+  }
+
+  const handleResetAll = () => {
+    const defaultOrientationLayout = { ...DEFAULT_TOUCH_LAYOUT[orientation] }
+    setGameLayout((prev) => ({
+      ...prev,
+      [orientation]: defaultOrientationLayout,
+    }))
+    saveTouchLayout(gameKey, orientation, defaultOrientationLayout)
+    triggerHaptic(15)
+    setSaveStatus("Reset to defaults ✓")
+    setTimeout(() => setSaveStatus(null), 2000)
+  }
+
+  const handleSave = () => {
+    saveTouchLayout(gameKey, orientation, gameLayout[orientation])
+    triggerHaptic(15)
+    setSaveStatus(`Saved for ${game?.title || "this game"} ✓`)
+    setTimeout(() => setSaveStatus(null), 2500)
+  }
+
+  const handleApplyAll = () => {
+    applyLayoutToAllGames(orientation, gameLayout[orientation])
+    triggerHaptic(20)
+    setSaveStatus("Saved to all games ✓")
+    setTimeout(() => setSaveStatus(null), 2500)
+  }
+
+  const handleDone = () => {
+    saveTouchLayout(gameKey, orientation, gameLayout[orientation])
+    setIsCustomizing(false)
+    triggerHaptic(15)
   }
 
   if (!visible) return null
 
-  // Reusable Select Button
-  const renderSelectButton = () => (
+  // Utility button for opening Customization mode
+  const renderCustomizeButton = () => (
     <button
       type="button"
-      aria-label="Select button"
-      onPointerDown={(e) => handleButtonDown("select", "select", e)}
-      onPointerUp={(e) => handleButtonUp("select", "select", e)}
-      onPointerCancel={(e) => handleButtonUp("select", "select", e)}
-      className="group flex flex-col items-center gap-1 cursor-pointer active:scale-95 transition-transform p-1 select-none"
+      onClick={() => {
+        setIsCustomizing((prev) => !prev)
+        triggerHaptic(15)
+      }}
+      aria-label="Customize touch controls layout"
+      title="Customize touch controls layout"
+      className={cn(
+        "flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border text-xs font-semibold active:scale-95 transition-transform cursor-pointer shadow-sm min-h-[32px] select-none",
+        isCustomizing
+          ? "bg-blue-600 border-blue-400 text-white"
+          : "bg-zinc-900 hover:bg-zinc-800 border-zinc-700 text-zinc-300",
+      )}
     >
-      <div
-        className={cn(
-          "w-11 sm:w-13 h-4 sm:h-5 rounded-full border transition-colors -rotate-12 flex items-center justify-center",
-          activeButtons.has("select")
-            ? "bg-blue-600 border-blue-400"
-            : "bg-zinc-800 border-zinc-700",
-        )}
-      >
-        <div className="w-6 sm:w-7 h-1 rounded-full bg-zinc-600" />
-      </div>
-      <span className="font-mono text-[9px] sm:text-[10px] font-bold text-zinc-400 tracking-widest uppercase">
-        SELECT
+      <Settings2Icon className="size-3.5 text-blue-400 shrink-0" />
+      <span className="text-[10px] sm:text-xs font-mono uppercase tracking-wider">
+        {isCustomizing ? "Close" : "Layout"}
       </span>
     </button>
   )
 
-  // Reusable Start Button
-  const renderStartButton = () => (
-    <button
-      type="button"
-      aria-label="Start button"
-      onPointerDown={(e) => handleButtonDown("start", "start", e)}
-      onPointerUp={(e) => handleButtonUp("start", "start", e)}
-      onPointerCancel={(e) => handleButtonUp("start", "start", e)}
-      className="group flex flex-col items-center gap-1 cursor-pointer active:scale-95 transition-transform p-1 select-none"
-    >
-      <div
-        className={cn(
-          "w-11 sm:w-13 h-4 sm:h-5 rounded-full border transition-colors -rotate-12 flex items-center justify-center",
-          activeButtons.has("start")
-            ? "bg-blue-600 border-blue-400"
-            : "bg-zinc-800 border-zinc-700",
-        )}
-      >
-        <div className="w-6 sm:w-7 h-1 rounded-full bg-zinc-600" />
-      </div>
-      <span className="font-mono text-[9px] sm:text-[10px] font-bold text-zinc-400 tracking-widest uppercase">
-        START
-      </span>
-    </button>
-  )
-
-  // Reusable Action Cluster (Turbo B, Turbo A, B, A) - Crisp, Non-Blurred
-  // Reusable Action Cluster (Top line: Turbo A, B; Bottom line: Turbo B, A; closer spacing)
-  const renderActionCluster = () => (
-    <div className="relative size-34 sm:size-38 bg-zinc-950 border border-zinc-800 rounded-full p-2 select-none touch-none shadow-md">
-      {/* Top Line - Left: Turbo A */}
-      <button
-        type="button"
-        onPointerDown={(e) => handleButtonDown("x", "turboA", e)}
-        onPointerUp={(e) => handleButtonUp("x", "turboA", e)}
-        onPointerCancel={(e) => handleButtonUp("x", "turboA", e)}
-        aria-label="Turbo A"
-        className={cn(
-          "absolute top-2.5 left-3 sm:top-3 sm:left-3.5 size-12 sm:size-13 rounded-full border flex flex-col items-center justify-center select-none transition-transform cursor-pointer active:scale-90",
-          activeButtons.has("turboA")
-            ? "bg-amber-500 border-amber-300 text-black scale-95"
-            : "bg-amber-950 border-amber-600/70 text-amber-200",
-        )}
-      >
-        <span className="leading-none text-[8px] sm:text-[9px] font-mono font-bold tracking-tighter">TURBO</span>
-        <span className="leading-none text-xs sm:text-sm font-black">A</span>
-      </button>
-
-      {/* Top Line - Right: Normal B */}
-      <button
-        type="button"
-        onPointerDown={(e) => handleButtonDown("b", "b", e)}
-        onPointerUp={(e) => handleButtonUp("b", "b", e)}
-        onPointerCancel={(e) => handleButtonUp("b", "b", e)}
-        aria-label="Button B"
-        className={cn(
-          "absolute top-2.5 right-3 sm:top-3 sm:right-3.5 size-12 sm:size-13 rounded-full border flex items-center justify-center font-black text-base sm:text-lg select-none transition-transform cursor-pointer active:scale-90",
-          activeButtons.has("b")
-            ? "bg-rose-500 border-white text-white scale-95"
-            : "bg-rose-900 border-rose-600/80 text-rose-100",
-        )}
-      >
-        B
-      </button>
-
-      {/* Bottom Line - Left: Turbo B */}
-      <button
-        type="button"
-        onPointerDown={(e) => handleButtonDown("y", "turboB", e)}
-        onPointerUp={(e) => handleButtonUp("y", "turboB", e)}
-        onPointerCancel={(e) => handleButtonUp("y", "turboB", e)}
-        aria-label="Turbo B"
-        className={cn(
-          "absolute bottom-2.5 left-3 sm:bottom-3 sm:left-3.5 size-12 sm:size-13 rounded-full border flex flex-col items-center justify-center select-none transition-transform cursor-pointer active:scale-90",
-          activeButtons.has("turboB")
-            ? "bg-amber-500 border-amber-300 text-black scale-95"
-            : "bg-amber-950 border-amber-600/70 text-amber-200",
-        )}
-      >
-        <span className="leading-none text-[8px] sm:text-[9px] font-mono font-bold tracking-tighter">TURBO</span>
-        <span className="leading-none text-xs sm:text-sm font-black">B</span>
-      </button>
-
-      {/* Bottom Line - Right: Normal A */}
-      <button
-        type="button"
-        onPointerDown={(e) => handleButtonDown("a", "a", e)}
-        onPointerUp={(e) => handleButtonUp("a", "a", e)}
-        onPointerCancel={(e) => handleButtonUp("a", "a", e)}
-        aria-label="Button A"
-        className={cn(
-          "absolute bottom-2.5 right-3 sm:bottom-3 sm:right-3.5 size-12 sm:size-13 rounded-full border flex items-center justify-center font-black text-base sm:text-lg select-none transition-transform cursor-pointer active:scale-90",
-          activeButtons.has("a")
-            ? "bg-rose-500 border-white text-white scale-95"
-            : "bg-rose-900 border-rose-600/80 text-rose-100",
-        )}
-      >
-        A
-      </button>
-    </div>
-  )
-
-  // --------------------------------------------------------------------------
-  // PORTRAIT MODE: Controllers strictly BELOW the game screen. No intersection!
-  // --------------------------------------------------------------------------
-  if (isPortrait) {
+  // Fullscreen toggle button
+  const renderFullscreenButton = () => {
+    if (!onToggleFullscreen) return null
     return (
-      <div
-        className="size-full flex flex-col justify-between p-3 pb-[max(env(safe-area-inset-bottom,12px),16px)] select-none touch-none bg-zinc-950 border-t border-zinc-800"
-        style={{ touchAction: "none" }}
+      <button
+        type="button"
+        onClick={onToggleFullscreen}
+        aria-label={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
+        title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
+        className={cn(
+          "flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border text-xs font-semibold active:scale-95 transition-transform cursor-pointer shadow-sm min-h-[32px] select-none",
+          isFullscreen
+            ? "bg-amber-950/60 border-amber-500/60 text-amber-300 hover:bg-amber-900/60"
+            : "bg-blue-950/60 border-blue-500/60 text-blue-300 hover:bg-blue-900/60",
+        )}
       >
-        {/* Top bar of controllers area: Menu, Select, Start */}
-        <div className="flex items-center justify-between w-full px-2 pt-1">
+        {isFullscreen ? (
+          <>
+            <Minimize2Icon className="size-3.5 text-amber-400 shrink-0" />
+            <span className="text-[10px] sm:text-xs tracking-wider uppercase font-mono text-amber-200">
+              Exit FS
+            </span>
+          </>
+        ) : (
+          <>
+            <Maximize2Icon className="size-3.5 text-blue-400 shrink-0" />
+            <span className="text-[10px] sm:text-xs tracking-wider uppercase font-mono text-blue-200">
+              Full
+            </span>
+          </>
+        )}
+      </button>
+    )
+  }
+
+  return (
+    <div
+      ref={containerRef}
+      onContextMenu={(e) => {
+        e.preventDefault()
+        e.stopPropagation()
+      }}
+      className={cn(
+        "relative select-none touch-none overflow-hidden",
+        isPortrait
+          ? "size-full flex flex-col bg-zinc-950 border-t border-zinc-800"
+          : "pointer-events-none absolute inset-0 z-30",
+        isCustomizing && "ring-1 ring-inset ring-blue-500/40 bg-zinc-950/90",
+      )}
+      style={{ touchAction: "none" }}
+    >
+      {/* Customization Toolbar HUD */}
+      {isCustomizing && (
+        <TouchControlsEditorBar
+          orientation={orientation}
+          gameTitle={game?.title}
+          selectedKey={selectedKey}
+          currentScale={selectedKey ? currentLayout[selectedKey].scale : 1.0}
+          onScaleChange={handleScaleChange}
+          onResetSelected={handleResetSelected}
+          onResetAll={handleResetAll}
+          onSave={handleSave}
+          onApplyAll={handleApplyAll}
+          onDone={handleDone}
+          saveStatus={saveStatus}
+        />
+      )}
+
+      {/* Top Utility Bar (Portrait) */}
+      {isPortrait && !isCustomizing && (
+        <div className="flex items-center justify-between w-full px-3 pt-2 z-20 pointer-events-auto">
           <button
             type="button"
             onClick={onToggleMenu}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-white text-xs font-semibold active:scale-95 transition-transform cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-white text-xs font-semibold active:scale-95 transition-transform cursor-pointer shadow-sm select-none"
           >
             <SlidersIcon className="size-3.5 text-blue-400" />
             <span>MENU</span>
           </button>
 
-          {/* Centered Select & Start */}
-          <div className="flex items-center gap-4">
-            {renderSelectButton()}
-            {renderStartButton()}
+          <div className="flex items-center gap-2">
+            {renderCustomizeButton()}
+            {renderFullscreenButton()}
           </div>
+        </div>
+      )}
 
-          {/* Right action / Fullscreen toggle */}
-          {onToggleFullscreen ? (
+      {/* Top Utility Bar (Landscape) */}
+      {!isPortrait && (
+        <div className="pointer-events-auto absolute top-2 inset-x-0 flex items-center justify-between px-3 sm:px-6 pt-[env(safe-area-inset-top,0px)] z-40">
+          {!isCustomizing ? (
             <button
               type="button"
-              onClick={onToggleFullscreen}
-              aria-label={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
-              title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
-              className={cn(
-                "flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border text-xs font-semibold active:scale-95 transition-transform cursor-pointer shadow-sm min-h-[32px]",
-                isFullscreen
-                  ? "bg-amber-950/50 border-amber-500/60 text-amber-300 hover:bg-amber-900/50"
-                  : "bg-blue-950/50 border-blue-500/60 text-blue-300 hover:bg-blue-900/50",
-              )}
+              onClick={onToggleMenu}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-white text-xs font-semibold active:scale-95 transition-transform cursor-pointer shadow-md select-none"
             >
-              {isFullscreen ? (
-                <>
-                  <Minimize2Icon className="size-3.5 text-amber-400 shrink-0" />
-                  <span className="text-[10px] sm:text-xs tracking-wider uppercase font-mono text-amber-200">Exit FS</span>
-                </>
-              ) : (
-                <>
-                  <Maximize2Icon className="size-3.5 text-blue-400 shrink-0" />
-                  <span className="text-[10px] sm:text-xs tracking-wider uppercase font-mono text-blue-200">Full</span>
-                </>
-              )}
+              <SlidersIcon className="size-3.5 text-blue-400" />
+              <span>MENU</span>
             </button>
           ) : (
-            <div className="w-16" />
+            <div />
           )}
-        </div>
 
-        {/* Lower row: D-Pad on Left, Action cluster on Right */}
-        <div className="flex items-center justify-between w-full px-1 sm:px-4">
-          <MobileDpad pressDown={pressDown} pressUp={pressUp} />
-          {renderActionCluster()}
-        </div>
-      </div>
-    )
-  }
+          <div className="flex items-center gap-2">
+            {gamepadConnected && !isCustomizing ? (
+              <button
+                type="button"
+                onClick={() => setShowOverride(false)}
+                className="text-[10px] font-medium px-2.5 py-1 rounded-full bg-zinc-900 text-white/70 border border-zinc-700 cursor-pointer"
+              >
+                Gamepad Connected
+              </button>
+            ) : null}
 
-  // --------------------------------------------------------------------------
-  // LANDSCAPE MODE: D-pad instead of joystick, non-blurred buttons on sides
-  // --------------------------------------------------------------------------
-  return (
-    <div
-      className="pointer-events-none absolute inset-0 z-30 select-none overflow-hidden touch-none"
-      style={{ touchAction: "none" }}
-    >
-      {/* Top Bar: Menu & Gamepad Status Indicator */}
-      <div className="pointer-events-auto absolute top-2 inset-x-0 flex items-center justify-between px-3 sm:px-6 pt-[env(safe-area-inset-top,0px)] z-40">
-        <button
-          type="button"
-          onClick={onToggleMenu}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-white text-xs font-semibold active:scale-95 transition-transform cursor-pointer shadow-md"
+            {renderCustomizeButton()}
+            {renderFullscreenButton()}
+          </div>
+        </div>
+      )}
+
+      {/* Subtle guide grid in customization mode */}
+      {isCustomizing && (
+        <div className="absolute inset-0 pointer-events-none opacity-15 bg-[radial-gradient(#3b82f6_1px,transparent_1px)] [background-size:24px_24px]" />
+      )}
+
+      {/* --------------------------------------------------------------------- */}
+      {/* CUSTOMIZABLE BUTTONS (Positioned via percentage coordinates)           */}
+      {/* --------------------------------------------------------------------- */}
+
+      {/* 1. D-PAD */}
+      <div
+        style={{
+          left: `${currentLayout.dpad.x}%`,
+          top: `${currentLayout.dpad.y}%`,
+          transform: `translate(-50%, -50%) scale(${currentLayout.dpad.scale})`,
+          touchAction: "none",
+        }}
+        className={cn(
+          "absolute pointer-events-auto select-none touch-none",
+          isCustomizing && "cursor-grab active:cursor-grabbing z-30",
+        )}
+        onPointerDown={(e) => handleElementPointerDown("dpad", e)}
+        onPointerMove={(e) => handleElementPointerMove("dpad", e)}
+        onPointerUp={(e) => handleElementPointerUp("dpad", e)}
+        onPointerCancel={(e) => handleElementPointerUp("dpad", e)}
+        onContextMenu={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
+        }}
+      >
+        {isCustomizing && (
+          <div
+            className={cn(
+              "absolute -top-5 left-1/2 -translate-x-1/2 whitespace-nowrap px-1.5 py-0.5 rounded text-[9px] font-mono font-bold tracking-tight pointer-events-none select-none z-20 shadow-sm",
+              selectedKey === "dpad"
+                ? "bg-blue-600 text-white border border-blue-400"
+                : "bg-zinc-900/90 text-zinc-300 border border-zinc-700",
+            )}
+          >
+            D-PAD
+          </div>
+        )}
+
+        <div
+          className={cn(
+            "transition-all",
+            isCustomizing && selectedKey === "dpad" && "ring-2 ring-blue-400 ring-offset-2 ring-offset-black rounded-xl",
+            isCustomizing && selectedKey !== "dpad" && "ring-1 ring-dashed ring-zinc-500 rounded-xl",
+          )}
         >
-          <SlidersIcon className="size-3.5 text-blue-400" />
-          <span>MENU</span>
-        </button>
-
-        <div className="flex items-center gap-2">
-          {gamepadConnected ? (
-            <button
-              type="button"
-              onClick={() => setShowOverride(false)}
-              className="text-[10px] font-medium px-2.5 py-1 rounded-full bg-zinc-900 text-white/70 border border-zinc-700 cursor-pointer"
-            >
-              Gamepad Connected (Tap to hide)
-            </button>
-          ) : null}
-
-          {onToggleFullscreen ? (
-            <button
-              type="button"
-              onClick={onToggleFullscreen}
-              aria-label={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
-              title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
-              className={cn(
-                "flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold active:scale-95 transition-transform cursor-pointer shadow-md min-h-[32px]",
-                isFullscreen
-                  ? "bg-amber-950/50 border-amber-500/60 text-amber-300 hover:bg-amber-900/50"
-                  : "bg-blue-950/50 border-blue-500/60 text-blue-300 hover:bg-blue-900/50",
-              )}
-            >
-              {isFullscreen ? (
-                <>
-                  <Minimize2Icon className="size-3.5 text-amber-400 shrink-0" />
-                  <span className="text-xs font-mono tracking-wider uppercase text-amber-200">Exit FS</span>
-                </>
-              ) : (
-                <>
-                  <Maximize2Icon className="size-3.5 text-blue-400 shrink-0" />
-                  <span className="text-xs font-mono tracking-wider uppercase text-blue-200">Fullscreen</span>
-                </>
-              )}
-            </button>
-          ) : null}
+          <MobileDpad
+            pressDown={pressDown}
+            pressUp={pressUp}
+            disabled={isCustomizing}
+          />
         </div>
       </div>
 
-      {/* Bottom Left: Select Button (above) + Mobile D-Pad (below) */}
-      <div className="pointer-events-auto absolute bottom-2 left-2 sm:bottom-4 sm:left-4 pb-[env(safe-area-inset-bottom,0px)] pl-[env(safe-area-inset-left,0px)] z-40 flex flex-col items-center gap-1.5">
-        {renderSelectButton()}
-        <MobileDpad pressDown={pressDown} pressUp={pressUp} />
-      </div>
+      {/* 2. NES BUTTON A */}
+      <TouchActionButton
+        type="a"
+        pos={currentLayout.a}
+        isCustomizing={isCustomizing}
+        isSelected={selectedKey === "a"}
+        isPressed={activeButtons.has("a")}
+        onPointerDown={(e: React.PointerEvent) => {
+          if (isCustomizing) handleElementPointerDown("a", e)
+          else handleButtonDown("a", "a", e)
+        }}
+        onPointerMove={(e: React.PointerEvent) => {
+          if (isCustomizing) handleElementPointerMove("a", e)
+        }}
+        onPointerUp={(e: React.PointerEvent) => {
+          if (isCustomizing) handleElementPointerUp("a", e)
+          else handleButtonUp("a", "a", e)
+        }}
+        onPointerCancel={(e: React.PointerEvent) => {
+          if (isCustomizing) handleElementPointerUp("a", e)
+          else handleButtonUp("a", "a", e)
+        }}
+      />
 
-      {/* Bottom Right: Start Button (above) + Action Buttons Cluster (below) */}
-      <div className="pointer-events-auto absolute bottom-2 right-2 sm:bottom-4 sm:right-4 pb-[env(safe-area-inset-bottom,0px)] pr-[env(safe-area-inset-right,0px)] z-40 flex flex-col items-center gap-1.5">
-        {renderStartButton()}
-        {renderActionCluster()}
-      </div>
+      {/* 3. NES BUTTON B */}
+      <TouchActionButton
+        type="b"
+        pos={currentLayout.b}
+        isCustomizing={isCustomizing}
+        isSelected={selectedKey === "b"}
+        isPressed={activeButtons.has("b")}
+        onPointerDown={(e: React.PointerEvent) => {
+          if (isCustomizing) handleElementPointerDown("b", e)
+          else handleButtonDown("b", "b", e)
+        }}
+        onPointerMove={(e: React.PointerEvent) => {
+          if (isCustomizing) handleElementPointerMove("b", e)
+        }}
+        onPointerUp={(e: React.PointerEvent) => {
+          if (isCustomizing) handleElementPointerUp("b", e)
+          else handleButtonUp("b", "b", e)
+        }}
+        onPointerCancel={(e: React.PointerEvent) => {
+          if (isCustomizing) handleElementPointerUp("b", e)
+          else handleButtonUp("b", "b", e)
+        }}
+      />
+
+      {/* 4. TURBO A */}
+      <TouchActionButton
+        type="turboA"
+        pos={currentLayout.turboA}
+        isCustomizing={isCustomizing}
+        isSelected={selectedKey === "turboA"}
+        isPressed={activeButtons.has("turboA")}
+        onPointerDown={(e: React.PointerEvent) => {
+          if (isCustomizing) handleElementPointerDown("turboA", e)
+          else handleButtonDown("x", "turboA", e)
+        }}
+        onPointerMove={(e: React.PointerEvent) => {
+          if (isCustomizing) handleElementPointerMove("turboA", e)
+        }}
+        onPointerUp={(e: React.PointerEvent) => {
+          if (isCustomizing) handleElementPointerUp("turboA", e)
+          else handleButtonUp("x", "turboA", e)
+        }}
+        onPointerCancel={(e: React.PointerEvent) => {
+          if (isCustomizing) handleElementPointerUp("turboA", e)
+          else handleButtonUp("x", "turboA", e)
+        }}
+      />
+
+      {/* 5. TURBO B */}
+      <TouchActionButton
+        type="turboB"
+        pos={currentLayout.turboB}
+        isCustomizing={isCustomizing}
+        isSelected={selectedKey === "turboB"}
+        isPressed={activeButtons.has("turboB")}
+        onPointerDown={(e: React.PointerEvent) => {
+          if (isCustomizing) handleElementPointerDown("turboB", e)
+          else handleButtonDown("y", "turboB", e)
+        }}
+        onPointerMove={(e: React.PointerEvent) => {
+          if (isCustomizing) handleElementPointerMove("turboB", e)
+        }}
+        onPointerUp={(e: React.PointerEvent) => {
+          if (isCustomizing) handleElementPointerUp("turboB", e)
+          else handleButtonUp("y", "turboB", e)
+        }}
+        onPointerCancel={(e: React.PointerEvent) => {
+          if (isCustomizing) handleElementPointerUp("turboB", e)
+          else handleButtonUp("y", "turboB", e)
+        }}
+      />
+
+      {/* 6. SELECT */}
+      <TouchSystemButton
+        type="select"
+        pos={currentLayout.select}
+        isCustomizing={isCustomizing}
+        isSelected={selectedKey === "select"}
+        isPressed={activeButtons.has("select")}
+        onPointerDown={(e: React.PointerEvent) => {
+          if (isCustomizing) handleElementPointerDown("select", e)
+          else handleButtonDown("select", "select", e)
+        }}
+        onPointerMove={(e: React.PointerEvent) => {
+          if (isCustomizing) handleElementPointerMove("select", e)
+        }}
+        onPointerUp={(e: React.PointerEvent) => {
+          if (isCustomizing) handleElementPointerUp("select", e)
+          else handleButtonUp("select", "select", e)
+        }}
+        onPointerCancel={(e: React.PointerEvent) => {
+          if (isCustomizing) handleElementPointerUp("select", e)
+          else handleButtonUp("select", "select", e)
+        }}
+      />
+
+      {/* 7. START */}
+      <TouchSystemButton
+        type="start"
+        pos={currentLayout.start}
+        isCustomizing={isCustomizing}
+        isSelected={selectedKey === "start"}
+        isPressed={activeButtons.has("start")}
+        onPointerDown={(e: React.PointerEvent) => {
+          if (isCustomizing) handleElementPointerDown("start", e)
+          else handleButtonDown("start", "start", e)
+        }}
+        onPointerMove={(e: React.PointerEvent) => {
+          if (isCustomizing) handleElementPointerMove("start", e)
+        }}
+        onPointerUp={(e: React.PointerEvent) => {
+          if (isCustomizing) handleElementPointerUp("start", e)
+          else handleButtonUp("start", "start", e)
+        }}
+        onPointerCancel={(e: React.PointerEvent) => {
+          if (isCustomizing) handleElementPointerUp("start", e)
+          else handleButtonUp("start", "start", e)
+        }}
+      />
+
+      {/* 8. MENU (When in landscape or if customized) */}
+      {!isPortrait && (
+        <TouchSystemButton
+          type="menu"
+          pos={currentLayout.menu}
+          isCustomizing={isCustomizing}
+          isSelected={selectedKey === "menu"}
+          isPressed={activeButtons.has("menu")}
+          onClickMenu={onToggleMenu}
+          onPointerDown={(e: React.PointerEvent) => {
+            if (isCustomizing) handleElementPointerDown("menu", e)
+          }}
+          onPointerMove={(e: React.PointerEvent) => {
+            if (isCustomizing) handleElementPointerMove("menu", e)
+          }}
+          onPointerUp={(e: React.PointerEvent) => {
+            if (isCustomizing) handleElementPointerUp("menu", e)
+          }}
+          onPointerCancel={(e: React.PointerEvent) => {
+            if (isCustomizing) handleElementPointerUp("menu", e)
+          }}
+        />
+      )}
     </div>
   )
 }

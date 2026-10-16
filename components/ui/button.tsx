@@ -43,11 +43,16 @@ function Button({
   className,
   variant = "default",
   size = "default",
+  onContextMenu,
   ...props
 }: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {
   return (
     <ButtonPrimitive
       data-slot="button"
+      onContextMenu={(e) => {
+        e.preventDefault()
+        onContextMenu?.(e)
+      }}
       className={cn(buttonVariants({ variant, size, className }))}
       {...props}
     />

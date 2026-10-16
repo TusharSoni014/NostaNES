@@ -140,3 +140,26 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* Suppress unwanted long-press context menus, callouts, and text selection on buttons and game surfaces */
+button,
+[role="button"],
+[data-slot="button"],
+canvas,
+.touch-none,
+.no-context-menu {
+  -webkit-touch-callout: none !important;
+  -webkit-user-select: none !important;
+  user-select: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+}
+
+/* Simulated fullscreen mode for iOS Chrome & mobile WebKit */
+html.simulated-fullscreen,
+html.simulated-fullscreen body {
+  overflow: hidden !important;
+  width: 100% !important;
+  height: 100% !important;
+  position: fixed !important;
+  inset: 0 !important;
+}

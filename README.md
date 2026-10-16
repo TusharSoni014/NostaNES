@@ -40,7 +40,18 @@ Load games in one click, drop your own `.nes` or `.zip` ROMs right onto the scre
 * **WebAssembly NES Core**: Powered by [Nostalgist.js](https://nostalgist.js.org/) running official libretro cores in WebAssembly for authentic 60 FPS gameplay, low input latency, and cycle-accurate audio.
 * **Integer Pixel Scaling**: Automatically calculates optimal integer-ratio scaling for razor-sharp pixel fidelity on any display resolution.
 * **Screen Wake Lock API**: Automatically prevents your monitor or mobile device from sleeping during gameplay sessions.
-* **Fullscreen Experience**: Seamless one-key / one-button fullscreen mode with auto-hiding header and footer HUDs.
+* **Dual-Mode Fullscreen Engine**: Native Fullscreen API support on desktop, Android, and iPadOS, combined with an automated simulated viewport fullscreen fallback for iOS Chrome and Safari on iPhone.
+
+### 📱 Adaptive & Fully Customizable Mobile Touch Controls
+* **In-Game Touch Controls Editor**: Direct on-screen `LAYOUT` button opens an interactive editor to customize your controls in real time:
+  * **Free Drag-and-Drop Positioning**: Touch and drag any element (**D-Pad, NES A, NES B, Turbo A, Turbo B, Select, Start, Menu**) anywhere on the screen.
+  * **Live Scale Slider**: Scale individual button sizes between **50% and 180%** with live visual feedback.
+  * **Per-Game Browser Storage**: Custom button layouts automatically save in browser `localStorage` for each game independently.
+  * **Global Presets & Propagation**: Easily "Reset All" to defaults or "Apply to All Games" in one tap.
+* **Independent Portrait & Landscape Layouts**: Separate layout structures tailored for phone ergonomics. Portrait mode isolates touch controls below the display; landscape mode enables edge-to-edge gaming.
+* **Clean Floating Controls**: Minimal, arcade-authentic cross D-pad and crisp action buttons without bulky circular background discs.
+* **Long-Press & Context Menu Suppression**: Complete elimination of browser context menus, iOS callouts, and text selection highlights when holding buttons down during intense gameplay.
+
 
 ### 📺 Authentic CRT & Retro Display Shaders
 Switch between 6 visual display presets in real time via the in-game menu:
@@ -125,7 +136,21 @@ Switch between 6 visual display presets in real time via the in-game menu:
 | **Fullscreen** | <kbd>R3</kbd> (Right Stick Click) | <kbd>R3</kbd> (Right Stick Click) | <kbd>R3</kbd> |
 | **Hold to Exit** | Hold <kbd>Select</kbd> (5s) | Hold <kbd>Share</kbd> (5s) | Hold <kbd>−</kbd> (5s) |
 
-> 💡 *All buttons and keys can be completely customized and rebound for both Player 1 and Player 2 in the **In-Game Menu > Controls** panel.*
+---
+
+### 📱 Mobile Touch Controls
+
+| Touch Control | Action | Details |
+| :--- | :--- | :--- |
+| **D-Pad (Directional)** | 8-way directional movement | Responsive cross pad with continuous drag angles & authentic diagonal inputs |
+| **NES A / B Buttons** | Primary action & run / attack | Tactile circular arcade buttons with multi-touch pointer capture |
+| **Turbo A / Turbo B** | Rapid-fire A and B | Automatic continuous firing with high-contrast amber styling |
+| **Select / Start** | Mode select & game pause | Angled controller pills with authentic NES proportions |
+| **MENU Button** | In-game pause menu | Instant access to save/load slots, CRT shaders, cheats, and sound settings |
+| **LAYOUT Button** | Customize touch controls | Opens the interactive drag-and-drop editor to reposition and scale buttons |
+| **FULL / EXIT FS** | Toggle fullscreen | Dual-mode fullscreen engine (native + simulated fallback for iOS Chrome & Safari) |
+
+> 💡 *All keyboard keys, gamepad buttons, and mobile touch positions/sizes can be independently customized and saved per game.*
 
 ---
 
@@ -232,6 +257,9 @@ nostanes/
 │   ├── wave-field.tsx            # Three.js procedural silk wave background
 │   ├── player/
 │   │   ├── in-game-menu/         # In-game pause menu (Save, Load, Shaders, Controls, Cheats)
+│   │   ├── touch-controls/       # Modular arcade buttons, editor HUD, and layout types
+│   │   ├── mobile-touch-controls # Responsive mobile touch controller with live editor
+│   │   ├── mobile-dpad.tsx       # 8-way directional cross D-Pad with continuous drag
 │   │   ├── gamepad-exit-hud.tsx  # Hold-to-exit circular countdown HUD
 │   │   ├── shader-overlay.tsx    # CRT scanlines, aperture, and DMG overlays
 │   │   ├── use-gamepad-controls  # In-game controller polling & mapping
@@ -241,14 +269,15 @@ nostanes/
 ├── hooks/                        # Custom hooks (favorites, input mode, cheats, library)
 ├── lib/
 │   ├── cheats/                   # Cheat matching and session management
-│   ├── display/                  # Wake lock API and safe resize observers
+│   ├── display/                  # Dual-mode fullscreen engine, wake lock API, resize observers
 │   ├── gamepad/                  # Gamepad dispatcher, remapper, and timing
-│   ├── storage/                  # IndexedDB save states & localStorage stores
+│   ├── storage/                  # IndexedDB save states, touch layouts & localStorage stores
 │   ├── games.ts                  # ROM filename parsing and game grouping
 │   ├── r2.ts                     # AWS S3 / Cloudflare R2 bucket client
 │   └── ui-sounds.ts              # Console sound effects manager
 └── public/
     ├── nostanes.png              # App icon
+    ├── llms.txt                  # LLM context and architectural documentation
     └── sounds/                   # Tactile console audio sound bites
 ```
 

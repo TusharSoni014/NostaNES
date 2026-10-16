@@ -50,19 +50,22 @@ Customizable real-time visual filters tailored for modern displays:
 - Customizable button remapping per player.
 - Hold Xbox/PS Guide or Select button to open in-game menu; hold for 5 seconds to exit.
 
-### 7. Adaptive Mobile Touch Controls
-- Dedicated, ergonomic touch layout tailored for mobile phones and tablets:
-  - **Portrait Mode**: Video screen pinned to the top (`max-h-[45dvh]`) with controls strictly separated below to eliminate finger overlap.
-  - **Landscape Mode**: Full-screen edge-to-edge video with transparent side controls.
-- Virtual 4-way D-Pad replacing unstable floating joysticks.
-- High-contrast, non-blurred action buttons: Top line (Turbo A, B), Bottom line (Turbo B, A).
-- Multi-touch pointer capture with haptic feedback vibration.
-- Dedicated Menu, Start, Select, and high-visibility Fullscreen toggle buttons.
+### 7. Adaptive & Fully Customizable Mobile Touch Controls
+- **In-Game Touch Controls Editor**: Direct on-screen `LAYOUT` button allows real-time customization of touch controls during gameplay:
+  - **Drag-and-Drop Repositioning**: Freely move any individual control (D-Pad, NES A, NES B, Turbo A, Turbo B, Select, Start, and Menu) to any position on screen.
+  - **Live Scale Slider**: Dynamically resize any button between **50% and 180%** with live visual feedback.
+  - **Per-Game Browser Storage**: Custom layouts automatically persist per game in browser `localStorage` (`nostanes_touch_layout_v1_${gameKey}`).
+  - **Independent Portrait & Landscape Layouts**: Separate, optimized button geometries for portrait and landscape orientations (portrait isolates controls below the screen; landscape enables immersive edge-to-edge gaming).
+  - **Preset Actions**: "Reset Selected", "Reset All" to defaults, and "Apply to All Games".
+- **Clean Floating Controls**: Minimal, arcade-authentic cross D-pad and crisp action buttons without bulky circular background discs.
+- **Context Menu & Long-Press Suppression**: Full suppression of native long-tap context menus, iOS selection callouts, and text highlighting across mobile browsers.
+- **Multi-Touch & Haptic Feedback**: Pointer capture with authentic tactile vibration on touch down and button releases.
 
-### 8. Fullscreen Experience
-- One-tap fullscreen toggle with cross-browser WebKit, Gecko, and standard Fullscreen API support.
-- Automatic fullscreen transition upon game launch via trusted user gestures.
-- Automatic screen wake-lock preventing display dimming during gameplay.
+### 8. Dual-Mode Fullscreen Engine
+- **Cross-Browser Compatibility**: Seamless dual-mode architecture:
+  - **Native Fullscreen API**: Used on desktop browsers, Android Chrome/Firefox, and iPadOS.
+  - **Simulated Viewport Fullscreen Fallback**: Automatically activates on iOS Chrome and Safari on iPhone (which restrict standard DOM Fullscreen API), locking background scrolling, expanding the game canvas, hiding header HUDs, and flipping toggle states to `Exit FS`.
+- **Automatic Screen Wake-Lock**: Prevents mobile and desktop displays from dimming or sleeping during active gameplay sessions.
 
 ### 9. 2-Player Local Multiplayer
 - Support for simultaneous 2-player local gaming via dual gamepads or split keyboard bindings (Player 1 on Arrows + ZX, Player 2 on Numpad).
@@ -113,6 +116,19 @@ Customizable real-time visual filters tailored for modern displays:
 | In-Game Menu | Guide / Home Button | PS Button |
 | Fullscreen Toggle | Right Stick Click (R3) | Right Stick Click (R3) |
 
+### Mobile Touch Controls
+| Action | Touch Control Element | Description |
+|---|---|---|
+| D-Pad Movement | 8-Way Cross D-Pad | Smooth multi-directional angle tracking & diagonal inputs |
+| NES A Button | Button A | Primary action / confirm (arcade-style circular button) |
+| NES B Button | Button B | Secondary action / run (arcade-style circular button) |
+| Turbo A Button | Turbo A | Automatic rapid-fire A (amber arcade button) |
+| Turbo B Button | Turbo B | Automatic rapid-fire B (amber arcade button) |
+| Select / Start | Select & Start Pills | Angled pill buttons with authentic NES tactile labels |
+| In-Game Menu | MENU Button | Opens save/load slots, CRT shaders, and cheats |
+| Customization | LAYOUT Button | Opens live drag-and-drop position and scale editor |
+| Fullscreen Toggle | FULL / EXIT FS | Dual-mode fullscreen toggle (native + simulated fallback) |
+
 ---
 
 ## Technical Architecture
@@ -125,8 +141,8 @@ Frontend Client (Next.js 16 App Router + React 19)
  ├── Emulator Container (Nostalgist.js + Libretro Wasm Core)
  │    ├── Audio Pipeline (Web Audio API 2A03 APU emulation)
  │    ├── Video Output (HTML5 Canvas + CRT Fragment Shaders)
- │    ├── Input Layer (Gamepad API / KeyboardEvent / Touch PointerCapture)
- │    └── Save/State Manager (IndexedDB `nostanes_save_states`)
+ │    ├── Input Layer (Gamepad API / KeyboardEvent / Touch PointerCapture & Customizer)
+ │    └── State & Layout Managers (IndexedDB `nostanes_save_states` & LocalStorage touch layouts)
  │
  └── Next.js Server & Edge APIs
       ├── /api/library  ──> Catalog listing with region and version grouping

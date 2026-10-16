@@ -1,24 +1,17 @@
 "use client"
 
-export function isFullscreenSupported(): boolean {
-  if (typeof document === "undefined") return false
-  const doc = document as unknown as {
-    fullscreenEnabled?: boolean
-    webkitFullscreenEnabled?: boolean
-    mozFullScreenEnabled?: boolean
-    msFullscreenEnabled?: boolean
+let simulatedFullscreenElement: Element | null = null
+const customListeners = new Set<() => void>()
+
+function notifySubscribers() {
+  for (const cb of customListeners) {
+    try {
+      cb()
+    } catch {}
   }
-  return Boolean(
-    doc.fullscreenEnabled ||
-    doc.webkitFullscreenEnabled ||
-    doc.mozFullScreenEnabled ||
-    doc.msFullscreenEnabled ||
-    document.documentElement.requestFullscreen ||
-    (document.documentElement as unknown as { webkitRequestFullscreen?: unknown }).webkitRequestFullscreen,
-  )
 }
 
-export function getActiveFullscreenElement(): Element | null {
+function getNativeFullscreenElement(): Element | null {
   if (typeof document === "undefined") return null
   const doc = document as unknown as {
     fullscreenElement?: Element | null
@@ -37,6 +30,39 @@ export function getActiveFullscreenElement(): Element | null {
   )
 }
 
+export function isFullscreenSupported(): boolean {
+  if (typeof document === "undefined") return false
+  // On iOS Chrome & Safari iPhone, the standard Fullscreen API is disabled by Apple for DOM elements,
+  // but simulated fullscreen is fully supported and enabled.
+  return true
+}
+
+export function isNativeFullscreenSupported(): boolean {
+  if (typeof document === "undefined") return false
+  const doc = document as unknown as {
+    fullscreenEnabled?: boolean
+    webkitFullscreenEnabled?: boolean
+    mozFullScreenEnabled?: boolean
+    msFullscreenEnabled?: boolean
+  }
+  return Boolean(
+    doc.fullscreenEnabled ||
+    doc.webkitFullscreenEnabled ||
+    doc.mozFullScreenEnabled ||
+    doc.msFullscreenEnabled ||
+    document.documentElement.requestFullscreen ||
+    (document.documentElement as unknown as { webkitRequestFullscreen?: unknown }).webkitRequestFullscreen,
+  )
+}
+
+export function isSimulatedFullscreen(): boolean {
+  return Boolean(simulatedFullscreenElement)
+}
+
+export function getActiveFullscreenElement(): Element | null {
+  return getNativeFullscreenElement() || simulatedFullscreenElement
+}
+
 export async function requestAppFullscreen(element?: HTMLElement | null): Promise<boolean> {
   if (typeof document === "undefined") return false
   const target = (element || document.documentElement) as HTMLElement & {
@@ -46,31 +72,52 @@ export async function requestAppFullscreen(element?: HTMLElement | null): Promis
     msRequestFullscreen?: () => Promise<void>
   }
 
+  // 1. Try native browser Fullscreen API first (works on Android, Desktop, iPadOS)
   try {
     if (typeof target.requestFullscreen === "function") {
       await target.requestFullscreen()
+      simulatedFullscreenElement = null
+      notifySubscribers()
       return true
     }
     if (typeof target.webkitRequestFullscreen === "function") {
       await target.webkitRequestFullscreen()
+      simulatedFullscreenElement = null
+      notifySubscribers()
       return true
     }
     if (typeof target.webkitRequestFullScreen === "function") {
       await target.webkitRequestFullScreen()
+      simulatedFullscreenElement = null
+      notifySubscribers()
       return true
     }
     if (typeof target.mozRequestFullScreen === "function") {
       await target.mozRequestFullScreen()
+      simulatedFullscreenElement = null
+      notifySubscribers()
       return true
     }
     if (typeof target.msRequestFullscreen === "function") {
       await target.msRequestFullscreen()
+      simulatedFullscreenElement = null
+      notifySubscribers()
       return true
     }
   } catch {
-    // Browser may require user gesture or block request
+    // Native fullscreen failed, blocked without user gesture, or unsupported on iOS WebKit
   }
-  return false
+
+  // 2. Fallback to simulated fullscreen mode (essential for iOS Chrome & Safari on iPhone)
+  simulatedFullscreenElement = target || document.documentElement
+  if (typeof document !== "undefined") {
+    document.documentElement.classList.add("simulated-fullscreen")
+    try {
+      window.scrollTo(0, 0)
+    } catch {}
+  }
+  notifySubscribers()
+  return true
 }
 
 export async function exitAppFullscreen(): Promise<boolean> {
@@ -82,43 +129,67 @@ export async function exitAppFullscreen(): Promise<boolean> {
     msExitFullscreen?: () => Promise<void>
   }
 
+  let nativeSuccess = false
   try {
     if (typeof doc.exitFullscreen === "function") {
       await doc.exitFullscreen()
-      return true
-    }
-    if (typeof doc.webkitExitFullscreen === "function") {
+      nativeSuccess = true
+    } else if (typeof doc.webkitExitFullscreen === "function") {
       await doc.webkitExitFullscreen()
-      return true
-    }
-    if (typeof doc.webkitCancelFullScreen === "function") {
+      nativeSuccess = true
+    } else if (typeof doc.webkitCancelFullScreen === "function") {
       await doc.webkitCancelFullScreen()
-      return true
-    }
-    if (typeof doc.mozCancelFullScreen === "function") {
+      nativeSuccess = true
+    } else if (typeof doc.mozCancelFullScreen === "function") {
       await doc.mozCancelFullScreen()
-      return true
-    }
-    if (typeof doc.msExitFullscreen === "function") {
+      nativeSuccess = true
+    } else if (typeof doc.msExitFullscreen === "function") {
       await doc.msExitFullscreen()
-      return true
+      nativeSuccess = true
     }
   } catch {}
-  return false
+
+  if (simulatedFullscreenElement) {
+    simulatedFullscreenElement = null
+    if (typeof document !== "undefined") {
+      document.documentElement.classList.remove("simulated-fullscreen")
+    }
+  }
+
+  notifySubscribers()
+  return nativeSuccess || true
 }
 
 export function subscribeFullscreenChange(callback: () => void): () => void {
   if (typeof document === "undefined") return () => {}
 
-  document.addEventListener("fullscreenchange", callback)
-  document.addEventListener("webkitfullscreenchange", callback)
-  document.addEventListener("mozfullscreenchange", callback)
-  document.addEventListener("MSFullscreenChange", callback)
+  customListeners.add(callback)
+
+  const handleNativeChange = () => {
+    if (!getNativeFullscreenElement() && !simulatedFullscreenElement) {
+      document.documentElement.classList.remove("simulated-fullscreen")
+    }
+    callback()
+  }
+
+  const handleKeyDown = (e: KeyboardEvent) => {
+    if (e.key === "Escape" && simulatedFullscreenElement) {
+      void exitAppFullscreen()
+    }
+  }
+
+  document.addEventListener("fullscreenchange", handleNativeChange)
+  document.addEventListener("webkitfullscreenchange", handleNativeChange)
+  document.addEventListener("mozfullscreenchange", handleNativeChange)
+  document.addEventListener("MSFullscreenChange", handleNativeChange)
+  window.addEventListener("keydown", handleKeyDown)
 
   return () => {
-    document.removeEventListener("fullscreenchange", callback)
-    document.removeEventListener("webkitfullscreenchange", callback)
-    document.removeEventListener("mozfullscreenchange", callback)
-    document.removeEventListener("MSFullscreenChange", callback)
+    customListeners.delete(callback)
+    document.removeEventListener("fullscreenchange", handleNativeChange)
+    document.removeEventListener("webkitfullscreenchange", handleNativeChange)
+    document.removeEventListener("mozfullscreenchange", handleNativeChange)
+    document.removeEventListener("MSFullscreenChange", handleNativeChange)
+    window.removeEventListener("keydown", handleKeyDown)
   }
 }

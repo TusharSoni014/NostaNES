@@ -9,6 +9,8 @@ export type MobileDpadProps = {
   pressDown: (action: string) => void
   pressUp: (action: string) => void
   className?: string
+  style?: React.CSSProperties
+  disabled?: boolean
 }
 
 const DEADZONE = 10
@@ -25,6 +27,8 @@ export function MobileDpad({
   pressDown,
   pressUp,
   className,
+  style,
+  disabled = false,
 }: MobileDpadProps) {
   const baseRef = useRef<HTMLDivElement>(null)
   const pointerIdRef = useRef<number | null>(null)
@@ -104,6 +108,7 @@ export function MobileDpad({
   }, [pressUp])
 
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (disabled) return
     e.preventDefault()
     e.stopPropagation()
     pointerIdRef.current = e.pointerId
@@ -121,14 +126,14 @@ export function MobileDpad({
   }
 
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (pointerIdRef.current !== e.pointerId || !centerRef.current) return
+    if (disabled || pointerIdRef.current !== e.pointerId || !centerRef.current) return
     e.preventDefault()
     e.stopPropagation()
     updatePosition(e.clientX, e.clientY)
   }
 
   const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (pointerIdRef.current !== e.pointerId) return
+    if (disabled || pointerIdRef.current !== e.pointerId) return
     e.preventDefault()
     e.stopPropagation()
     pointerIdRef.current = null
@@ -153,6 +158,10 @@ export function MobileDpad({
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
+      onContextMenu={(e) => {
+        e.preventDefault()
+        e.stopPropagation()
+      }}
       aria-label="NES Directional D-Pad"
       role="group"
       tabIndex={-1}
@@ -160,11 +169,8 @@ export function MobileDpad({
         "relative size-36 sm:size-40 select-none touch-none flex items-center justify-center",
         className,
       )}
-      style={{ touchAction: "none" }}
+      style={{ touchAction: "none", ...style }}
     >
-      {/* Outer circular guide baseplate (non-blurred, high contrast) */}
-      <div className="absolute inset-0 rounded-full bg-zinc-950 border border-zinc-800 pointer-events-none shadow-md" />
-
       {/* Cross D-Pad Housing */}
       <div className="relative size-32 sm:size-36 flex items-center justify-center pointer-events-none">
         {/* Horizontal bar */}

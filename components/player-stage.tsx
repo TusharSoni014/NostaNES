@@ -95,6 +95,16 @@ export const PlayerStage = ({ game, initialSlot, onExit }: PlayerStageProps) => 
   }, [])
 
   useEffect(() => {
+    const handleContextMenu = (e: MouseEvent) => {
+      e.preventDefault()
+    }
+    window.addEventListener("contextmenu", handleContextMenu, { capture: true })
+    return () => {
+      window.removeEventListener("contextmenu", handleContextMenu, { capture: true })
+    }
+  }, [])
+
+  useEffect(() => {
     const onFs = () => setIsFullscreen(Boolean(getActiveFullscreenElement()))
     const unsubscribe = subscribeFullscreenChange(onFs)
 
@@ -247,6 +257,7 @@ export const PlayerStage = ({ game, initialSlot, onExit }: PlayerStageProps) => 
         {/* On-screen controls on mobile landscape */}
         {!isMobilePortrait && isMobile && !inGameMenuOpen ? (
           <MobileTouchControls
+            game={game}
             pressDown={pressDown}
             pressUp={pressUp}
             onToggleMenu={toggleInGameMenu}
@@ -262,6 +273,7 @@ export const PlayerStage = ({ game, initialSlot, onExit }: PlayerStageProps) => 
       {isMobilePortrait && !inGameMenuOpen ? (
         <div className="relative flex min-h-0 flex-1 w-full bg-zinc-950">
           <MobileTouchControls
+            game={game}
             pressDown={pressDown}
             pressUp={pressUp}
             onToggleMenu={toggleInGameMenu}
