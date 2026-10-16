@@ -162,27 +162,10 @@ export function MobileTouchControls({
   )
 
   // Reusable Action Cluster (Turbo B, Turbo A, B, A) - Crisp, Non-Blurred
+  // Reusable Action Cluster (Top line: Turbo A, B; Bottom line: Turbo B, A; closer spacing)
   const renderActionCluster = () => (
-    <div className="relative size-36 sm:size-40 bg-zinc-950 border border-zinc-800 rounded-full p-2 select-none touch-none shadow-md">
-      {/* Turbo B (top-left) */}
-      <button
-        type="button"
-        onPointerDown={(e) => handleButtonDown("y", "turboB", e)}
-        onPointerUp={(e) => handleButtonUp("y", "turboB", e)}
-        onPointerCancel={(e) => handleButtonUp("y", "turboB", e)}
-        aria-label="Turbo B"
-        className={cn(
-          "absolute top-2 left-4 sm:left-5 size-11 sm:size-12 rounded-full border flex flex-col items-center justify-center select-none transition-transform cursor-pointer active:scale-90",
-          activeButtons.has("turboB")
-            ? "bg-amber-500 border-amber-300 text-black scale-95"
-            : "bg-amber-950 border-amber-600/70 text-amber-200",
-        )}
-      >
-        <span className="leading-none text-[8px] sm:text-[9px] font-mono font-bold tracking-tighter">TURBO</span>
-        <span className="leading-none text-xs sm:text-sm font-black">B</span>
-      </button>
-
-      {/* Turbo A (top-right) */}
+    <div className="relative size-34 sm:size-38 bg-zinc-950 border border-zinc-800 rounded-full p-2 select-none touch-none shadow-md">
+      {/* Top Line - Left: Turbo A */}
       <button
         type="button"
         onPointerDown={(e) => handleButtonDown("x", "turboA", e)}
@@ -190,7 +173,7 @@ export function MobileTouchControls({
         onPointerCancel={(e) => handleButtonUp("x", "turboA", e)}
         aria-label="Turbo A"
         className={cn(
-          "absolute top-3 sm:top-3.5 right-2 size-11 sm:size-12 rounded-full border flex flex-col items-center justify-center select-none transition-transform cursor-pointer active:scale-90",
+          "absolute top-2.5 left-3 sm:top-3 sm:left-3.5 size-12 sm:size-13 rounded-full border flex flex-col items-center justify-center select-none transition-transform cursor-pointer active:scale-90",
           activeButtons.has("turboA")
             ? "bg-amber-500 border-amber-300 text-black scale-95"
             : "bg-amber-950 border-amber-600/70 text-amber-200",
@@ -200,7 +183,7 @@ export function MobileTouchControls({
         <span className="leading-none text-xs sm:text-sm font-black">A</span>
       </button>
 
-      {/* Normal B (bottom-left) */}
+      {/* Top Line - Right: Normal B */}
       <button
         type="button"
         onPointerDown={(e) => handleButtonDown("b", "b", e)}
@@ -208,7 +191,7 @@ export function MobileTouchControls({
         onPointerCancel={(e) => handleButtonUp("b", "b", e)}
         aria-label="Button B"
         className={cn(
-          "absolute bottom-3 sm:bottom-3.5 left-2 size-12 sm:size-13 rounded-full border flex items-center justify-center font-black text-base sm:text-lg select-none transition-transform cursor-pointer active:scale-90",
+          "absolute top-2.5 right-3 sm:top-3 sm:right-3.5 size-12 sm:size-13 rounded-full border flex items-center justify-center font-black text-base sm:text-lg select-none transition-transform cursor-pointer active:scale-90",
           activeButtons.has("b")
             ? "bg-rose-500 border-white text-white scale-95"
             : "bg-rose-900 border-rose-600/80 text-rose-100",
@@ -217,7 +200,25 @@ export function MobileTouchControls({
         B
       </button>
 
-      {/* Normal A (bottom-right) */}
+      {/* Bottom Line - Left: Turbo B */}
+      <button
+        type="button"
+        onPointerDown={(e) => handleButtonDown("y", "turboB", e)}
+        onPointerUp={(e) => handleButtonUp("y", "turboB", e)}
+        onPointerCancel={(e) => handleButtonUp("y", "turboB", e)}
+        aria-label="Turbo B"
+        className={cn(
+          "absolute bottom-2.5 left-3 sm:bottom-3 sm:left-3.5 size-12 sm:size-13 rounded-full border flex flex-col items-center justify-center select-none transition-transform cursor-pointer active:scale-90",
+          activeButtons.has("turboB")
+            ? "bg-amber-500 border-amber-300 text-black scale-95"
+            : "bg-amber-950 border-amber-600/70 text-amber-200",
+        )}
+      >
+        <span className="leading-none text-[8px] sm:text-[9px] font-mono font-bold tracking-tighter">TURBO</span>
+        <span className="leading-none text-xs sm:text-sm font-black">B</span>
+      </button>
+
+      {/* Bottom Line - Right: Normal A */}
       <button
         type="button"
         onPointerDown={(e) => handleButtonDown("a", "a", e)}
@@ -225,7 +226,7 @@ export function MobileTouchControls({
         onPointerCancel={(e) => handleButtonUp("a", "a", e)}
         aria-label="Button A"
         className={cn(
-          "absolute bottom-2 right-4 sm:right-5 size-12 sm:size-13 rounded-full border flex items-center justify-center font-black text-base sm:text-lg select-none transition-transform cursor-pointer active:scale-90",
+          "absolute bottom-2.5 right-3 sm:bottom-3 sm:right-3.5 size-12 sm:size-13 rounded-full border flex items-center justify-center font-black text-base sm:text-lg select-none transition-transform cursor-pointer active:scale-90",
           activeButtons.has("a")
             ? "bg-rose-500 border-white text-white scale-95"
             : "bg-rose-900 border-rose-600/80 text-rose-100",
@@ -268,12 +269,28 @@ export function MobileTouchControls({
               type="button"
               onClick={onToggleFullscreen}
               aria-label={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
-              className="p-1.5 rounded-full bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-300 cursor-pointer"
+              title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
+              className={cn(
+                "flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border text-xs font-semibold active:scale-95 transition-transform cursor-pointer shadow-sm min-h-[32px]",
+                isFullscreen
+                  ? "bg-amber-950/50 border-amber-500/60 text-amber-300 hover:bg-amber-900/50"
+                  : "bg-blue-950/50 border-blue-500/60 text-blue-300 hover:bg-blue-900/50",
+              )}
             >
-              {isFullscreen ? <Minimize2Icon className="size-3.5" /> : <Maximize2Icon className="size-3.5" />}
+              {isFullscreen ? (
+                <>
+                  <Minimize2Icon className="size-3.5 text-amber-400 shrink-0" />
+                  <span className="text-[10px] sm:text-xs tracking-wider uppercase font-mono text-amber-200">Exit FS</span>
+                </>
+              ) : (
+                <>
+                  <Maximize2Icon className="size-3.5 text-blue-400 shrink-0" />
+                  <span className="text-[10px] sm:text-xs tracking-wider uppercase font-mono text-blue-200">Full</span>
+                </>
+              )}
             </button>
           ) : (
-            <div className="w-8" />
+            <div className="w-16" />
           )}
         </div>
 
@@ -321,9 +338,25 @@ export function MobileTouchControls({
               type="button"
               onClick={onToggleFullscreen}
               aria-label={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
-              className="p-1.5 rounded-full bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-300 cursor-pointer"
+              title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold active:scale-95 transition-transform cursor-pointer shadow-md min-h-[32px]",
+                isFullscreen
+                  ? "bg-amber-950/50 border-amber-500/60 text-amber-300 hover:bg-amber-900/50"
+                  : "bg-blue-950/50 border-blue-500/60 text-blue-300 hover:bg-blue-900/50",
+              )}
             >
-              {isFullscreen ? <Minimize2Icon className="size-3.5" /> : <Maximize2Icon className="size-3.5" />}
+              {isFullscreen ? (
+                <>
+                  <Minimize2Icon className="size-3.5 text-amber-400 shrink-0" />
+                  <span className="text-xs font-mono tracking-wider uppercase text-amber-200">Exit FS</span>
+                </>
+              ) : (
+                <>
+                  <Maximize2Icon className="size-3.5 text-blue-400 shrink-0" />
+                  <span className="text-xs font-mono tracking-wider uppercase text-blue-200">Fullscreen</span>
+                </>
+              )}
             </button>
           ) : null}
         </div>

@@ -197,7 +197,7 @@ export const GameList = ({
                   : "border-white/10 bg-white/[0.04] backdrop-blur-md text-white/90 hover:border-white/25 hover:bg-white/[0.08] hover:text-white",
               )}
             >
-              <div className="flex min-w-0 flex-1 items-center gap-3.5">
+              <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3.5">
                 <span
                   className={cn(
                     "font-mono text-xs tabular-nums w-7 shrink-0 transition-colors",
@@ -209,16 +209,18 @@ export const GameList = ({
                   {String(i + 1).padStart(3, "0")}
                 </span>
 
-                <div
-                  className={cn(
-                    "grid size-8 shrink-0 place-items-center rounded-xl border transition-colors",
-                    isSelected
-                      ? "border-zinc-900 bg-zinc-950 text-white"
-                      : "border-white/10 bg-white/[0.05] text-white/60 group-hover:border-white/20 group-hover:text-white group-hover:bg-white/10",
-                  )}
-                >
-                  <Gamepad2Icon className="size-4" />
-                </div>
+                {!isMobile && (
+                  <div
+                    className={cn(
+                      "hidden sm:grid size-8 shrink-0 place-items-center rounded-xl border transition-colors",
+                      isSelected
+                        ? "border-zinc-900 bg-zinc-950 text-white"
+                        : "border-white/10 bg-white/[0.05] text-white/60 group-hover:border-white/20 group-hover:text-white group-hover:bg-white/10",
+                    )}
+                  >
+                    <Gamepad2Icon className="size-4" />
+                  </div>
+                )}
 
                 <div className="flex min-w-0 flex-1 flex-col justify-center">
                   <span

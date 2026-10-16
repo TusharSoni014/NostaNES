@@ -56,6 +56,7 @@ import {
 } from "@/lib/games";
 import { GameInfoDrawer } from "@/components/game-info-drawer";
 import { VersionSelectDialog } from "@/components/version-select-dialog";
+import { requestAppFullscreen } from "@/lib/display/fullscreen";
 import { cn } from "@/lib/utils";
 
 function isGameGroup(game: Game | GameGroup): game is GameGroup {
@@ -121,6 +122,7 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
     });
 
     playUiSound("game_start");
+    void requestAppFullscreen(document.documentElement);
     setPlaying({ game: customGame });
   }, []);
 
@@ -227,6 +229,7 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
       }
 
       playUiSound("game_start");
+      void requestAppFullscreen(document.documentElement);
       const gameToPlay = isGameGroup(target) ? (target.versions[0] ?? target) : target;
       setPlaying({ game: specificGame ?? gameToPlay, slot });
     },
@@ -780,6 +783,7 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
         onPlay={(chosenGame, slot) => {
           setInfoDrawerOpen(false);
           playUiSound("game_start");
+          void requestAppFullscreen(document.documentElement);
           setPlaying({ game: chosenGame, slot });
         }}
       />
@@ -792,6 +796,8 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
         }}
         onSelectVersion={(version) => {
           setVersionSelectGroup(null);
+          playUiSound("game_start");
+          void requestAppFullscreen(document.documentElement);
           setPlaying({ game: version });
         }}
       />

@@ -20,9 +20,9 @@ export function GameListSkeleton() {
             className="flex items-center justify-between gap-3.5 rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-md px-4 py-3"
             style={{ opacity: Math.max(0.35, 1 - i * 0.1) }}
           >
-            <div className="flex items-center gap-3.5 flex-1 min-w-0">
+            <div className="flex items-center gap-2 sm:gap-3.5 flex-1 min-w-0">
               <Skeleton className="h-3 w-6 rounded bg-white/10 shrink-0 font-mono" />
-              <Skeleton className="size-9 rounded-xl bg-white/10 shrink-0" />
+              <Skeleton className="hidden sm:block size-9 rounded-xl bg-white/10 shrink-0" />
               <div className="flex flex-col gap-1.5 flex-1 min-w-0">
                 <Skeleton className="h-4 w-40 sm:w-56 rounded bg-white/10" />
                 <Skeleton className="h-3 w-28 rounded bg-white/5" />

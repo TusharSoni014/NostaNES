@@ -20,6 +20,12 @@ import { getSavedShader, saveShader, type GameShader } from "@/lib/storage/shade
 import type { GamepadHoldState } from "@/lib/gamepad/gamepad-dispatcher"
 import { motion } from "motion/react"
 import { playUiSound } from "@/lib/ui-sounds"
+import {
+  getActiveFullscreenElement,
+  requestAppFullscreen,
+  exitAppFullscreen,
+  subscribeFullscreenChange,
+} from "@/lib/display/fullscreen"
 import { cn } from "@/lib/utils"
 import type { Game } from "@/lib/games"
 
@@ -39,7 +45,7 @@ export const PlayerStage = ({ game, initialSlot, onExit }: PlayerStageProps) => 
   const { connected: gamepadConnected } = useGamepadStatus()
 
   const [phase, setPhase] = useState<"loading" | "ready" | "error">("loading")
-  const [isFullscreen, setIsFullscreen] = useState(true)
+  const [isFullscreen, setIsFullscreen] = useState(() => Boolean(getActiveFullscreenElement()))
   const [confirmingExit, setConfirmingExit] = useState(false)
   const [inGameMenuOpen, setInGameMenuOpen] = useState(false)
   const [activeShader, setActiveShader] = useState<GameShader>(getSavedShader)
@@ -89,20 +95,32 @@ export const PlayerStage = ({ game, initialSlot, onExit }: PlayerStageProps) => 
   }, [])
 
   useEffect(() => {
-    const onFs = () => setIsFullscreen(Boolean(document.fullscreenElement))
-    document.addEventListener("fullscreenchange", onFs)
-    if (!isMobile && !document.fullscreenElement) {
-      stageRef.current?.requestFullscreen().catch(() => {})
+    const onFs = () => setIsFullscreen(Boolean(getActiveFullscreenElement()))
+    const unsubscribe = subscribeFullscreenChange(onFs)
+
+    // Automatically enter fullscreen on phone & desktop when game starts if not already active
+    if (!getActiveFullscreenElement()) {
+      void requestAppFullscreen(
+        stageRef.current ?? (typeof document !== "undefined" ? document.documentElement : null),
+      )
     }
+
     return () => {
-      document.removeEventListener("fullscreenchange", onFs)
-      if (document.fullscreenElement) document.exitFullscreen().catch(() => {})
+      unsubscribe()
+      if (getActiveFullscreenElement()) {
+        void exitAppFullscreen()
+      }
     }
-  }, [isMobile])
+  }, [])
 
   const toggleFullscreen = useCallback(() => {
-    if (!document.fullscreenElement) stageRef.current?.requestFullscreen().catch(() => {})
-    else document.exitFullscreen().catch(() => {})
+    if (!getActiveFullscreenElement()) {
+      void requestAppFullscreen(
+        stageRef.current ?? (typeof document !== "undefined" ? document.documentElement : null),
+      )
+    } else {
+      void exitAppFullscreen()
+    }
   }, [])
 
   const openInGameMenu = useCallback(() => {
@@ -136,7 +154,9 @@ export const PlayerStage = ({ game, initialSlot, onExit }: PlayerStageProps) => 
     unload()
     setInGameMenuOpen(false)
     setConfirmingExit(false)
-    if (document.fullscreenElement) document.exitFullscreen().catch(() => {})
+    if (getActiveFullscreenElement()) {
+      void exitAppFullscreen()
+    }
     playUiSound("navigation")
     onExit()
   }, [unload, onExit])
