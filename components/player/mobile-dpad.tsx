@@ -146,11 +146,11 @@ export function MobileDpad({
       lastY = e.clientY
       updatePosition(e.clientX, e.clientY)
 
-      // touch-action: none already blocks scrolling, so these stay passive and
-      // cannot stall the emulator frame the way a preventDefault listener does.
-      window.addEventListener("pointermove", handlePointerMove, { passive: true })
-      window.addEventListener("pointerup", handlePointerUp, { passive: true })
-      window.addEventListener("pointercancel", handlePointerUp, { passive: true })
+      // Capture keeps move/up routed to this element, so no window listeners are
+      // added/removed on every touch (that churn happened exactly at press time).
+      try {
+        el.setPointerCapture(e.pointerId)
+      } catch {}
     }
 
     let moveFrame = 0
@@ -177,22 +177,21 @@ export function MobileDpad({
       if (moveFrame) cancelAnimationFrame(moveFrame)
       moveFrame = 0
 
-      window.removeEventListener("pointermove", handlePointerMove)
-      window.removeEventListener("pointerup", handlePointerUp)
-      window.removeEventListener("pointercancel", handlePointerUp)
-
       resetDpad()
     }
 
     el.addEventListener("pointerdown", handlePointerDown, { passive: false })
+    el.addEventListener("pointermove", handlePointerMove, { passive: true })
+    el.addEventListener("pointerup", handlePointerUp, { passive: true })
+    el.addEventListener("pointercancel", handlePointerUp, { passive: true })
 
     return () => {
       if (moveFrame) cancelAnimationFrame(moveFrame)
       observer.disconnect()
       el.removeEventListener("pointerdown", handlePointerDown)
-      window.removeEventListener("pointermove", handlePointerMove)
-      window.removeEventListener("pointerup", handlePointerUp)
-      window.removeEventListener("pointercancel", handlePointerUp)
+      el.removeEventListener("pointermove", handlePointerMove)
+      el.removeEventListener("pointerup", handlePointerUp)
+      el.removeEventListener("pointercancel", handlePointerUp)
       resetDpad()
     }
   }, [disabled, updatePosition, resetDpad])
@@ -225,36 +224,48 @@ export function MobileDpad({
         <div
           ref={upArmRef}
           data-active="false"
-          className="absolute top-0 w-11 sm:w-12 h-11 sm:h-12 rounded-t-sm flex items-start justify-center pt-1.5 text-zinc-400 data-[active=true]:bg-zinc-600 data-[active=true]:text-white select-none pointer-events-none"
+          className="group absolute top-0 w-11 sm:w-12 h-11 sm:h-12 rounded-t-sm flex items-start justify-center pt-1.5 text-zinc-400 select-none pointer-events-none"
         >
           <span className="text-xs font-bold leading-none select-none">▲</span>
+          <div aria-hidden className="absolute inset-0 rounded-t-sm flex items-start justify-center pt-1.5 bg-zinc-600 text-white opacity-0 group-data-[active=true]:opacity-100 will-change-[opacity] pointer-events-none">
+            <span className="text-xs font-bold leading-none select-none">▲</span>
+          </div>
         </div>
 
         {/* DOWN ARM */}
         <div
           ref={downArmRef}
           data-active="false"
-          className="absolute bottom-0 w-11 sm:w-12 h-11 sm:h-12 rounded-b-sm flex items-end justify-center pb-1.5 text-zinc-400 data-[active=true]:bg-zinc-600 data-[active=true]:text-white select-none pointer-events-none"
+          className="group absolute bottom-0 w-11 sm:w-12 h-11 sm:h-12 rounded-b-sm flex items-end justify-center pb-1.5 text-zinc-400 select-none pointer-events-none"
         >
           <span className="text-xs font-bold leading-none select-none">▼</span>
+          <div aria-hidden className="absolute inset-0 rounded-b-sm flex items-end justify-center pb-1.5 bg-zinc-600 text-white opacity-0 group-data-[active=true]:opacity-100 will-change-[opacity] pointer-events-none">
+            <span className="text-xs font-bold leading-none select-none">▼</span>
+          </div>
         </div>
 
         {/* LEFT ARM */}
         <div
           ref={leftArmRef}
           data-active="false"
-          className="absolute left-0 w-11 sm:w-12 h-11 sm:h-12 rounded-l-sm flex items-center justify-start pl-1.5 text-zinc-400 data-[active=true]:bg-zinc-600 data-[active=true]:text-white select-none pointer-events-none"
+          className="group absolute left-0 w-11 sm:w-12 h-11 sm:h-12 rounded-l-sm flex items-center justify-start pl-1.5 text-zinc-400 select-none pointer-events-none"
         >
           <span className="text-xs font-bold leading-none select-none">◀</span>
+          <div aria-hidden className="absolute inset-0 rounded-l-sm flex items-center justify-start pl-1.5 bg-zinc-600 text-white opacity-0 group-data-[active=true]:opacity-100 will-change-[opacity] pointer-events-none">
+            <span className="text-xs font-bold leading-none select-none">◀</span>
+          </div>
         </div>
 
         {/* RIGHT ARM */}
         <div
           ref={rightArmRef}
           data-active="false"
-          className="absolute right-0 w-11 sm:w-12 h-11 sm:h-12 rounded-r-sm flex items-center justify-end pr-1.5 text-zinc-400 data-[active=true]:bg-zinc-600 data-[active=true]:text-white select-none pointer-events-none"
+          className="group absolute right-0 w-11 sm:w-12 h-11 sm:h-12 rounded-r-sm flex items-center justify-end pr-1.5 text-zinc-400 select-none pointer-events-none"
         >
           <span className="text-xs font-bold leading-none select-none">▶</span>
+          <div aria-hidden className="absolute inset-0 rounded-r-sm flex items-center justify-end pr-1.5 bg-zinc-600 text-white opacity-0 group-data-[active=true]:opacity-100 will-change-[opacity] pointer-events-none">
+            <span className="text-xs font-bold leading-none select-none">▶</span>
+          </div>
         </div>
 
         {/* Center Pivot Inset */}
