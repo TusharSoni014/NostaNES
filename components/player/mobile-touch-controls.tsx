@@ -5,7 +5,6 @@ import {
   SlidersIcon,
   Maximize2Icon,
   Minimize2Icon,
-  Settings2Icon,
 } from "lucide-react"
 import { MobileDpad } from "./mobile-dpad"
 import { useIsPortrait } from "@/hooks/use-is-mobile"
@@ -15,6 +14,7 @@ import {
   saveTouchLayout,
   applyLayoutToAllGames,
   type TouchElementKey,
+  type TouchOrientationLayout,
   type GameTouchLayout,
 } from "@/lib/storage/touch-controls-storage"
 import { TouchActionButton } from "./touch-controls/touch-action-button"
@@ -40,6 +40,8 @@ export function MobileTouchControls({
   isFullscreen = false,
   onToggleFullscreen,
   game,
+  isCustomizing: propIsCustomizing,
+  onDoneCustomizing,
 }: MobileTouchControlsProps) {
   const detectedPortrait = useIsPortrait()
   const isPortrait = propIsPortrait !== undefined ? propIsPortrait : detectedPortrait
@@ -50,14 +52,20 @@ export function MobileTouchControls({
 
   // Layout storage state per game
   const [gameLayout, setGameLayout] = useState<GameTouchLayout>(() => getTouchLayout(gameKey))
-  const [isCustomizing, setIsCustomizing] = useState(false)
+  const [internalIsCustomizing, setInternalIsCustomizing] = useState(false)
+  const isCustomizing = propIsCustomizing !== undefined ? propIsCustomizing : internalIsCustomizing
   const [selectedKey, setSelectedKey] = useState<TouchElementKey | null>("dpad")
   const [dragState, setDragState] = useState<DragState | null>(null)
   const [saveStatus, setSaveStatus] = useState<string | null>(null)
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const gameLayoutRef = useRef(gameLayout)
+  gameLayoutRef.current = gameLayout
 
   // Reload layout when game changes
   useEffect(() => {
-    setGameLayout(getTouchLayout(gameKey))
+    const loaded = getTouchLayout(gameKey)
+    setGameLayout(loaded)
+    gameLayoutRef.current = loaded
   }, [gameKey])
 
   // Current active orientation layout
@@ -190,6 +198,18 @@ export function MobileTouchControls({
     }))
   }
 
+  // Auto-save layout across all games automatically
+  const autoSaveLayout = useCallback(
+    (orientationLayout: TouchOrientationLayout) => {
+      saveTouchLayout(gameKey, orientation, orientationLayout)
+      applyLayoutToAllGames(orientation, orientationLayout)
+      setSaveStatus("Saved ✓")
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current)
+      saveTimeoutRef.current = setTimeout(() => setSaveStatus(null), 1800)
+    },
+    [gameKey, orientation],
+  )
+
   const handleElementPointerUp = (key: TouchElementKey, e: React.PointerEvent) => {
     if (isCustomizing) {
       if (dragState && dragState.key === key && dragState.pointerId === e.pointerId) {
@@ -198,6 +218,7 @@ export function MobileTouchControls({
         } catch {}
         setDragState(null)
         triggerHaptic(8)
+        autoSaveLayout(gameLayoutRef.current[orientation])
       }
     }
   }
@@ -205,31 +226,34 @@ export function MobileTouchControls({
   // Customization Toolbar Actions
   const handleScaleChange = (newScale: number) => {
     if (!selectedKey) return
+    const roundedScale = Math.round(newScale * 100) / 100
+    const updated = {
+      ...gameLayoutRef.current[orientation],
+      [selectedKey]: {
+        ...gameLayoutRef.current[orientation][selectedKey],
+        scale: roundedScale,
+      },
+    }
     setGameLayout((prev) => ({
       ...prev,
-      [orientation]: {
-        ...prev[orientation],
-        [selectedKey]: {
-          ...prev[orientation][selectedKey],
-          scale: Math.round(newScale * 100) / 100,
-        },
-      },
+      [orientation]: updated,
     }))
+    autoSaveLayout(updated)
   }
 
   const handleResetSelected = () => {
     if (!selectedKey) return
     const defaultItem = DEFAULT_TOUCH_LAYOUT[orientation][selectedKey]
+    const updated = {
+      ...gameLayoutRef.current[orientation],
+      [selectedKey]: { ...defaultItem },
+    }
     setGameLayout((prev) => ({
       ...prev,
-      [orientation]: {
-        ...prev[orientation],
-        [selectedKey]: { ...defaultItem },
-      },
+      [orientation]: updated,
     }))
     triggerHaptic(10)
-    setSaveStatus(`Reset ${selectedKey} ✓`)
-    setTimeout(() => setSaveStatus(null), 2000)
+    autoSaveLayout(updated)
   }
 
   const handleResetAll = () => {
@@ -238,59 +262,20 @@ export function MobileTouchControls({
       ...prev,
       [orientation]: defaultOrientationLayout,
     }))
-    saveTouchLayout(gameKey, orientation, defaultOrientationLayout)
     triggerHaptic(15)
-    setSaveStatus("Reset to defaults ✓")
-    setTimeout(() => setSaveStatus(null), 2000)
-  }
-
-  const handleSave = () => {
-    saveTouchLayout(gameKey, orientation, gameLayout[orientation])
-    triggerHaptic(15)
-    setSaveStatus(`Saved for ${game?.title || "this game"} ✓`)
-    setTimeout(() => setSaveStatus(null), 2500)
-  }
-
-  const handleApplyAll = () => {
-    applyLayoutToAllGames(orientation, gameLayout[orientation])
-    triggerHaptic(20)
-    setSaveStatus("Saved to all games ✓")
-    setTimeout(() => setSaveStatus(null), 2500)
+    autoSaveLayout(defaultOrientationLayout)
   }
 
   const handleDone = () => {
-    saveTouchLayout(gameKey, orientation, gameLayout[orientation])
-    setIsCustomizing(false)
+    autoSaveLayout(gameLayoutRef.current[orientation])
+    setInternalIsCustomizing(false)
+    onDoneCustomizing?.()
     triggerHaptic(15)
   }
 
   if (!visible) return null
 
-  // Utility button for opening Customization mode
-  const renderCustomizeButton = () => (
-    <button
-      type="button"
-      onClick={() => {
-        setIsCustomizing((prev) => !prev)
-        triggerHaptic(15)
-      }}
-      aria-label="Customize touch controls layout"
-      title="Customize touch controls layout"
-      className={cn(
-        "flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border text-xs font-semibold active:scale-95 transition-transform cursor-pointer shadow-sm min-h-[32px] select-none",
-        isCustomizing
-          ? "bg-blue-600 border-blue-400 text-white"
-          : "bg-zinc-900 hover:bg-zinc-800 border-zinc-700 text-zinc-300",
-      )}
-    >
-      <Settings2Icon className="size-3.5 text-blue-400 shrink-0" />
-      <span className="text-[10px] sm:text-xs font-mono uppercase tracking-wider">
-        {isCustomizing ? "Close" : "Layout"}
-      </span>
-    </button>
-  )
-
-  // Fullscreen toggle button
+  // Fullscreen toggle button - icon only (no text labels)
   const renderFullscreenButton = () => {
     if (!onToggleFullscreen) return null
     return (
@@ -300,26 +285,16 @@ export function MobileTouchControls({
         aria-label={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
         title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
         className={cn(
-          "flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border text-xs font-semibold active:scale-95 transition-transform cursor-pointer shadow-sm min-h-[32px] select-none",
+          "size-8 flex items-center justify-center rounded-full border text-xs font-semibold active:scale-95 transition-transform cursor-pointer shadow-sm select-none",
           isFullscreen
-            ? "bg-amber-950/60 border-amber-500/60 text-amber-300 hover:bg-amber-900/60"
-            : "bg-blue-950/60 border-blue-500/60 text-blue-300 hover:bg-blue-900/60",
+            ? "bg-amber-950/70 border-amber-500/60 text-amber-300 hover:bg-amber-900/70"
+            : "bg-zinc-900/90 border-zinc-700 text-blue-400 hover:bg-zinc-800",
         )}
       >
         {isFullscreen ? (
-          <>
-            <Minimize2Icon className="size-3.5 text-amber-400 shrink-0" />
-            <span className="text-[10px] sm:text-xs tracking-wider uppercase font-mono text-amber-200">
-              Exit FS
-            </span>
-          </>
+          <Minimize2Icon className="size-4 text-amber-400 shrink-0" />
         ) : (
-          <>
-            <Maximize2Icon className="size-3.5 text-blue-400 shrink-0" />
-            <span className="text-[10px] sm:text-xs tracking-wider uppercase font-mono text-blue-200">
-              Full
-            </span>
-          </>
+          <Maximize2Icon className="size-4 text-blue-400 shrink-0" />
         )}
       </button>
     )
@@ -351,8 +326,6 @@ export function MobileTouchControls({
           onScaleChange={handleScaleChange}
           onResetSelected={handleResetSelected}
           onResetAll={handleResetAll}
-          onSave={handleSave}
-          onApplyAll={handleApplyAll}
           onDone={handleDone}
           saveStatus={saveStatus}
         />
@@ -371,30 +344,25 @@ export function MobileTouchControls({
           </button>
 
           <div className="flex items-center gap-2">
-            {renderCustomizeButton()}
             {renderFullscreenButton()}
           </div>
         </div>
       )}
 
       {/* Top Utility Bar (Landscape) */}
-      {!isPortrait && (
+      {!isPortrait && !isCustomizing && (
         <div className="pointer-events-auto absolute top-2 inset-x-0 flex items-center justify-between px-3 sm:px-6 pt-[env(safe-area-inset-top,0px)] z-40">
-          {!isCustomizing ? (
-            <button
-              type="button"
-              onClick={onToggleMenu}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-white text-xs font-semibold active:scale-95 transition-transform cursor-pointer shadow-md select-none"
-            >
-              <SlidersIcon className="size-3.5 text-blue-400" />
-              <span>MENU</span>
-            </button>
-          ) : (
-            <div />
-          )}
+          <button
+            type="button"
+            onClick={onToggleMenu}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-white text-xs font-semibold active:scale-95 transition-transform cursor-pointer shadow-md select-none"
+          >
+            <SlidersIcon className="size-3.5 text-blue-400" />
+            <span>MENU</span>
+          </button>
 
           <div className="flex items-center gap-2">
-            {gamepadConnected && !isCustomizing ? (
+            {gamepadConnected ? (
               <button
                 type="button"
                 onClick={() => setShowOverride(false)}
@@ -404,7 +372,6 @@ export function MobileTouchControls({
               </button>
             ) : null}
 
-            {renderCustomizeButton()}
             {renderFullscreenButton()}
           </div>
         </div>
@@ -611,30 +578,6 @@ export function MobileTouchControls({
           else handleButtonUp("start", "start", e)
         }}
       />
-
-      {/* 8. MENU (When in landscape or if customized) */}
-      {!isPortrait && (
-        <TouchSystemButton
-          type="menu"
-          pos={currentLayout.menu}
-          isCustomizing={isCustomizing}
-          isSelected={selectedKey === "menu"}
-          isPressed={activeButtons.has("menu")}
-          onClickMenu={onToggleMenu}
-          onPointerDown={(e: React.PointerEvent) => {
-            if (isCustomizing) handleElementPointerDown("menu", e)
-          }}
-          onPointerMove={(e: React.PointerEvent) => {
-            if (isCustomizing) handleElementPointerMove("menu", e)
-          }}
-          onPointerUp={(e: React.PointerEvent) => {
-            if (isCustomizing) handleElementPointerUp("menu", e)
-          }}
-          onPointerCancel={(e: React.PointerEvent) => {
-            if (isCustomizing) handleElementPointerUp("menu", e)
-          }}
-        />
-      )}
     </div>
   )
 }

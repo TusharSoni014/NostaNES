@@ -23,4 +23,5 @@ export type InGameMenuProps = {
   activeShader?: GameShader
   onSelectShader?: (shader: GameShader) => void
   cheats: EmulatorCheatControls
+  onOpenTouchLayout?: () => void
 }

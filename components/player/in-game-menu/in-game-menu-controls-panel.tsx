@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import { CheckCircle2Icon, RotateCcwIcon, SaveIcon, SlidersIcon } from "lucide-react"
+import { CheckCircle2Icon, RotateCcwIcon, SaveIcon, Settings2Icon, SlidersIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { GamepadKey, Kbd } from "@/components/ui/kbd"
 import { ACTION_LABELS, type NesActionKey, type PlayerSlot } from "@/lib/storage/controls-storage"
@@ -28,12 +28,16 @@ type InGameMenuControlsPanelProps = {
   isFocused?: boolean
   onCancel?: () => void
   onNavigateLeft?: () => void
+  isMobile?: boolean
+  onOpenTouchLayout?: () => void
 }
 
 export const InGameMenuControlsPanel = ({
   isFocused = false,
   onCancel,
   onNavigateLeft,
+  isMobile = false,
+  onOpenTouchLayout,
 }: InGameMenuControlsPanelProps) => {
   const inputMode = useInputMode()
   const [player, setPlayerSlot] = useState<PlayerSlot>(1)
@@ -108,6 +112,29 @@ export const InGameMenuControlsPanel = ({
 
   return (
     <div className="flex flex-col flex-1 h-full min-h-0 w-full min-w-0 gap-2.5 sm:gap-3.5">
+      {/* Mobile Touch Controls Customization Banner (Visible for mobile only) */}
+      {isMobile && onOpenTouchLayout ? (
+        <div className="shrink-0 flex items-center justify-between gap-3 p-3 rounded-xl border border-blue-500/30 bg-blue-950/30 backdrop-blur-sm">
+          <div className="flex flex-col gap-0.5 min-w-0">
+            <span className="text-xs sm:text-sm font-semibold text-white flex items-center gap-1.5">
+              <Settings2Icon className="size-4 text-blue-400 shrink-0" />
+              On-Screen Touch Controls
+            </span>
+            <span className="text-[10px] sm:text-xs text-white/60 truncate">
+              Drag to reposition & resize buttons for portrait & landscape
+            </span>
+          </div>
+          <Button
+            size="sm"
+            onClick={onOpenTouchLayout}
+            className="shrink-0 text-xs h-7.5 px-3 gap-1.5 bg-blue-600 hover:bg-blue-500 text-white font-medium shadow-sm"
+          >
+            <SlidersIcon className="size-3.5" />
+            <span>Customize Layout</span>
+          </Button>
+        </div>
+      ) : null}
+
       <div className="shrink-0 flex flex-wrap items-center justify-between gap-2 sm:gap-3 border-b border-white/10 pb-2 sm:pb-3">
         <div>
           <h3 className="text-sm sm:text-base font-bold text-white flex items-center gap-1.5 sm:gap-2">

@@ -22,6 +22,8 @@ export type MobileTouchControlsProps = {
   isFullscreen?: boolean
   onToggleFullscreen?: () => void
   game?: Game
+  isCustomizing?: boolean
+  onDoneCustomizing?: () => void
 }
 
 export type DragState = {

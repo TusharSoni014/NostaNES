@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from "react"
 import { AnimatePresence, motion } from "motion/react"
+import { Settings2Icon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { FavoriteButton } from "@/components/ui/favorite-button"
 import { Kbd, GamepadKey } from "@/components/ui/kbd"
@@ -36,6 +37,7 @@ export const InGameMenu = ({
   activeShader = "none",
   onSelectShader,
   cheats,
+  onOpenTouchLayout,
 }: InGameMenuProps) => {
   const inputMode = useInputMode()
   const isMobile = useIsMobile()
@@ -138,6 +140,16 @@ export const InGameMenu = ({
                       <Button onClick={onResume} className="gap-2 h-8 sm:h-10 px-4 text-xs sm:text-sm">
                         Resume Gameplay
                       </Button>
+                      {isMobile && onOpenTouchLayout ? (
+                        <Button
+                          variant="outline"
+                          onClick={onOpenTouchLayout}
+                          className="gap-2 h-8 sm:h-10 px-4 text-xs sm:text-sm border-blue-500/40 text-blue-300 hover:bg-blue-950/40 hover:text-white"
+                        >
+                          <Settings2Icon className="size-3.5 text-blue-400" />
+                          <span>Customize Controls</span>
+                        </Button>
+                      ) : null}
                       <FavoriteButton game={game} variant="button" className="h-8 sm:h-10 px-3 sm:px-4 text-xs sm:text-sm" showLabel />
                     </div>
                   </div>
@@ -161,6 +173,8 @@ export const InGameMenu = ({
                     isFocused={focusPane === "content"}
                     onCancel={backToSidebar}
                     onNavigateLeft={backToSidebar}
+                    isMobile={isMobile}
+                    onOpenTouchLayout={onOpenTouchLayout}
                   />
                 ) : activeTab === "cheats" ? (
                   <InGameMenuCheatsPanel

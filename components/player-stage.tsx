@@ -133,7 +133,10 @@ export const PlayerStage = ({ game, initialSlot, onExit }: PlayerStageProps) => 
     }
   }, [])
 
+  const [isCustomizingTouch, setIsCustomizingTouch] = useState(false)
+
   const openInGameMenu = useCallback(() => {
+    setIsCustomizingTouch(false)
     pause()
     playUiSound("game_paused")
     setInGameMenuOpen(true)
@@ -143,6 +146,13 @@ export const PlayerStage = ({ game, initialSlot, onExit }: PlayerStageProps) => 
     setInGameMenuOpen(false)
     resume()
     playUiSound("back_cancel")
+  }, [resume])
+
+  const handleOpenTouchLayout = useCallback(() => {
+    setInGameMenuOpen(false)
+    resume()
+    setIsCustomizingTouch(true)
+    playUiSound("option_selected")
   }, [resume])
 
   const toggleInGameMenu = useCallback(() => {
@@ -162,6 +172,7 @@ export const PlayerStage = ({ game, initialSlot, onExit }: PlayerStageProps) => 
 
   const handleConfirmExit = useCallback(() => {
     unload()
+    setIsCustomizingTouch(false)
     setInGameMenuOpen(false)
     setConfirmingExit(false)
     if (getActiveFullscreenElement()) {
@@ -200,6 +211,7 @@ export const PlayerStage = ({ game, initialSlot, onExit }: PlayerStageProps) => 
         activeShader={activeShader}
         onSelectShader={handleSelectShader}
         cheats={{ loadCheats, enableCheat, disableCheat, clearCheats, getCheats }}
+        onOpenTouchLayout={handleOpenTouchLayout}
       />
 
       <PlayerHeader
@@ -265,6 +277,8 @@ export const PlayerStage = ({ game, initialSlot, onExit }: PlayerStageProps) => 
             isPortrait={false}
             isFullscreen={isFullscreen}
             onToggleFullscreen={toggleFullscreen}
+            isCustomizing={isCustomizingTouch}
+            onDoneCustomizing={() => setIsCustomizingTouch(false)}
           />
         ) : null}
       </div>
@@ -281,6 +295,8 @@ export const PlayerStage = ({ game, initialSlot, onExit }: PlayerStageProps) => 
             isPortrait={true}
             isFullscreen={isFullscreen}
             onToggleFullscreen={toggleFullscreen}
+            isCustomizing={isCustomizingTouch}
+            onDoneCustomizing={() => setIsCustomizingTouch(false)}
           />
         </div>
       ) : null}

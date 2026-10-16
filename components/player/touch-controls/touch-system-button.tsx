@@ -1,10 +1,9 @@
 "use client"
 
-import { SlidersIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { TouchElementPlacement } from "./types"
 
-export type TouchSystemButtonType = "select" | "start" | "menu"
+export type TouchSystemButtonType = "select" | "start"
 
 export type TouchSystemButtonProps = {
   type: TouchSystemButtonType
@@ -16,7 +15,6 @@ export type TouchSystemButtonProps = {
   onPointerMove?: (e: React.PointerEvent) => void
   onPointerUp: (e: React.PointerEvent) => void
   onPointerCancel: (e: React.PointerEvent) => void
-  onClickMenu?: () => void
 }
 
 export function TouchSystemButton({
@@ -29,10 +27,10 @@ export function TouchSystemButton({
   onPointerMove,
   onPointerUp,
   onPointerCancel,
-  onClickMenu,
 }: TouchSystemButtonProps) {
-  const isMenu = type === "menu"
-  const label = isMenu ? "MENU" : type === "select" ? "SELECT" : "START"
+  const label = type === "select" ? "SELECT" : "START"
+
+  if (pos.visible === false) return null
 
   return (
     <div
@@ -65,64 +63,37 @@ export function TouchSystemButton({
         </div>
       )}
 
-      {isMenu ? (
-        <button
-          type="button"
-          aria-label="In-Game Menu"
-          onClick={isCustomizing ? undefined : onClickMenu}
-          onPointerDown={onPointerDown}
-          onPointerMove={onPointerMove}
-          onPointerUp={onPointerUp}
-          onPointerCancel={onPointerCancel}
-          onContextMenu={(e) => {
-            e.preventDefault()
-            e.stopPropagation()
-          }}
+      <button
+        type="button"
+        aria-label={`${label} button`}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerCancel}
+        onContextMenu={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
+        }}
+        className={cn(
+          "group flex flex-col items-center gap-1 cursor-pointer active:scale-95 transition-all p-1 select-none",
+          isCustomizing && isSelected && "ring-2 ring-blue-400 ring-offset-2 ring-offset-black rounded-lg",
+          isCustomizing && !isSelected && "border border-dashed border-zinc-600/70 rounded-lg",
+        )}
+      >
+        <div
           className={cn(
-            "flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold select-none shadow-md transition-all active:scale-95 cursor-pointer",
-            isCustomizing && isSelected && "ring-2 ring-blue-400 ring-offset-2 ring-offset-black scale-105",
-            isCustomizing && !isSelected && "border-dashed border-zinc-500/80 hover:border-zinc-300",
+            "w-11 sm:w-13 h-4 sm:h-5 rounded-full border transition-colors -rotate-12 flex items-center justify-center",
             isPressed
-              ? "bg-zinc-700 border-zinc-500 text-white"
-              : "bg-zinc-900 hover:bg-zinc-800 border-zinc-700 text-white",
+              ? "bg-blue-600 border-blue-400"
+              : "bg-zinc-800 border-zinc-700",
           )}
         >
-          <SlidersIcon className="size-3.5 text-blue-400 shrink-0" />
-          <span>MENU</span>
-        </button>
-      ) : (
-        <button
-          type="button"
-          aria-label={`${label} button`}
-          onPointerDown={onPointerDown}
-          onPointerMove={onPointerMove}
-          onPointerUp={onPointerUp}
-          onPointerCancel={onPointerCancel}
-          onContextMenu={(e) => {
-            e.preventDefault()
-            e.stopPropagation()
-          }}
-          className={cn(
-            "group flex flex-col items-center gap-1 cursor-pointer active:scale-95 transition-all p-1 select-none",
-            isCustomizing && isSelected && "ring-2 ring-blue-400 ring-offset-2 ring-offset-black rounded-lg",
-            isCustomizing && !isSelected && "border border-dashed border-zinc-600/70 rounded-lg",
-          )}
-        >
-          <div
-            className={cn(
-              "w-11 sm:w-13 h-4 sm:h-5 rounded-full border transition-colors -rotate-12 flex items-center justify-center",
-              isPressed
-                ? "bg-blue-600 border-blue-400"
-                : "bg-zinc-800 border-zinc-700",
-            )}
-          >
-            <div className="w-6 sm:w-7 h-1 rounded-full bg-zinc-600" />
-          </div>
-          <span className="font-mono text-[9px] sm:text-[10px] font-bold text-zinc-400 tracking-widest uppercase">
-            {label}
-          </span>
-        </button>
-      )}
+          <div className="w-6 sm:w-7 h-1 rounded-full bg-zinc-600" />
+        </div>
+        <span className="font-mono text-[9px] sm:text-[10px] font-bold text-zinc-400 tracking-widest uppercase">
+          {label}
+        </span>
+      </button>
     </div>
   )
 }

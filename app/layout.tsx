@@ -53,6 +53,11 @@ export const metadata: Metadata = {
       { url: "/nostanes.png" },
     ],
   },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "NostaNES",
+  },
   openGraph: {
     type: "website",
     locale: "en_US",
@@ -97,6 +102,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
+  viewportFit: "cover",
 };
 
 const structuredData = {

@@ -27,25 +27,25 @@ export type GameTouchLayout = {
 }
 
 export const DEFAULT_PORTRAIT_LAYOUT: TouchOrientationLayout = {
-  menu: { x: 16, y: 10, scale: 1.0, visible: true },
-  select: { x: 42, y: 10, scale: 1.0, visible: true },
-  start: { x: 58, y: 10, scale: 1.0, visible: true },
-  dpad: { x: 25, y: 65, scale: 1.0, visible: true },
-  turboA: { x: 72, y: 53, scale: 1.0, visible: true },
-  b: { x: 88, y: 53, scale: 1.0, visible: true },
-  turboB: { x: 72, y: 77, scale: 1.0, visible: true },
-  a: { x: 88, y: 77, scale: 1.0, visible: true },
+  menu: { x: 14, y: 8, scale: 1.0, visible: false },
+  select: { x: 38, y: 22, scale: 1.0, visible: true },
+  start: { x: 62, y: 22, scale: 1.0, visible: true },
+  dpad: { x: 24, y: 68, scale: 1.0, visible: true },
+  turboA: { x: 68, y: 56, scale: 1.0, visible: true },
+  b: { x: 88, y: 56, scale: 1.0, visible: true },
+  turboB: { x: 68, y: 78, scale: 1.0, visible: true },
+  a: { x: 88, y: 78, scale: 1.0, visible: true },
 }
 
 export const DEFAULT_LANDSCAPE_LAYOUT: TouchOrientationLayout = {
-  menu: { x: 10, y: 8, scale: 1.0, visible: true },
-  select: { x: 16, y: 54, scale: 1.0, visible: true },
-  start: { x: 84, y: 54, scale: 1.0, visible: true },
-  dpad: { x: 16, y: 78, scale: 1.0, visible: true },
-  turboA: { x: 78, y: 72, scale: 1.0, visible: true },
-  b: { x: 90, y: 72, scale: 1.0, visible: true },
-  turboB: { x: 78, y: 86, scale: 1.0, visible: true },
-  a: { x: 90, y: 86, scale: 1.0, visible: true },
+  menu: { x: 8, y: 8, scale: 1.0, visible: false },
+  select: { x: 14, y: 28, scale: 1.0, visible: true },
+  dpad: { x: 14, y: 74, scale: 1.0, visible: true },
+  start: { x: 86, y: 28, scale: 1.0, visible: true },
+  turboA: { x: 76, y: 64, scale: 1.0, visible: true },
+  b: { x: 90, y: 64, scale: 1.0, visible: true },
+  turboB: { x: 76, y: 84, scale: 1.0, visible: true },
+  a: { x: 90, y: 84, scale: 1.0, visible: true },
 }
 
 export const DEFAULT_TOUCH_LAYOUT: GameTouchLayout = {
@@ -67,8 +67,8 @@ export const TOUCH_ELEMENT_METADATA: Record<
   menu: { label: "Menu", desc: "In-game Menu", category: "system" },
 }
 
-const STORAGE_PREFIX = "nostanes_touch_layout_v1_"
-const GLOBAL_DEFAULT_KEY = "nostanes_touch_layout_v1_default"
+const STORAGE_PREFIX = "nostanes_touch_layout_v3_"
+const GLOBAL_DEFAULT_KEY = "nostanes_touch_layout_v3_default"
 
 export function sanitizeGameKey(gameKey?: string): string {
   if (!gameKey) return "default"
@@ -83,7 +83,7 @@ function normalizeOrientationLayout(
   raw: Partial<TouchOrientationLayout> | undefined,
   fallback: TouchOrientationLayout,
 ): TouchOrientationLayout {
-  const result: TouchOrientationLayout = { ...fallback }
+  const result: TouchOrientationLayout = { ...fallback, menu: { x: 8, y: 8, scale: 1.0, visible: false } }
   if (!raw || typeof raw !== "object") return result
 
   const keys: TouchElementKey[] = [
@@ -94,7 +94,6 @@ function normalizeOrientationLayout(
     "turboB",
     "select",
     "start",
-    "menu",
   ]
 
   for (const k of keys) {
