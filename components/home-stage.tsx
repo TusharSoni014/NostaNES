@@ -357,9 +357,14 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
           if (presented) setEntrance(false);
         }}
         aria-hidden={!presented}
-        className={`relative z-20 flex min-h-0 flex-1 origin-center flex-col will-change-[opacity,transform] ${
-          presented ? "" : "pointer-events-none"
-        }`}
+        className={cn(
+          "relative z-20 flex min-h-0 flex-1 origin-center flex-col",
+          playing
+            ? "pointer-events-none"
+            : "will-change-[opacity,transform]",
+          playing && isMobile && "[content-visibility:hidden]",
+          !presented && "pointer-events-none",
+        )}
       >
         <header className="flex shrink-0 items-center justify-between gap-3 px-3 pt-3 pb-1 sm:gap-4 sm:px-10 sm:pt-6 sm:pb-0">
           <div className="flex items-center gap-2.5 sm:gap-3">

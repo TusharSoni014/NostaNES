@@ -11,19 +11,34 @@ export const getRetroArchInputConfig = (isMobile = false) => ({
     video_force_aspect: true,
     audio_enable: true,
     audio_sync: true,
-    // Buffer size in ms: 128ms on mobile provides safety cushion against buffer underflow and GC stalls
-    audio_latency: isMobile ? 128 : 96,
+    // Phones underrun a short buffer whenever the audio clock drifts, and audio sync
+    // then stalls the core. A deeper buffer plus a wider rate window absorbs that.
+    audio_latency: isMobile ? 192 : 96,
     // Linear audio resampler reduces DRC CPU usage by ~80% compared to heavy sinc interpolation
     audio_resampler: "linear",
     audio_resampler_quality: 1,
     audio_rate_control: true,
-    audio_rate_control_delta: 0.005,
-    audio_max_timing_skew: 0.05,
-    // Threaded video keeps the emulation core decoupled from browser UI and compositor hiccups
-    video_threaded: true,
-    video_vsync: true,
+    audio_rate_control_delta: isMobile ? 0.03 : 0.005,
+    audio_max_timing_skew: isMobile ? 0.15 : 0.05,
+    // Phones are 90/120Hz. Vsync waits on that refresh and presents a 60Hz game in
+    // uneven steps. Audio sync already paces the core, so vsync only adds hitching.
+    // Threaded video also copies every frame on the single-threaded web build.
+    video_threaded: isMobile ? false : true,
+    video_vsync: isMobile ? false : true,
     video_frame_delay: 0,
-    video_max_swapchain_images: isMobile ? 3 : 2,
+    video_max_swapchain_images: 2,
+    ...(isMobile
+      ? {
+          audio_out_rate: 48000,
+          video_hard_sync: false,
+          video_black_frame_insertion: false,
+          video_refresh_rate: 60,
+          video_font_enable: false,
+          video_shader_enable: false,
+          rewind_enable: false,
+          run_ahead_enabled: false,
+        }
+      : {}),
     pause_nonactive: false,
     fps_update_interval: 60,
     input_exit_emulator: "nul",
@@ -133,6 +148,8 @@ export const getRetroArchCoreConfig = (isMobile = false) => ({
   fceumm_turbo_delay: "3",
   // "Low" sound quality prevents complex audio synthesis / expansion chips (MMC5, VRC6/7) from stuttering on mobile
   fceumm_sndquality: isMobile ? "Low" : "High",
+  // NTSC composite filtering is a full-frame CPU pass and is what makes heavier carts hitch
+  ...(isMobile ? { fceumm_ntsc_filter: "disabled" } : {}),
   fceumm_overclocking: "Disabled",
   fceumm_nospritelimit: "Disabled",
   fceumm_region: "Auto",

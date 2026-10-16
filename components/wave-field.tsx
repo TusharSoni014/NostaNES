@@ -165,12 +165,15 @@ export function WaveField({ shift, paused = false, onReady }: WaveFieldProps) {
         u_shift: { value: shiftRef.current },
       }
 
+      const mobileGpu = () =>
+        window.matchMedia("(pointer: coarse), (max-width: 768px)").matches
+
       const renderer = new THREE.WebGLRenderer({
         antialias: false,
         alpha: false,
-        powerPreference: "high-performance",
+        powerPreference: mobileGpu() ? "low-power" : "high-performance",
       })
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, mobileGpu() ? 1 : 1.5))
       renderer.outputColorSpace = THREE.LinearSRGBColorSpace
       renderer.toneMapping = THREE.NoToneMapping
       renderer.setClearColor(0x020712, 1)
@@ -192,6 +195,8 @@ export function WaveField({ shift, paused = false, onReady }: WaveFieldProps) {
 
       const pointer = new THREE.Vector2()
       const resize = () => {
+        // A layout change while a game is running must not grow this buffer back.
+        if (pausedRef.current) return
         const width = host.clientWidth || window.innerWidth
         const height = host.clientHeight || window.innerHeight
         renderer.setSize(width, height, false)
@@ -208,7 +213,13 @@ export function WaveField({ shift, paused = false, onReady }: WaveFieldProps) {
           -((event.clientY / window.innerHeight) * 2 - 1),
         )
       }
-      window.addEventListener("pointermove", onPointer)
+      const attachPointer = () => {
+        window.removeEventListener("pointermove", onPointer)
+        window.addEventListener("pointermove", onPointer)
+      }
+      const detachPointer = () => {
+        window.removeEventListener("pointermove", onPointer)
+      }
       const observer = new ResizeObserver(resize)
       observer.observe(host)
 
@@ -239,11 +250,17 @@ export function WaveField({ shift, paused = false, onReady }: WaveFieldProps) {
         if (isPaused) {
           wasPaused = true
           renderer.setAnimationLoop(null)
+          detachPointer()
           renderer.domElement.style.display = "none"
+          // Release the full-screen framebuffer while the emulator owns the GPU.
+          renderer.setPixelRatio(1)
+          renderer.setSize(1, 1, false)
         } else {
           last = performance.now()
-          renderer.domElement.style.display = "block"
+          renderer.setPixelRatio(Math.min(window.devicePixelRatio, mobileGpu() ? 1 : 1.5))
           resize()
+          renderer.domElement.style.display = "block"
+          attachPointer()
           renderer.setAnimationLoop(render)
         }
       }
@@ -254,6 +271,7 @@ export function WaveField({ shift, paused = false, onReady }: WaveFieldProps) {
       notifyReady()
 
       if (!pausedRef.current) {
+        attachPointer()
         renderer.setAnimationLoop(render)
       } else {
         updateLoopState(true)
@@ -262,7 +280,7 @@ export function WaveField({ shift, paused = false, onReady }: WaveFieldProps) {
       cleanup = () => {
         loopControllerRef.current = null
         renderer.setAnimationLoop(null)
-        window.removeEventListener("pointermove", onPointer)
+        detachPointer()
         observer.disconnect()
         material.dispose()
         mesh.geometry.dispose()

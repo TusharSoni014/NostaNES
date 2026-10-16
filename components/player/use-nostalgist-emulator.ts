@@ -202,8 +202,25 @@ export function useNostalgistEmulator({
       1,
       Math.floor(Math.min((rect.width || 768) / 256, (rect.height || 576) / 240)),
     )
-    // On mobile devices, native 256x240 lets hardware GPU scale crisply at minimum VRAM & fill-rate
+    // Phones composite a full-screen buffer every frame if the canvas layout box is the
+    // screen. Keep the element at 256×240 so the core's resizer stays there, and scale
+    // it on the GPU with a CSS transform.
     const effectiveScale = isMobileDevice ? 1 : scale
+
+    let stopMobileFit = () => {}
+    if (isMobileDevice) {
+      const fit = () => {
+        const box = frame.getBoundingClientRect()
+        const sx = (box.width || 256) / 256
+        const sy = (box.height || 240) / 240
+        canvas.style.transformOrigin = "center center"
+        canvas.style.transform = `translateZ(0) scale(${sx}, ${sy})`
+      }
+      fit()
+      const fitObserver = new ResizeObserver(fit)
+      fitObserver.observe(frame)
+      stopMobileFit = () => fitObserver.disconnect()
+    }
 
     const handleFirstTouch = () => {
       if (instanceRef.current) {
@@ -230,7 +247,15 @@ export function useNostalgistEmulator({
           signal: controller.signal,
           cache: game.customRom ? { core: true, rom: false } : { core: true, rom: true },
           size: { width: 256 * effectiveScale, height: 240 * effectiveScale },
-          style: { width: "100%", height: "100%", display: "block", backgroundColor: "black" },
+          style: isMobileDevice
+            ? {
+                width: "256px",
+                height: "240px",
+                display: "block",
+                backgroundColor: "black",
+                transformOrigin: "center center",
+              }
+            : { width: "100%", height: "100%", display: "block", backgroundColor: "black" },
           retroarchConfig: getRetroArchInputConfig(isMobileDevice),
           retroarchCoreConfig: getRetroArchCoreConfig(isMobileDevice),
           onLaunch(emu) {
@@ -303,6 +328,7 @@ export function useNostalgistEmulator({
     })()
 
     return () => {
+      stopMobileFit()
       window.removeEventListener("pointerdown", handleFirstTouch)
       unload()
     }

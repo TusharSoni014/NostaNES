@@ -80,25 +80,23 @@ export function MobileTouchControls({
   useEffect(() => {
     if (!visible || !gamepadConnected || isCustomizing) return
 
-    let animId = 0
     const pollGamepad = () => {
-      if (typeof navigator !== "undefined" && "getGamepads" in navigator) {
-        const pads = navigator.getGamepads()
-        for (const pad of pads) {
-          if (!pad || !pad.connected) continue
-          const hasBtn = pad.buttons.some((b) => (typeof b === "object" ? b.pressed : Boolean(b)))
-          const hasAxis = pad.axes.some((a) => Math.abs(a) > 0.45)
-          if (hasBtn || hasAxis) {
-            setShowOverride(false)
-            return
-          }
+      if (typeof navigator === "undefined" || !("getGamepads" in navigator)) return
+      const pads = navigator.getGamepads()
+      for (const pad of pads) {
+        if (!pad || !pad.connected) continue
+        const hasBtn = pad.buttons.some((b) => (typeof b === "object" ? b.pressed : Boolean(b)))
+        const hasAxis = pad.axes.some((a) => Math.abs(a) > 0.45)
+        if (hasBtn || hasAxis) {
+          setShowOverride(false)
+          return
         }
       }
-      animId = requestAnimationFrame(pollGamepad)
     }
 
-    animId = requestAnimationFrame(pollGamepad)
-    return () => cancelAnimationFrame(animId)
+    // A frame-rate poll here runs on the same thread as the emulator and hitches it.
+    const intervalId = window.setInterval(pollGamepad, 250)
+    return () => window.clearInterval(intervalId)
   }, [visible, gamepadConnected, isCustomizing])
 
   // Global screen tap restores controls if hidden by gamepad
