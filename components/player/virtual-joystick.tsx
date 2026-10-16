@@ -56,18 +56,17 @@ export function VirtualJoystick({
 
       const current = activeDirectionsRef.current
 
-      // Trigger newly pressed directions
-      for (const dir of nextDirs) {
-        if (!current.has(dir)) {
-          pressDown(dir)
-          triggerHaptic(8)
-        }
-      }
-
-      // Release inactive directions
+      // Release inactive directions FIRST
       for (const dir of current) {
         if (!nextDirs.has(dir)) {
           pressUp(dir)
+        }
+      }
+
+      // Trigger newly pressed directions SECOND
+      for (const dir of nextDirs) {
+        if (!current.has(dir)) {
+          pressDown(dir)
         }
       }
 
@@ -108,6 +107,8 @@ export function VirtualJoystick({
     const cx = rect.left + rect.width / 2
     const cy = rect.top + rect.height / 2
     centerRef.current = { x: cx, y: cy }
+
+    triggerHaptic(6)
 
     updatePosition(e.clientX - cx, e.clientY - cy)
   }

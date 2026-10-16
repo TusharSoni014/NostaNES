@@ -47,10 +47,21 @@ export function useNostalgistEmulator({
     isPausedRef.current = Boolean(isPaused)
   }, [isPaused])
 
+  const activeButtonsRef = useRef<Set<string>>(new Set())
+
   const pause = () => {
     try {
       const emu = instanceRef.current
       if (!emu) return
+      for (const key of activeButtonsRef.current) {
+        const [playerStr, action] = key.split(":")
+        const player = parseInt(playerStr, 10) || 1
+        try {
+          if (player === 1) emu.pressUp?.(action)
+          else emu.pressUp?.({ button: action, player })
+        } catch {}
+      }
+      activeButtonsRef.current.clear()
       if (emu.getStatus?.() === "running") emu.pause()
       else emu.pause?.()
       setAudioContextState(emu, "suspend")
@@ -88,11 +99,27 @@ export function useNostalgistEmulator({
   }
 
   const pressDown = useCallback((action: string, player = 1) => {
-    try { instanceRef.current?.pressDown?.({ button: action, player }) } catch {}
+    const key = `${player}:${action}`
+    if (activeButtonsRef.current.has(key)) return
+    activeButtonsRef.current.add(key)
+    try {
+      const emu = instanceRef.current
+      if (!emu) return
+      if (player === 1) emu.pressDown?.(action)
+      else emu.pressDown?.({ button: action, player })
+    } catch {}
   }, [])
 
   const pressUp = useCallback((action: string, player = 1) => {
-    try { instanceRef.current?.pressUp?.({ button: action, player }) } catch {}
+    const key = `${player}:${action}`
+    if (!activeButtonsRef.current.has(key)) return
+    activeButtonsRef.current.delete(key)
+    try {
+      const emu = instanceRef.current
+      if (!emu) return
+      if (player === 1) emu.pressUp?.(action)
+      else emu.pressUp?.({ button: action, player })
+    } catch {}
   }, [])
 
   const loadCheats = useCallback(async (content: string) => {
@@ -133,6 +160,15 @@ export function useNostalgistEmulator({
     if (controllerRef.current) controllerRef.current.abort()
     const emu = instanceRef.current
     if (emu) {
+      for (const key of activeButtonsRef.current) {
+        const [playerStr, action] = key.split(":")
+        const player = parseInt(playerStr, 10) || 1
+        try {
+          if (player === 1) emu.pressUp?.(action)
+          else emu.pressUp?.({ button: action, player })
+        } catch {}
+      }
+      activeButtonsRef.current.clear()
       setAudioContextState(emu, "close")
       try {
         emu.exit({ removeCanvas: false })

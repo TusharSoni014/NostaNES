@@ -51,6 +51,7 @@ export function MobileTouchControls({
   const containerRef = useRef<HTMLDivElement>(null)
 
   // Layout storage state per game
+  const [prevGameKey, setPrevGameKey] = useState(gameKey)
   const [gameLayout, setGameLayout] = useState<GameTouchLayout>(() => getTouchLayout(gameKey))
   const [internalIsCustomizing, setInternalIsCustomizing] = useState(false)
   const isCustomizing = propIsCustomizing !== undefined ? propIsCustomizing : internalIsCustomizing
@@ -59,14 +60,17 @@ export function MobileTouchControls({
   const [saveStatus, setSaveStatus] = useState<string | null>(null)
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const gameLayoutRef = useRef(gameLayout)
-  gameLayoutRef.current = gameLayout
+
+  useEffect(() => {
+    gameLayoutRef.current = gameLayout
+  }, [gameLayout])
 
   // Reload layout when game changes
-  useEffect(() => {
+  if (prevGameKey !== gameKey) {
+    setPrevGameKey(gameKey)
     const loaded = getTouchLayout(gameKey)
     setGameLayout(loaded)
-    gameLayoutRef.current = loaded
-  }, [gameKey])
+  }
 
   // Current active orientation layout
   const currentLayout = gameLayout[orientation]
