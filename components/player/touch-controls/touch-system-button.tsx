@@ -10,19 +10,22 @@ export type TouchSystemButtonProps = {
   pos: TouchElementPlacement
   isCustomizing: boolean
   isSelected: boolean
-  isPressed?: boolean
-  onPointerDown: (e: React.PointerEvent) => void
+  /** Layout-editor drag handlers. Only attached while customizing. */
+  onPointerDown?: (e: React.PointerEvent) => void
   onPointerMove?: (e: React.PointerEvent) => void
-  onPointerUp: (e: React.PointerEvent) => void
-  onPointerCancel: (e: React.PointerEvent) => void
+  onPointerUp?: (e: React.PointerEvent) => void
+  onPointerCancel?: (e: React.PointerEvent) => void
 }
 
+/**
+ * Select / Start pill. During play the TouchInputEngine owns input: it finds
+ * the element through `data-touch-zone` and flips `data-pressed`.
+ */
 export function TouchSystemButton({
   type,
   pos,
   isCustomizing,
   isSelected,
-  isPressed,
   onPointerDown,
   onPointerMove,
   onPointerUp,
@@ -44,10 +47,6 @@ export function TouchSystemButton({
         "absolute pointer-events-auto select-none touch-none",
         isCustomizing && "cursor-grab active:cursor-grabbing",
       )}
-      onContextMenu={(e) => {
-        e.preventDefault()
-        e.stopPropagation()
-      }}
     >
       {/* Label Badge shown during customization */}
       {isCustomizing && (
@@ -63,35 +62,28 @@ export function TouchSystemButton({
         </div>
       )}
 
-      <button
-        type="button"
-        data-pressed={isPressed ? "true" : "false"}
+      <div
+        data-touch-zone={type}
+        data-pressed="false"
+        role="button"
         aria-label={`${label} button`}
-        onPointerDown={onPointerDown}
+        onPointerDown={isCustomizing ? onPointerDown : undefined}
         onPointerMove={isCustomizing ? onPointerMove : undefined}
-        onPointerUp={onPointerUp}
-        onPointerCancel={onPointerCancel}
-        onContextMenu={(e) => {
-          e.preventDefault()
-          e.stopPropagation()
-        }}
+        onPointerUp={isCustomizing ? onPointerUp : undefined}
+        onPointerCancel={isCustomizing ? onPointerCancel : undefined}
         className={cn(
-          "group flex flex-col items-center gap-1 cursor-pointer p-1 select-none [transform:translateZ(0)]",
+          "group flex flex-col items-center gap-1 px-3 py-2 select-none touch-none [transform:translateZ(0)]",
           isCustomizing && isSelected && "ring-2 ring-blue-400 ring-offset-2 ring-offset-black rounded-lg",
           isCustomizing && !isSelected && "border border-dashed border-zinc-600/70 rounded-lg",
         )}
       >
-        <div
-          className={cn(
-            "w-11 sm:w-13 h-4 sm:h-5 rounded-full border -rotate-12 flex items-center justify-center bg-zinc-800 border-zinc-700 group-data-[pressed=true]:bg-blue-600 group-data-[pressed=true]:border-blue-400",
-          )}
-        >
+        <div className="w-11 sm:w-13 h-4 sm:h-5 rounded-full border -rotate-12 flex items-center justify-center bg-zinc-800 border-zinc-700 group-data-[pressed=true]:bg-blue-600 group-data-[pressed=true]:border-blue-400">
           <div className="w-6 sm:w-7 h-1 rounded-full bg-zinc-600" />
         </div>
-        <span className="font-mono text-[9px] sm:text-[10px] font-bold text-zinc-400 tracking-widest uppercase">
+        <span className="font-mono text-[9px] sm:text-[10px] font-bold text-zinc-400 tracking-widest uppercase group-data-[pressed=true]:text-blue-300">
           {label}
         </span>
-      </button>
+      </div>
     </div>
   )
 }

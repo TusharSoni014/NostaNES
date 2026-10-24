@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef } from "react"
 import type { Nostalgist } from "nostalgist"
 import { preventScreenSleep } from "@/lib/display/wake-lock"
 import { ensureSafeResizeObserver } from "@/lib/display/safe-resize-observer"
+import { dispatchEmulatorKey } from "@/lib/emulator/emulator-key-events"
+import { installFrameScheduler, type EmscriptenBrowser } from "@/lib/emulator/frame-scheduler"
 import { getRetroArchCoreConfig, getRetroArchInputConfig } from "@/lib/gamepad/retroarch-gamepad-config"
 import { applyCheatSession } from "@/lib/cheats/apply-cheat-session"
 import type { AppliedCheat, EmulatorCheatControls } from "@/lib/cheats/emulator-cheats"
@@ -24,9 +26,10 @@ type UseNostalgistOptions = {
 // Guarantee NES loader displays for at least one second
 const MIN_LOADER_DURATION_MS = 1000
 
-// Same codes Nostalgist derives from the RetroArch keyboard map. Inlined so a
-// press does not stat the WASM filesystem on the emulator thread.
-const FAST_KEY_CODES: Record<1 | 2, Record<string, string>> = {
+// The DOM key codes RetroArch derives from our keyboard map
+// (getRetroArchInputConfig). Presses go straight to RetroArch's key handlers
+// with these, so a press never reads the config from the WASM filesystem.
+const EMULATOR_KEY_CODES: Record<1 | 2, Record<string, string>> = {
   1: {
     up: "ArrowUp",
     down: "ArrowDown",
@@ -53,31 +56,12 @@ const FAST_KEY_CODES: Record<1 | 2, Record<string, string>> = {
   },
 }
 
-type EmulatorKeyHandler = {
-  eventListenerFunc: (event: { code: string; target: EventTarget | null }) => void
-  eventTypeString: string
-}
-
-function dispatchEmulatorKey(
-  emu: Nostalgist,
-  type: "keydown" | "keyup",
-  code: string,
-  target: EventTarget | null,
-) {
+function getEmscriptenBrowser(emu: Nostalgist): EmscriptenBrowser | null {
   try {
-    const jsEvents = (emu.getEmscripten() as { JSEvents?: { eventHandlers?: EmulatorKeyHandler[] } }).JSEvents
-    const handlers = jsEvents?.eventHandlers
-    if (!handlers) return false
-    let delivered = false
-    for (let i = 0; i < handlers.length; i++) {
-      const handler = handlers[i]
-      if (handler.eventTypeString !== type) continue
-      delivered = true
-      handler.eventListenerFunc({ code, target })
-    }
-    return delivered
+    const browser = (emu.getEmscripten() as { Browser?: EmscriptenBrowser | null }).Browser
+    return browser ?? null
   } catch {
-    return false
+    return null
   }
 }
 
@@ -106,6 +90,8 @@ export function useNostalgistEmulator({
   }, [isPaused])
 
   const activeButtonsRef = useRef<Set<string>>(new Set())
+  // Disposes the requestAnimationFrame main-loop scheduler (see lib/emulator/frame-scheduler.ts).
+  const disposeSchedulerRef = useRef<(() => void) | null>(null)
 
   const pause = () => {
     try {
@@ -156,9 +142,6 @@ export function useNostalgistEmulator({
     }
   }
 
-  const fastKeysRef = useRef(Boolean(isMobile))
-  fastKeysRef.current = Boolean(isMobile)
-
   const pressDown = useCallback((action: string, player = 1) => {
     const key = `${player}:${action}`
     if (activeButtonsRef.current.has(key)) return
@@ -167,8 +150,8 @@ export function useNostalgistEmulator({
       const emu = instanceRef.current
       if (!emu) return
       const slot = player === 2 ? 2 : 1
-      const code = FAST_KEY_CODES[slot][action]
-      if (fastKeysRef.current && code && dispatchEmulatorKey(emu, "keydown", code, canvasRef.current)) return
+      const code = EMULATOR_KEY_CODES[slot][action]
+      if (code && dispatchEmulatorKey(emu, "keydown", code, canvasRef.current)) return
       if (player === 1) emu.pressDown?.(action)
       else emu.pressDown?.({ button: action, player })
     } catch {}
@@ -182,8 +165,8 @@ export function useNostalgistEmulator({
       const emu = instanceRef.current
       if (!emu) return
       const slot = player === 2 ? 2 : 1
-      const code = FAST_KEY_CODES[slot][action]
-      if (fastKeysRef.current && code && dispatchEmulatorKey(emu, "keyup", code, canvasRef.current)) return
+      const code = EMULATOR_KEY_CODES[slot][action]
+      if (code && dispatchEmulatorKey(emu, "keyup", code, canvasRef.current)) return
       if (player === 1) emu.pressUp?.(action)
       else emu.pressUp?.({ button: action, player })
     } catch {}
@@ -242,6 +225,9 @@ export function useNostalgistEmulator({
       } catch {}
       instanceRef.current = null
     }
+    // After exit: Emscripten has cancelled its main loop, so nothing re-schedules it.
+    disposeSchedulerRef.current?.()
+    disposeSchedulerRef.current = null
   }, [])
 
   useEffect(() => {
@@ -278,6 +264,11 @@ export function useNostalgistEmulator({
     }
     window.addEventListener("pointerdown", handleFirstTouch, { once: true, passive: true })
 
+    const ensureFrameScheduler = (emu: Nostalgist) => {
+      if (disposeSchedulerRef.current) return
+      disposeSchedulerRef.current = installFrameScheduler(getEmscriptenBrowser(emu))
+    }
+
     ;(async () => {
       try {
         const { Nostalgist } = await import("nostalgist")
@@ -299,9 +290,16 @@ export function useNostalgistEmulator({
           style: { width: "100%", height: "100%", display: "block", backgroundColor: "black" },
           retroarchConfig: getRetroArchInputConfig(isMobileDevice),
           retroarchCoreConfig: getRetroArchCoreConfig(isMobileDevice),
+          // Runs after the core is instantiated and before its main loop starts, so the
+          // very first iteration is already scheduled from requestAnimationFrame.
+          beforeLaunch(emu) {
+            if (stoppedRef.current) return
+            ensureFrameScheduler(emu)
+          },
           onLaunch(emu) {
             if (stoppedRef.current) return
             instanceRef.current = emu
+            ensureFrameScheduler(emu)
 
             void (async () => {
               const saved = getCheatSession(game.file)
@@ -346,17 +344,11 @@ export function useNostalgistEmulator({
                 if (!stoppedRef.current) {
                   // Pay the first-call cost of the input path and audio resume now,
                   // behind the loader, instead of on the player's first tap.
-                  // A real key, down and up inside one task, so the core never polls it as held.
-                  // An unbound key returns before the lazily compiled WASM handler runs.
+                  // Down and up inside one task, so the core never polls the key as held.
                   for (const code of ["KeyZ", "ArrowLeft", "Enter"]) {
                     dispatchEmulatorKey(emu, "keydown", code, canvas)
                     dispatchEmulatorKey(emu, "keyup", code, canvas)
                   }
-                  // The library reads and parses its input config on the first lookup.
-                  try {
-                    emu.pressDown("b")
-                    emu.pressUp("b")
-                  } catch {}
                   setAudioContextState(emu, "resume")
                   onPhaseChange("ready")
                   if (!isPausedRef.current) canvas.focus()
@@ -371,6 +363,8 @@ export function useNostalgistEmulator({
           try {
             emulator.exit({ removeCanvas: false })
           } catch {}
+          disposeSchedulerRef.current?.()
+          disposeSchedulerRef.current = null
           return
         }
         instanceRef.current = emulator

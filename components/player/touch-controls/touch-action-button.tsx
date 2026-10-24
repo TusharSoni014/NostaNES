@@ -10,11 +10,11 @@ export type TouchActionButtonProps = {
   pos: TouchElementPlacement
   isCustomizing: boolean
   isSelected: boolean
-  isPressed?: boolean
-  onPointerDown: (e: React.PointerEvent) => void
+  /** Layout-editor drag handlers. Only attached while customizing. */
+  onPointerDown?: (e: React.PointerEvent) => void
   onPointerMove?: (e: React.PointerEvent) => void
-  onPointerUp: (e: React.PointerEvent) => void
-  onPointerCancel: (e: React.PointerEvent) => void
+  onPointerUp?: (e: React.PointerEvent) => void
+  onPointerCancel?: (e: React.PointerEvent) => void
 }
 
 const LABELS: Record<TouchActionButtonType, { name: string; isTurbo: boolean; letter: string }> = {
@@ -24,12 +24,16 @@ const LABELS: Record<TouchActionButtonType, { name: string; isTurbo: boolean; le
   turboB: { name: "TURBO B", isTurbo: true, letter: "B" },
 }
 
+/**
+ * Round action button. During play the TouchInputEngine owns input: it finds
+ * the element through `data-touch-zone` and flips `data-pressed`. The zone is
+ * a little larger than the visible disc so a thumb can land slightly off it.
+ */
 export function TouchActionButton({
   type,
   pos,
   isCustomizing,
   isSelected,
-  isPressed,
   onPointerDown,
   onPointerMove,
   onPointerUp,
@@ -49,10 +53,6 @@ export function TouchActionButton({
         "absolute pointer-events-auto select-none touch-none",
         isCustomizing && "cursor-grab active:cursor-grabbing",
       )}
-      onContextMenu={(e) => {
-        e.preventDefault()
-        e.stopPropagation()
-      }}
     >
       {/* Label Badge shown during customization */}
       {isCustomizing && (
@@ -68,36 +68,37 @@ export function TouchActionButton({
         </div>
       )}
 
-      <button
-        type="button"
-        data-pressed={isPressed ? "true" : "false"}
+      <div
+        data-touch-zone={type}
+        data-pressed="false"
+        role="button"
         aria-label={name}
-        onPointerDown={onPointerDown}
+        onPointerDown={isCustomizing ? onPointerDown : undefined}
         onPointerMove={isCustomizing ? onPointerMove : undefined}
-        onPointerUp={onPointerUp}
-        onPointerCancel={onPointerCancel}
-        onContextMenu={(e) => {
-          e.preventDefault()
-          e.stopPropagation()
-        }}
-        className={cn(
-          "size-13 rounded-full border flex flex-col items-center justify-center select-none shadow-md cursor-pointer [transform:translateZ(0)]",
-          isCustomizing && isSelected && "ring-2 ring-blue-400 ring-offset-2 ring-offset-black scale-105",
-          isCustomizing && !isSelected && "border-dashed border-zinc-500/80 hover:border-zinc-300",
-          isTurbo
-            ? "bg-amber-950 border-amber-600/70 text-amber-200 data-[pressed=true]:bg-amber-500 data-[pressed=true]:border-amber-300 data-[pressed=true]:text-black"
-            : "bg-rose-900 border-rose-600/80 text-rose-100 data-[pressed=true]:bg-rose-500 data-[pressed=true]:border-white data-[pressed=true]:text-white",
-        )}
+        onPointerUp={isCustomizing ? onPointerUp : undefined}
+        onPointerCancel={isCustomizing ? onPointerCancel : undefined}
+        className="group size-16 flex items-center justify-center select-none touch-none"
       >
-        {isTurbo ? (
-          <>
-            <span className="leading-none text-[8px] font-mono font-bold tracking-tighter">TURBO</span>
-            <span className="leading-none text-xs font-black">{letter}</span>
-          </>
-        ) : (
-          <span className="leading-none text-lg font-black">{letter}</span>
-        )}
-      </button>
+        <div
+          className={cn(
+            "size-13 rounded-full border flex flex-col items-center justify-center select-none shadow-md [transform:translateZ(0)]",
+            isCustomizing && isSelected && "ring-2 ring-blue-400 ring-offset-2 ring-offset-black scale-105",
+            isCustomizing && !isSelected && "border-dashed border-zinc-500/80",
+            isTurbo
+              ? "bg-amber-950 border-amber-600/70 text-amber-200 group-data-[pressed=true]:bg-amber-500 group-data-[pressed=true]:border-amber-300 group-data-[pressed=true]:text-black"
+              : "bg-rose-900 border-rose-600/80 text-rose-100 group-data-[pressed=true]:bg-rose-500 group-data-[pressed=true]:border-white group-data-[pressed=true]:text-white",
+          )}
+        >
+          {isTurbo ? (
+            <>
+              <span className="leading-none text-[8px] font-mono font-bold tracking-tighter">TURBO</span>
+              <span className="leading-none text-xs font-black">{letter}</span>
+            </>
+          ) : (
+            <span className="leading-none text-lg font-black">{letter}</span>
+          )}
+        </div>
+      </div>
     </div>
   )
 }

@@ -20,9 +20,10 @@ export const getRetroArchInputConfig = (isMobile = false) => ({
     audio_rate_control: true,
     audio_rate_control_delta: isMobile ? 0.03 : 0.005,
     audio_max_timing_skew: isMobile ? 0.15 : 0.05,
-    // Phones are 90/120Hz. Vsync waits on that refresh and presents a 60Hz game in
-    // uneven steps. Audio sync already paces the core, so vsync only adds hitching.
-    // Threaded video also copies every frame on the single-threaded web build.
+    // The web build always runs its main loop from requestAnimationFrame and paces
+    // the core with the audio buffer; `video_vsync` does not change that timing.
+    // We drive the loop ourselves anyway (see lib/emulator/frame-scheduler.ts).
+    // Threaded video copies every frame on the single-threaded web build.
     video_threaded: isMobile ? false : true,
     video_vsync: isMobile ? false : true,
     video_frame_delay: 0,
