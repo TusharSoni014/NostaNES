@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 
 const VERTEX_SHADER = `
 void main() {
@@ -120,6 +120,9 @@ export function WaveField({ shift, paused = false, onReady }: WaveFieldProps) {
   const pausedRef = useRef(Boolean(paused))
   const onReadyRef = useRef(onReady)
   const loopControllerRef = useRef<((isPaused: boolean) => void) | null>(null)
+  // Bumping the epoch tears the renderer down and builds a fresh one on a new canvas.
+  const [epoch, setEpoch] = useState(0)
+  const rebuildsRef = useRef(0)
 
   useEffect(() => {
     shiftRef.current = shift
@@ -145,6 +148,15 @@ export function WaveField({ shift, paused = false, onReady }: WaveFieldProps) {
       if (notified || stopped) return
       notified = true
       onReadyRef.current?.()
+    }
+
+    // A lost context is never restored when Chrome evicted it for a newer one, and the
+    // dead canvas paints white with a sad-face icon. Rebuild instead, capped so a GPU
+    // that keeps failing settles on the dark host background.
+    const requestRebuild = () => {
+      if (stopped || rebuildsRef.current >= 3) return
+      rebuildsRef.current += 1
+      setEpoch((value) => value + 1)
     }
 
     const frame = requestAnimationFrame(() => {
@@ -245,8 +257,23 @@ export function WaveField({ shift, paused = false, onReady }: WaveFieldProps) {
         renderer.render(scene, camera)
       }
 
+      let contextLost = false
+      const onContextLost = () => {
+        contextLost = true
+        renderer.setAnimationLoop(null)
+        detachPointer()
+        renderer.domElement.style.display = "none"
+        // While a game runs the shader is hidden anyway; rebuild once it resumes.
+        if (!pausedRef.current) requestRebuild()
+      }
+      renderer.domElement.addEventListener("webglcontextlost", onContextLost)
+
       const updateLoopState = (isPaused: boolean) => {
         if (stopped) return
+        if (contextLost) {
+          if (!isPaused) requestRebuild()
+          return
+        }
         if (isPaused) {
           wasPaused = true
           renderer.setAnimationLoop(null)
@@ -279,6 +306,7 @@ export function WaveField({ shift, paused = false, onReady }: WaveFieldProps) {
 
       cleanup = () => {
         loopControllerRef.current = null
+        renderer.domElement.removeEventListener("webglcontextlost", onContextLost)
         renderer.setAnimationLoop(null)
         detachPointer()
         observer.disconnect()
@@ -298,13 +326,13 @@ export function WaveField({ shift, paused = false, onReady }: WaveFieldProps) {
       cancelAnimationFrame(frame)
       cleanup()
     }
-  }, [])
+  }, [epoch])
 
   return (
     <div
       ref={hostRef}
       aria-hidden
-      className="pointer-events-none absolute inset-0"
+      className="pointer-events-none absolute inset-0 bg-[#020712]"
     />
   )
 }

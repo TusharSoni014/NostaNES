@@ -382,6 +382,19 @@ export function useNostalgistEmulator({
     }
   }, [canvasRef, game.file, game.customRom, initialSlot, isMobile, onPhaseChange, reloadKey, unload])
 
+  // Nostalgist's exit() leaves the canvas's WebGL context alive until GC. Mobile Chrome
+  // caps live contexts, so a few launches would evict the home screen's shader context.
+  // Declared after the emulator effect so exit() has already run when this cleans up.
+  useEffect(() => {
+    const canvas = canvasRef.current
+    return () => {
+      // Still attached means a reload or a StrictMode re-run will reuse this canvas.
+      if (!canvas || canvas.isConnected) return
+      const gl = canvas.getContext("webgl2") ?? canvas.getContext("webgl")
+      gl?.getExtension("WEBGL_lose_context")?.loseContext()
+    }
+  }, [canvasRef])
+
   return {
     pause, resume, saveState, loadState, unload, pressDown, pressUp,
     loadCheats, enableCheat, disableCheat, clearCheats, getCheats,
