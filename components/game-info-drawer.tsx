@@ -13,7 +13,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { FavoriteButton } from "@/components/ui/favorite-button"
-import { listGameSaves, type SavedStateRecord } from "@/lib/storage/save-state-storage"
+import { formatSlotLabel, listGameSaves, type SavedStateRecord } from "@/lib/storage/save-state-storage"
 import { playUiSound } from "@/lib/ui-sounds"
 import { cn } from "@/lib/utils"
 import type { Game, GameGroup } from "@/lib/games"
@@ -194,7 +194,7 @@ export function GameInfoDrawer({
               onClick={() => handleStartPlay(activeVersion, latestSave.slot)}
             >
               <RotateCcwIcon className="size-3.5" />
-              <span>Resume Slot {latestSave.slot}</span>
+              <span>Resume {formatSlotLabel(latestSave.slot)}</span>
               <span className="text-[10px] text-emerald-400/70 ml-auto font-mono">
                 {formatRelativeTime(latestSave.timestamp)}
               </span>

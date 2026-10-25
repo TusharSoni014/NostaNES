@@ -52,6 +52,9 @@ export type GamepadAction =
   | "TOGGLE_FULLSCREEN"
   | "MENU"
   | "IN_GAME_MENU"
+  | "START"
+  | "SPEED_UP"
+  | "SPEED_DOWN"
 
 export type GamepadProfile = {
   family: GamepadFamily

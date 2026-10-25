@@ -7,6 +7,13 @@ export type SavedStateRecord = {
   sizeBytes: number
 }
 
+/** The quick save slot (RB / "." held). It sits beside the ten numbered slots. */
+export const QUICK_SAVE_SLOT = 0
+
+export function formatSlotLabel(slot: number): string {
+  return slot === QUICK_SAVE_SLOT ? "Quick Save" : `Slot ${slot}`
+}
+
 const DB_NAME = "nostanes_save_states"
 const STORE_NAME = "states"
 const DB_VERSION = 1

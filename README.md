@@ -73,7 +73,12 @@ Switch between 6 visual display presets in real time via the in-game menu:
 ### 💾 10-Slot Persistent Save States
 * **IndexedDB Save Storage**: Save states are stored persistently in browser IndexedDB—never lost when refreshing or clearing session storage.
 * **10 Independent Slots per Game**: Switch between 10 dedicated save slots with timestamp tracking and file size information.
-* **Quick Save / Quick Load**: Save and restore gameplay progress in milliseconds directly from the in-game menu.
+* **Quick Save / Quick Load**: A separate Quick Save slot beside the 10 numbered ones. Hold <kbd>RB</kbd> / <kbd>.</kbd> for 2 seconds to quick save and <kbd>LB</kbd> / <kbd>,</kbd> to quick load, without opening the menu. It also appears in the Save and Load menus.
+
+### ⏩ Fast Forward (1x to 10x)
+* **Step the Speed**: <kbd>RT</kbd> / <kbd>]</kbd> makes the game 1x faster, up to 10x; <kbd>LT</kbd> / <kbd>[</kbd> makes it 1x slower, never below the original speed. A speed badge fades in and out on screen.
+* **Menu Setting**: The in-game menu's **Game Speed** tab sets the speed directly (also on touch devices).
+* **Sound**: Audio plays at 1x and is muted while fast-forwarding.
 
 ### 🧙‍♂️ Integrated Libretro Cheat Database & Custom Cheats
 * **Official Libretro Database Integration**: Automatically searches and pulls Game Genie / Action Replay `.cht` cheat files from the official Libretro GitHub repository.
@@ -104,9 +109,12 @@ Switch between 6 visual display presets in real time via the in-game menu:
 | **Turbo A Button** | <kbd>S</kbd> | Rapid-fire A |
 | **Start** | <kbd>Enter</kbd> | Start / Pause |
 | **Select** | <kbd>Shift</kbd> | Select / Mode |
-| **In-Game Menu** | <kbd>F1</kbd> | Open in-game menu (Save, Load, Cheats, Shaders) |
+| **In-Game Menu** | <kbd>F1</kbd> | Open in-game menu (Save, Load, Speed, Cheats, Shaders) |
 | **Pause / Exit** | <kbd>Esc</kbd> | Pause gameplay or exit |
 | **Fullscreen** | <kbd>F</kbd> | Toggle fullscreen mode |
+| **Game Speed** | <kbd>]</kbd> / <kbd>[</kbd> | Faster / slower, 1x to 10x |
+| **Quick Save** | Hold <kbd>.</kbd> (2s) | Save to the Quick Save slot |
+| **Quick Load** | Hold <kbd>,</kbd> (2s) | Load the Quick Save slot |
 
 #### Player 2 (Numpad Layout)
 | Action | Keyboard Key | Description |
@@ -135,6 +143,10 @@ Switch between 6 visual display presets in real time via the in-game menu:
 | **In-Game Menu** | <kbd>Select</kbd> + <kbd>Start</kbd> | <kbd>Share</kbd> + <kbd>Options</kbd> | <kbd>−</kbd> + <kbd>+</kbd> |
 | **Fullscreen** | <kbd>R3</kbd> (Right Stick Click) | <kbd>R3</kbd> (Right Stick Click) | <kbd>R3</kbd> |
 | **Hold to Exit** | Hold <kbd>Select</kbd> (5s) | Hold <kbd>Share</kbd> (5s) | Hold <kbd>−</kbd> (5s) |
+| **Game Speed** | <kbd>RT</kbd> / <kbd>LT</kbd> | <kbd>R2</kbd> / <kbd>L2</kbd> | <kbd>ZR</kbd> / <kbd>ZL</kbd> |
+| **Quick Save** | Hold <kbd>RB</kbd> (2s) | Hold <kbd>R1</kbd> (2s) | Hold <kbd>R</kbd> (2s) |
+| **Quick Load** | Hold <kbd>LB</kbd> (2s) | Hold <kbd>L1</kbd> (2s) | Hold <kbd>L</kbd> (2s) |
+| **Launch Game** (library) | <kbd>A</kbd> or <kbd>Menu</kbd> | <kbd>✕</kbd> or <kbd>Options</kbd> | <kbd>B</kbd> or <kbd>+</kbd> |
 
 ---
 
@@ -256,11 +268,12 @@ nostanes/
 │   ├── version-select-dialog.tsx # Regional revision / version selection modal
 │   ├── wave-field.tsx            # Three.js procedural silk wave background
 │   ├── player/
-│   │   ├── in-game-menu/         # In-game pause menu (Save, Load, Shaders, Controls, Cheats)
+│   │   ├── in-game-menu/         # In-game pause menu (Save, Load, Speed, Shaders, Controls, Cheats)
 │   │   ├── touch-controls/       # Modular arcade buttons, editor HUD, and layout types
 │   │   ├── mobile-touch-controls # Responsive mobile touch controller with live editor
 │   │   ├── mobile-dpad.tsx       # 8-way directional cross D-Pad with continuous drag
-│   │   ├── gamepad-exit-hud.tsx  # Hold-to-exit circular countdown HUD
+│   │   ├── hold-action-hud.tsx   # Hold-to-exit / quick save / quick load progress ring
+│   │   ├── player-notice.tsx     # Fading game-speed and quick save notices
 │   │   ├── shader-overlay.tsx    # CRT scanlines, aperture, and DMG overlays
 │   │   ├── use-gamepad-controls  # In-game controller polling & mapping
 │   │   ├── use-keyboard-controls # In-game keyboard bindings

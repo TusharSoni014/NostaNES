@@ -3,7 +3,13 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { CheckCircle2Icon, HardDriveDownloadIcon, Loader2Icon, Trash2Icon, UploadIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { deleteGameState, listGameSaves, type SavedStateRecord } from "@/lib/storage/save-state-storage"
+import {
+  deleteGameState,
+  formatSlotLabel,
+  listGameSaves,
+  QUICK_SAVE_SLOT,
+  type SavedStateRecord,
+} from "@/lib/storage/save-state-storage"
 import { scrollNearestIntoView } from "@/lib/motion/scroll-into-view"
 import { playUiSound } from "@/lib/ui-sounds"
 import type { Game } from "@/lib/games"
@@ -19,7 +25,7 @@ type InGameMenuLoadPanelProps = {
   onNavigateLeft?: () => void
 }
 
-const SLOTS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+const SLOTS = [QUICK_SAVE_SLOT, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
 export const InGameMenuLoadPanel = ({
   game,
@@ -56,6 +62,7 @@ export const InGameMenuLoadPanel = ({
   }, [selectedSlot, isFocused])
 
   const handleLoad = async (slot: number) => {
+    if (loadingSlot !== null) return
     setLoadingSlot(slot)
     setStatusMessage(null)
     playUiSound("option_selected")
@@ -63,7 +70,7 @@ export const InGameMenuLoadPanel = ({
       const success = await onLoadState(slot)
       if (success) {
         playUiSound("game_start")
-        setStatusMessage(`State from Slot ${slot} loaded! Resuming game...`)
+        setStatusMessage(`State from ${formatSlotLabel(slot)} loaded! Resuming game...`)
         window.setTimeout(onResume, 700)
       } else {
         playUiSound("error")
@@ -82,7 +89,7 @@ export const InGameMenuLoadPanel = ({
       playUiSound("navigation")
       await deleteGameState(game.file, slot)
       await reloadSaves()
-      setStatusMessage(`Slot ${slot} was deleted.`)
+      setStatusMessage(`${formatSlotLabel(slot)} was deleted.`)
     } catch {
       playUiSound("error")
       setStatusMessage("Failed to delete slot.")
@@ -143,7 +150,7 @@ export const InGameMenuLoadPanel = ({
             >
               <div className="flex flex-col gap-0.5 min-w-0">
                 <div className="flex items-center gap-1.5 sm:gap-2">
-                  <span className="font-mono text-xs sm:text-sm font-bold text-blue-400">SLOT {slot}</span>
+                  <span className="font-mono text-xs sm:text-sm font-bold text-blue-400 uppercase">{formatSlotLabel(slot)}</span>
                   {existing ? (
                     <span className="text-[9px] sm:text-[10px] rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30 px-1.5 py-0.2">Ready</span>
                   ) : (
@@ -154,7 +161,9 @@ export const InGameMenuLoadPanel = ({
                 <p className="text-[10px] sm:text-xs text-muted-foreground truncate">
                   {existing
                     ? `Saved ${new Date(existing.timestamp).toLocaleDateString()} (${Math.round(existing.sizeBytes / 1024)} KB)`
-                    : "No state saved yet in this slot."}
+                    : slot === QUICK_SAVE_SLOT
+                      ? "Hold LB or , for 2s in game to quick load."
+                      : "No state saved yet in this slot."}
                 </p>
               </div>
 

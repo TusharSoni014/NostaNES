@@ -2,19 +2,36 @@ import type { GamepadAction } from "./gamepad-types"
 
 type GamepadListenerCallback = (action: GamepadAction) => void
 
-export type GamepadHoldState = {
-  active: boolean
-  remainingSeconds: number
-  progress: number
+/**
+ * A button that does something when held. `onStart` fires once the hold has
+ * lasted HOLD_ANNOUNCE_DELAY_MS (so a tap never flashes a HUD) and receives the
+ * hold's start time on the performance.now() clock. `onCancel` fires when an
+ * announced hold is released early.
+ */
+export type GamepadButtonHold = {
+  button: number
+  durationMs: number
+  onStart?: (startedAt: number) => void
+  onCancel?: () => void
+  onComplete: () => void
 }
 
 import { GAMEPAD_TIMING } from "./gamepad-timing"
 import { getRawGamepads } from "./gamepad-remapper"
 
 export type GamepadDispatcherOptions = {
-  onSelectHold?: (state: GamepadHoldState) => void
-  onSelectHoldComplete?: () => void
+  holds?: GamepadButtonHold[]
 }
+
+type HoldProgress = {
+  startTime: number
+  announced: boolean
+  completed: boolean
+}
+
+const HOLD_ANNOUNCE_DELAY_MS = 250
+const SELECT_BUTTON = 8
+const START_BUTTON = 9
 
 const AXIS_ENGAGE_THRESHOLD = 0.55
 const AXIS_RELEASE_THRESHOLD = 0.25
@@ -25,14 +42,12 @@ export class GamepadDispatcher {
   private frameId = 0
   private running = false
   private callback: GamepadListenerCallback
-  private onSelectHold?: (state: GamepadHoldState) => void
-  private onSelectHoldComplete?: () => void
+  private holds: GamepadButtonHold[]
+  private holdProgress = new Map<number, HoldProgress>()
   private buttonPreviousStates = new Map<number, boolean>()
   private activeDirection: GamepadAction | null = null
   private pressStartTime = 0
   private nextRepeatTime = 0
-  private selectHoldStartTime = 0
-  private selectHoldCompleted = false
   private selectStartComboActive = false
   private isPolling = false
 
@@ -41,8 +56,7 @@ export class GamepadDispatcher {
       setInputMode("gamepad")
       callback(action)
     }
-    this.onSelectHold = options?.onSelectHold
-    this.onSelectHoldComplete = options?.onSelectHoldComplete
+    this.holds = options?.holds ?? []
   }
 
   private onGamepadConnected = (): void => {
@@ -104,8 +118,7 @@ export class GamepadDispatcher {
     this.activeDirection = null
     this.pressStartTime = 0
     this.nextRepeatTime = 0
-    this.selectHoldStartTime = 0
-    this.selectHoldCompleted = false
+    this.cancelHolds()
     this.selectStartComboActive = false
   }
 
@@ -132,10 +145,10 @@ export class GamepadDispatcher {
     return typeof btn === "object" ? btn.pressed : Boolean(btn)
   }
 
-  private checkSinglePress = (pad: Gamepad, btnIndex: number, action: GamepadAction): void => {
+  private checkSinglePress = (pad: Gamepad, btnIndex: number, action: GamepadAction | null): void => {
     const isPressed = this.isButtonPressed(pad, btnIndex)
     const wasPressed = this.buttonPreviousStates.get(btnIndex) ?? false
-    if (isPressed && !wasPressed) this.callback(action)
+    if (isPressed && !wasPressed && action) this.callback(action)
     this.buttonPreviousStates.set(btnIndex, isPressed)
   }
 
@@ -148,13 +161,15 @@ export class GamepadDispatcher {
     this.checkSinglePress(pad, 3, "TOGGLE_CONTROLS")
     this.checkSinglePress(pad, 4, "PAGE_UP")
     this.checkSinglePress(pad, 5, "PAGE_DOWN")
+    this.checkSinglePress(pad, 6, "SPEED_DOWN")
+    this.checkSinglePress(pad, 7, "SPEED_UP")
     // 11: R3 (Right Stick click) - single press toggles fullscreen for gamepad
     this.checkSinglePress(pad, 11, "TOGGLE_FULLSCREEN")
     this.checkSinglePress(pad, 16, "MENU")
+    // Start on its own; while Select is down it is part of the menu combo.
+    this.checkSinglePress(pad, START_BUTTON, isCombo || this.isButtonPressed(pad, SELECT_BUTTON) ? null : "START")
 
-    if (!isCombo) {
-      this.processSelectHold(pad, time)
-    }
+    this.processHolds(pad, time)
   }
 
   private processSelectStartCombo = (pad: Gamepad): boolean => {
@@ -164,10 +179,6 @@ export class GamepadDispatcher {
     if (isSelectPressed && isStartPressed) {
       if (!this.selectStartComboActive) {
         this.selectStartComboActive = true
-        // Cancel any pending Select hold so exit modal does not trigger
-        this.selectHoldStartTime = 0
-        this.selectHoldCompleted = false
-        this.onSelectHold?.({ active: false, remainingSeconds: 5, progress: 0 })
         this.callback("IN_GAME_MENU")
       }
       return true
@@ -177,35 +188,46 @@ export class GamepadDispatcher {
     return this.selectStartComboActive
   }
 
-  private processSelectHold = (pad: Gamepad, time: number): void => {
-    if (!this.onSelectHold && !this.onSelectHoldComplete) return
-    if (this.selectStartComboActive || this.isButtonPressed(pad, 9)) return
+  private cancelHolds = (): void => {
+    for (const hold of this.holds) {
+      const progress = this.holdProgress.get(hold.button)
+      if (progress?.announced && !progress.completed) hold.onCancel?.()
+    }
+    this.holdProgress.clear()
+  }
 
-    const isSelectPressed = this.isButtonPressed(pad, 8)
-    const HOLD_DURATION_MS = 5000
+  private processHolds = (pad: Gamepad, time: number): void => {
+    for (const hold of this.holds) {
+      // Select is also half of the Select+Start menu combo, which cancels its hold
+      // until both buttons are released.
+      const blocked =
+        hold.button === SELECT_BUTTON &&
+        (this.selectStartComboActive || this.isButtonPressed(pad, START_BUTTON))
+      const isPressed = !blocked && this.isButtonPressed(pad, hold.button)
+      let progress = this.holdProgress.get(hold.button)
 
-    if (isSelectPressed) {
-      if (this.selectHoldStartTime === 0) {
-        this.selectHoldStartTime = time
-        this.selectHoldCompleted = false
+      if (!isPressed) {
+        if (progress) {
+          this.holdProgress.delete(hold.button)
+          if (progress.announced && !progress.completed) hold.onCancel?.()
+        }
+        continue
       }
-      if (this.selectHoldCompleted) return
 
-      const elapsed = time - this.selectHoldStartTime
-      const remainingSeconds = Math.max(0, Math.ceil((HOLD_DURATION_MS - elapsed) / 1000))
-      const progress = Math.min(1, elapsed / HOLD_DURATION_MS)
-
-      if (elapsed >= HOLD_DURATION_MS) {
-        this.selectHoldCompleted = true
-        this.onSelectHold?.({ active: false, remainingSeconds: 0, progress: 1 })
-        this.onSelectHoldComplete?.()
-        return
+      if (!progress) {
+        progress = { startTime: time, announced: false, completed: false }
+        this.holdProgress.set(hold.button, progress)
       }
-      if (elapsed >= 250) this.onSelectHold?.({ active: true, remainingSeconds, progress })
-    } else if (this.selectHoldStartTime !== 0) {
-      this.selectHoldStartTime = 0
-      this.selectHoldCompleted = false
-      this.onSelectHold?.({ active: false, remainingSeconds: 5, progress: 0 })
+      if (progress.completed) continue
+
+      const elapsed = time - progress.startTime
+      if (elapsed >= hold.durationMs) {
+        progress.completed = true
+        hold.onComplete()
+      } else if (!progress.announced && elapsed >= HOLD_ANNOUNCE_DELAY_MS) {
+        progress.announced = true
+        hold.onStart?.(progress.startTime)
+      }
     }
   }
 

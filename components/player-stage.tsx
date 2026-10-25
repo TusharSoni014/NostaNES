@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import { ExitConfirmDialog } from "@/components/exit-confirm-dialog"
-import { GamepadExitHud } from "@/components/player/gamepad-exit-hud"
+import { HoldActionHud, type ActiveHold } from "@/components/player/hold-action-hud"
 import { InGameMenu } from "@/components/player/in-game-menu/in-game-menu"
 import { PlayerFooter } from "@/components/player/player-footer"
 import { PlayerHeader } from "@/components/player/player-header"
+import { PlayerNotice, type PlayerNoticeData, type PlayerNoticeInput } from "@/components/player/player-notice"
 import { PlayerOverlay } from "@/components/player/player-overlay"
 import { ShaderOverlay } from "@/components/player/shader-overlay"
 import { useNostalgistEmulator } from "@/components/player/use-nostalgist-emulator"
@@ -17,7 +18,8 @@ import { MobileTouchControls } from "@/components/player/mobile-touch-controls"
 import { useIsMobile, useIsPortrait } from "@/hooks/use-is-mobile"
 import { useGamepadStatus } from "@/hooks/use-gamepad-status"
 import { getSavedShader, saveShader, type GameShader } from "@/lib/storage/shader-storage"
-import type { GamepadHoldState } from "@/lib/gamepad/gamepad-dispatcher"
+import { clampGameSpeed } from "@/lib/emulator/game-speed"
+import { QUICK_SAVE_SLOT } from "@/lib/storage/save-state-storage"
 import { motion } from "motion/react"
 import { playUiSound } from "@/lib/ui-sounds"
 import {
@@ -50,9 +52,35 @@ export const PlayerStage = ({ game, initialSlot, onExit }: PlayerStageProps) => 
   const [inGameMenuOpen, setInGameMenuOpen] = useState(false)
   const [activeShader, setActiveShader] = useState<GameShader>(getSavedShader)
   const [romKey, setRomKey] = useState(0)
-  const [exitHud, setExitHud] = useState<GamepadHoldState>({
-    active: false, remainingSeconds: 5, progress: 0,
-  })
+  const [hold, setHold] = useState<ActiveHold | null>(null)
+  const [speed, setSpeed] = useState(1)
+  const speedRef = useRef(1)
+  const [notice, setNotice] = useState<PlayerNoticeData | null>(null)
+  const noticeIdRef = useRef(0)
+  const noticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const showNotice = useCallback((data: PlayerNoticeInput) => {
+    noticeIdRef.current += 1
+    setNotice({ ...data, id: noticeIdRef.current })
+    if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current)
+    // A pending notice stays up until its result replaces it; the timeout is only a backstop.
+    noticeTimerRef.current = setTimeout(() => setNotice(null), data.kind === "pending" ? 10000 : 1400)
+  }, [])
+
+  useEffect(() => () => {
+    if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current)
+  }, [])
+
+  const handleSelectSpeed = useCallback((next: number, { announce = true } = {}) => {
+    const clamped = clampGameSpeed(next)
+    speedRef.current = clamped
+    setSpeed(clamped)
+    if (announce) showNotice({ kind: "speed", speed: clamped })
+  }, [showNotice])
+
+  const changeSpeedBy = useCallback((delta: number) => {
+    handleSelectSpeed(speedRef.current + delta)
+  }, [handleSelectSpeed])
 
   const handleSelectShader = useCallback((shader: GameShader) => {
     setActiveShader(shader)
@@ -72,6 +100,7 @@ export const PlayerStage = ({ game, initialSlot, onExit }: PlayerStageProps) => 
     isPaused: inGameMenuOpen || confirmingExit,
     initialSlot,
     isMobile,
+    speed,
   })
 
   useKeyboardControls({
@@ -87,6 +116,38 @@ export const PlayerStage = ({ game, initialSlot, onExit }: PlayerStageProps) => 
   })
 
   const { handleSaveState, handleLoadState } = useSaveLoadState(game.file, saveState, loadState)
+
+  const quickStateBusyRef = useRef(false)
+
+  const quickSave = useCallback(async () => {
+    if (quickStateBusyRef.current) return
+    quickStateBusyRef.current = true
+    showNotice({ kind: "pending", text: "Quick saving…" })
+    try {
+      const saved = await handleSaveState(QUICK_SAVE_SLOT)
+      playUiSound(saved ? "game_start" : "error")
+      showNotice(saved ? { kind: "success", text: "Quick saved" } : { kind: "error", text: "Quick save failed" })
+    } finally {
+      quickStateBusyRef.current = false
+    }
+  }, [handleSaveState, showNotice])
+
+  const quickLoad = useCallback(async () => {
+    if (quickStateBusyRef.current) return
+    quickStateBusyRef.current = true
+    showNotice({ kind: "pending", text: "Quick loading…" })
+    try {
+      const result = await handleLoadState(QUICK_SAVE_SLOT)
+      playUiSound(result === "loaded" ? "game_start" : "error")
+      showNotice(
+        result === "loaded"
+          ? { kind: "success", text: "Quick save loaded" }
+          : { kind: "error", text: result === "empty" ? "No quick save yet" : "Quick load failed" },
+      )
+    } finally {
+      quickStateBusyRef.current = false
+    }
+  }, [handleLoadState, showNotice])
 
   const handleResetGame = useCallback(() => {
     setInGameMenuOpen(false)
@@ -184,8 +245,12 @@ export const PlayerStage = ({ game, initialSlot, onExit }: PlayerStageProps) => 
   }, [unload, onExit])
 
   usePlayerInput({
+    shortcutsEnabled: phase === "ready",
     inGameMenuOpen, confirmingExit, toggleInGameMenu, handleResume,
-    handleRequestExit, handleConfirmExit, toggleFullscreen, setExitHud,
+    handleRequestExit, handleConfirmExit, toggleFullscreen, setHold,
+    changeSpeedBy,
+    quickSave: () => void quickSave(),
+    quickLoad: () => void quickLoad(),
   })
 
   return (
@@ -197,7 +262,8 @@ export const PlayerStage = ({ game, initialSlot, onExit }: PlayerStageProps) => 
       transition={{ duration: 0.25, ease: "easeOut" }}
       className="fixed inset-0 z-40 flex flex-col bg-black w-screen h-dvh select-none overflow-hidden touch-none"
     >
-      <GamepadExitHud active={exitHud.active} remainingSeconds={exitHud.remainingSeconds} progress={exitHud.progress} />
+      <PlayerNotice notice={hold ? null : notice} />
+      <HoldActionHud hold={hold} />
       <ExitConfirmDialog open={confirmingExit} onResume={handleResume} onConfirmExit={handleConfirmExit} />
 
       <InGameMenu
@@ -208,7 +274,9 @@ export const PlayerStage = ({ game, initialSlot, onExit }: PlayerStageProps) => 
         onRequestExit={handleConfirmExit}
         onResetGame={handleResetGame}
         onSaveState={handleSaveState}
-        onLoadState={handleLoadState}
+        onLoadState={async (slot) => (await handleLoadState(slot)) === "loaded"}
+        speed={speed}
+        onSelectSpeed={(next) => handleSelectSpeed(next, { announce: false })}
         activeShader={activeShader}
         onSelectShader={handleSelectShader}
         cheats={{ loadCheats, enableCheat, disableCheat, clearCheats, getCheats }}

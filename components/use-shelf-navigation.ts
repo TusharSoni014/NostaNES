@@ -157,7 +157,7 @@ export const useShelfNavigation = ({
         opts.jump(-10)
       } else if (action === "PAGE_DOWN" && opts.jump) {
         opts.jump(10)
-      } else if (action === "CONFIRM") {
+      } else if (action === "CONFIRM" || action === "START") {
         opts.launch()
       } else if (action === "TOGGLE_CONTROLS" && opts.onToggleControls) {
         opts.onToggleControls()

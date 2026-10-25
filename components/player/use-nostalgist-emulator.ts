@@ -5,7 +5,7 @@ import type { Nostalgist } from "nostalgist"
 import { preventScreenSleep } from "@/lib/display/wake-lock"
 import { ensureSafeResizeObserver } from "@/lib/display/safe-resize-observer"
 import { dispatchEmulatorKey } from "@/lib/emulator/emulator-key-events"
-import { installFrameScheduler, type EmscriptenBrowser } from "@/lib/emulator/frame-scheduler"
+import { installFrameScheduler, type EmscriptenBrowser, type FrameScheduler } from "@/lib/emulator/frame-scheduler"
 import { getRetroArchCoreConfig, getRetroArchInputConfig } from "@/lib/gamepad/retroarch-gamepad-config"
 import { applyCheatSession } from "@/lib/cheats/apply-cheat-session"
 import type { AppliedCheat, EmulatorCheatControls } from "@/lib/cheats/emulator-cheats"
@@ -21,10 +21,36 @@ type UseNostalgistOptions = {
   isPaused?: boolean
   initialSlot?: number
   isMobile?: boolean
+  /** Game speed multiplier, 1 to 10. */
+  speed?: number
 }
 
 // Guarantee NES loader displays for at least one second
 const MIN_LOADER_DURATION_MS = 1000
+
+// RetroArch's hold-fast-forward hotkey (see getRetroArchInputConfig). Holding it makes
+// the audio non-blocking; the frame scheduler then sets the actual speed.
+const FAST_FORWARD_KEY_CODE = "ScrollLock"
+
+// A save or load that has not finished by now is reported as failed, so the menu
+// never spins forever. Nostalgist's own file wait gives up after about a minute.
+const STATE_OPERATION_TIMEOUT_MS = 8000
+
+function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(fallback), ms)
+    promise.then(
+      (value) => {
+        clearTimeout(timer)
+        resolve(value)
+      },
+      () => {
+        clearTimeout(timer)
+        resolve(fallback)
+      },
+    )
+  })
+}
 
 // The DOM key codes RetroArch derives from our keyboard map
 // (getRetroArchInputConfig). Presses go straight to RetroArch's key handlers
@@ -80,7 +106,7 @@ function setAudioContextState(emu: Nostalgist | null, state: "suspend" | "resume
 }
 
 export function useNostalgistEmulator({
-  game, canvasRef, onPhaseChange, reloadKey = 0, isPaused = false, initialSlot, isMobile,
+  game, canvasRef, onPhaseChange, reloadKey = 0, isPaused = false, initialSlot, isMobile, speed = 1,
 }: UseNostalgistOptions) {
   const instanceRef = useRef<Nostalgist | null>(null)
   const isPausedRef = useRef(Boolean(isPaused))
@@ -90,8 +116,29 @@ export function useNostalgistEmulator({
   }, [isPaused])
 
   const activeButtonsRef = useRef<Set<string>>(new Set())
-  // Disposes the requestAnimationFrame main-loop scheduler (see lib/emulator/frame-scheduler.ts).
-  const disposeSchedulerRef = useRef<(() => void) | null>(null)
+  // The requestAnimationFrame main-loop scheduler (see lib/emulator/frame-scheduler.ts).
+  const schedulerRef = useRef<FrameScheduler | null>(null)
+  const speedRef = useRef(speed)
+  // Whether RetroArch currently sees the fast-forward key as held.
+  const fastForwardHeldRef = useRef(false)
+  // Save and load share one state file inside the emulator, so they must never overlap.
+  const stateQueueRef = useRef<Promise<unknown>>(Promise.resolve())
+
+  const applySpeed = useCallback((emu: Nostalgist | null) => {
+    const current = speedRef.current
+    schedulerRef.current?.setSpeed(current)
+    if (!emu) return
+    const wantHeld = current > 1
+    if (wantHeld === fastForwardHeldRef.current) return
+    if (dispatchEmulatorKey(emu, wantHeld ? "keydown" : "keyup", FAST_FORWARD_KEY_CODE, canvasRef.current)) {
+      fastForwardHeldRef.current = wantHeld
+    }
+  }, [canvasRef])
+
+  useEffect(() => {
+    speedRef.current = speed
+    applySpeed(instanceRef.current)
+  }, [speed, applySpeed])
 
   const pause = () => {
     try {
@@ -122,25 +169,31 @@ export function useNostalgistEmulator({
     } catch {}
   }
 
-  const saveState = async (): Promise<Blob | null> => {
-    if (!instanceRef.current) return null
-    try {
-      const result = await instanceRef.current.saveState()
-      return result.state
-    } catch {
-      return null
-    }
-  }
+  // Runs `operation` after every earlier save/load has settled, including ones the
+  // caller already gave up on, so a late one can never delete the next one's file.
+  const enqueueStateOperation = useCallback(<T>(operation: () => Promise<T>, fallback: T): Promise<T> => {
+    const run = stateQueueRef.current.then(operation, operation)
+    stateQueueRef.current = run.catch(() => {})
+    return withTimeout(run, STATE_OPERATION_TIMEOUT_MS, fallback)
+  }, [])
 
-  const loadState = async (blob: Blob): Promise<boolean> => {
-    if (!instanceRef.current) return false
-    try {
-      await instanceRef.current.loadState(blob)
+  const saveState = useCallback((): Promise<Blob | null> => {
+    return enqueueStateOperation(async () => {
+      const emu = instanceRef.current
+      if (!emu) return null
+      const result = await emu.saveState()
+      return result.state.size > 0 ? result.state : null
+    }, null)
+  }, [enqueueStateOperation])
+
+  const loadState = useCallback((blob: Blob): Promise<boolean> => {
+    return enqueueStateOperation(async () => {
+      const emu = instanceRef.current
+      if (!emu) return false
+      await emu.loadState(blob)
       return true
-    } catch {
-      return false
-    }
-  }
+    }, false)
+  }, [enqueueStateOperation])
 
   const pressDown = useCallback((action: string, player = 1) => {
     const key = `${player}:${action}`
@@ -225,9 +278,10 @@ export function useNostalgistEmulator({
       } catch {}
       instanceRef.current = null
     }
+    fastForwardHeldRef.current = false
     // After exit: Emscripten has cancelled its main loop, so nothing re-schedules it.
-    disposeSchedulerRef.current?.()
-    disposeSchedulerRef.current = null
+    schedulerRef.current?.dispose()
+    schedulerRef.current = null
   }, [])
 
   useEffect(() => {
@@ -265,8 +319,9 @@ export function useNostalgistEmulator({
     window.addEventListener("pointerdown", handleFirstTouch, { once: true, passive: true })
 
     const ensureFrameScheduler = (emu: Nostalgist) => {
-      if (disposeSchedulerRef.current) return
-      disposeSchedulerRef.current = installFrameScheduler(getEmscriptenBrowser(emu))
+      if (schedulerRef.current) return
+      schedulerRef.current = installFrameScheduler(getEmscriptenBrowser(emu))
+      schedulerRef.current?.setSpeed(speedRef.current)
     }
 
     ;(async () => {
@@ -317,7 +372,7 @@ export function useNostalgistEmulator({
               }
               if (stoppedRef.current) return
 
-              if (initialSlot && !stoppedRef.current) {
+              if (initialSlot !== undefined && !stoppedRef.current) {
                 try {
                   const saveRecord = await loadGameState(game.file, initialSlot)
                   if (saveRecord?.stateBlob && !stoppedRef.current) {
@@ -350,6 +405,7 @@ export function useNostalgistEmulator({
                     dispatchEmulatorKey(emu, "keyup", code, canvas)
                   }
                   setAudioContextState(emu, "resume")
+                  applySpeed(emu)
                   onPhaseChange("ready")
                   if (!isPausedRef.current) canvas.focus()
                 }
@@ -363,8 +419,8 @@ export function useNostalgistEmulator({
           try {
             emulator.exit({ removeCanvas: false })
           } catch {}
-          disposeSchedulerRef.current?.()
-          disposeSchedulerRef.current = null
+          schedulerRef.current?.dispose()
+          schedulerRef.current = null
           return
         }
         instanceRef.current = emulator
@@ -380,7 +436,7 @@ export function useNostalgistEmulator({
       window.removeEventListener("pointerdown", handleFirstTouch)
       unload()
     }
-  }, [canvasRef, game.file, game.customRom, initialSlot, isMobile, onPhaseChange, reloadKey, unload])
+  }, [canvasRef, game.file, game.customRom, initialSlot, isMobile, onPhaseChange, reloadKey, unload, applySpeed])
 
   // Nostalgist's exit() leaves the canvas's WebGL context alive until GC. Mobile Chrome
   // caps live contexts, so a few launches would evict the home screen's shader context.

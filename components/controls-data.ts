@@ -7,7 +7,7 @@ export type ControlItem = {
 export const GAMEPAD_LIBRARY_CONTROLS: ControlItem[] = [
   { label: "Scroll Cartridges", keys: ["D-Pad", "L-Stick"] },
   { label: "Jump 10 Games", keys: ["LB", "RB"], detail: "Page up / down" },
-  { label: "Start Game", keys: ["A", "✕"], detail: "Launch cartridge" },
+  { label: "Start Game", keys: ["A", "✕"], detail: "Launch cartridge (Start works too)" },
   { label: "Toggle Controls", keys: ["Y", "△"] },
   { label: "Player 2 pad", keys: ["2nd Pad"], detail: "Plays in-game only. Does not move menus." },
 ]
@@ -23,6 +23,9 @@ export const GAMEPAD_NES_CONTROLS: ControlItem[] = [
   { label: "Fullscreen", keys: ["R3"], detail: "Press Right Stick" },
   { label: "In-Game Menu", keys: ["Select + Start"], detail: "Save, load, controls" },
   { label: "Hold to Exit (5s)", keys: ["Select"], detail: "Hold 5s to leave" },
+  { label: "Game Speed", keys: ["RT / LT", "R2 / L2"], detail: "Faster / slower, 1x to 10x" },
+  { label: "Quick Save (hold 2s)", keys: ["RB", "R1"], detail: "Separate quick save slot" },
+  { label: "Quick Load (hold 2s)", keys: ["LB", "L1"], detail: "Loads the quick save" },
   { label: "Player 2", keys: ["2nd Pad"], detail: "Same face buttons. Menus stay on the first pad." },
 ]
 
@@ -43,6 +46,9 @@ export const KEYBOARD_NES_CONTROLS: ControlItem[] = [
   { label: "In-Game Menu", keys: ["F1"], detail: "Save, load, controls" },
   { label: "Fullscreen", keys: ["F"] },
   { label: "Pause / Exit", keys: ["Esc"] },
+  { label: "Game Speed", keys: ["] / ["], detail: "Faster / slower, 1x to 10x" },
+  { label: "Quick Save (hold 2s)", keys: ["."], detail: "Separate quick save slot" },
+  { label: "Quick Load (hold 2s)", keys: [","], detail: "Loads the quick save" },
 ]
 
 export const KEYBOARD_P2_CONTROLS: ControlItem[] = [

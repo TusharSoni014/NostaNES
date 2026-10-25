@@ -8,7 +8,7 @@ import { FavoriteButton } from "@/components/ui/favorite-button"
 import { Kbd, GamepadKey } from "@/components/ui/kbd"
 import { useInputMode } from "@/hooks/use-input-mode"
 import { useGamepadStatus } from "@/hooks/use-gamepad-status"
-import { listGameSaves, type SavedStateRecord } from "@/lib/storage/save-state-storage"
+import { formatSlotLabel, listGameSaves, type SavedStateRecord } from "@/lib/storage/save-state-storage"
 import { playUiSound } from "@/lib/ui-sounds"
 import { cn } from "@/lib/utils"
 import type { Game } from "@/lib/games"
@@ -186,7 +186,7 @@ export const GameHub = ({ game, onLaunch, onSelectVersion }: GameHubProps) => {
               onClick={() => onLaunch(activeVersion, latestSave.slot)}
             >
               <RotateCcwIcon className="size-3.5" />
-              <span>Resume Slot {latestSave.slot}</span>
+              <span>Resume {formatSlotLabel(latestSave.slot)}</span>
               <span className="text-[10px] text-emerald-400/70 ml-auto font-mono">
                 {formatRelativeTime(latestSave.timestamp)}
               </span>

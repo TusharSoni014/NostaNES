@@ -2,6 +2,7 @@
 
 import {
   DownloadIcon,
+  FastForwardIcon,
   Gamepad2Icon,
   LogOutIcon,
   PlayIcon,
@@ -38,6 +39,12 @@ const MENU_ITEMS: MenuItem[] = [
     label: "Load State",
     subtitle: "Restore previous game save",
     icon: UploadIcon,
+  },
+  {
+    id: "speed",
+    label: "Game Speed",
+    subtitle: "Fast forward up to 10x",
+    icon: FastForwardIcon,
   },
   {
     id: "shaders",

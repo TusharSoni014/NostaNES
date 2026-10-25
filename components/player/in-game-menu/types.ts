@@ -6,6 +6,7 @@ export type InGameMenuTab =
   | "resume"
   | "save"
   | "load"
+  | "speed"
   | "shaders"
   | "controls"
   | "cheats"
@@ -20,6 +21,8 @@ export type InGameMenuProps = {
   onResetGame?: () => void
   onSaveState: (slot: number) => Promise<boolean>
   onLoadState: (slot: number) => Promise<boolean>
+  speed: number
+  onSelectSpeed: (speed: number) => void
   activeShader?: GameShader
   onSelectShader?: (shader: GameShader) => void
   cheats: EmulatorCheatControls

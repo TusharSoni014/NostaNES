@@ -223,7 +223,7 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
         (targetIndex !== undefined ? visible[targetIndex] : selected);
       if (!target) return;
 
-      if (!specificGame && isGameGroup(target) && target.versions.length > 1 && !slot) {
+      if (!specificGame && isGameGroup(target) && target.versions.length > 1 && slot === undefined) {
         playUiSound("option_selected");
         setVersionSelectGroup(target);
         return;
@@ -732,6 +732,8 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
                 />
                 <span className="flex items-center gap-1.5">
                   <GamepadKey button="A" size="sm" />
+                  <span className="text-[10px] text-muted-foreground">/</span>
+                  <GamepadKey button="Start" size="sm" />
                   <span className="text-xs font-medium text-foreground/80">
                     Play
                   </span>
@@ -828,7 +830,7 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
       <AnimatePresence>
         {playing ? (
           <PlayerStage
-            key={(playing.game.id || playing.game.file) + (playing.slot ? `_slot${playing.slot}` : "")}
+            key={(playing.game.id || playing.game.file) + (playing.slot !== undefined ? `_slot${playing.slot}` : "")}
             game={playing.game}
             initialSlot={playing.slot}
             onExit={() => {

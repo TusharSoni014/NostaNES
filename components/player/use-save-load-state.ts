@@ -1,6 +1,8 @@
 import { useCallback } from "react"
 import { loadGameState, saveGameState } from "@/lib/storage/save-state-storage"
 
+export type LoadStateResult = "loaded" | "empty" | "failed"
+
 export function useSaveLoadState(
   gameFile: string,
   saveState: () => Promise<Blob | null>,
@@ -21,13 +23,13 @@ export function useSaveLoadState(
   )
 
   const handleLoadState = useCallback(
-    async (slot: number) => {
+    async (slot: number): Promise<LoadStateResult> => {
       try {
         const record = await loadGameState(gameFile, slot)
-        if (!record?.stateBlob) return false
-        return await loadState(record.stateBlob)
+        if (!record?.stateBlob) return "empty"
+        return (await loadState(record.stateBlob)) ? "loaded" : "failed"
       } catch {
-        return false
+        return "failed"
       }
     },
     [gameFile, loadState],

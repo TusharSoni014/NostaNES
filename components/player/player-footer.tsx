@@ -73,6 +73,43 @@ export const PlayerFooter = ({ isFullscreen }: PlayerFooterProps) => {
 
       <Separator orientation="vertical" className="hidden h-3.5 sm:block" />
 
+      <span className="flex items-center gap-1.5 text-xs shrink-0">
+        <span className="flex items-center gap-1">
+          {inputMode === "gamepad" ? (
+            <>
+              <GamepadKey button={isPS ? "L2" : "LT"} size="sm" />
+              <GamepadKey button={isPS ? "R2" : "RT"} size="sm" />
+            </>
+          ) : (
+            <>
+              <Kbd size="sm">[</Kbd>
+              <Kbd size="sm">]</Kbd>
+            </>
+          )}
+        </span>
+        <span className="text-foreground/85 font-medium ml-0.5">Speed</span>
+      </span>
+
+      <span className="flex items-center gap-1.5 text-xs shrink-0">
+        <span className="text-[11px] text-muted-foreground font-mono">Hold</span>
+        {inputMode === "gamepad" ? (
+          <span className="flex items-center gap-1">
+            <GamepadKey button={isPS ? "R1" : "RB"} size="sm" />
+            <span className="text-muted-foreground text-[10px]">/</span>
+            <GamepadKey button={isPS ? "L1" : "LB"} size="sm" />
+          </span>
+        ) : (
+          <span className="flex items-center gap-1">
+            <Kbd size="sm">.</Kbd>
+            <span className="text-muted-foreground text-[10px]">/</span>
+            <Kbd size="sm">,</Kbd>
+          </span>
+        )}
+        <span className="text-foreground/85 font-medium ml-0.5">Quick Save / Load</span>
+      </span>
+
+      <Separator orientation="vertical" className="hidden h-3.5 sm:block" />
+
       {/* In-Game Menu Tip */}
       <span className="flex items-center gap-1.5 text-xs shrink-0 font-medium">
         {inputMode === "gamepad" ? (

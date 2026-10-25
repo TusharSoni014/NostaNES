@@ -4,7 +4,9 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { CheckCircle2Icon, DownloadIcon, HardDriveIcon, Loader2Icon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
+  formatSlotLabel,
   listGameSaves,
+  QUICK_SAVE_SLOT,
   type SavedStateRecord,
 } from "@/lib/storage/save-state-storage"
 import { scrollNearestIntoView } from "@/lib/motion/scroll-into-view"
@@ -21,7 +23,7 @@ type InGameMenuSavePanelProps = {
   onNavigateLeft?: () => void
 }
 
-const SLOTS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+const SLOTS = [QUICK_SAVE_SLOT, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
 export const InGameMenuSavePanel = ({
   game,
@@ -64,6 +66,8 @@ export const InGameMenuSavePanel = ({
   }, [game.file])
 
   const handleSave = async (slot: number) => {
+    // One save at a time: the emulator writes every save state to the same file.
+    if (savingSlot !== null) return
     setSavingSlot(slot)
     setStatusMessage(null)
     playUiSound("option_selected")
@@ -73,7 +77,7 @@ export const InGameMenuSavePanel = ({
       if (success) {
         await reloadSaves()
         playUiSound("game_start")
-        setStatusMessage(`State successfully saved to Slot ${slot}!`)
+        setStatusMessage(`State successfully saved to ${formatSlotLabel(slot)}!`)
       } else {
         playUiSound("error")
         setStatusMessage("Failed to capture save state. Please try again.")
@@ -140,8 +144,8 @@ export const InGameMenuSavePanel = ({
             >
               <div className="flex flex-col gap-0.5 min-w-0">
                 <div className="flex items-center gap-1.5 sm:gap-2">
-                  <span className="font-mono text-xs sm:text-sm font-bold text-blue-400">
-                    SLOT {slot}
+                  <span className="font-mono text-xs sm:text-sm font-bold text-blue-400 uppercase">
+                    {formatSlotLabel(slot)}
                   </span>
                   {existing ? (
                     <span className="text-[9px] sm:text-[10px] rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-1.5 py-0.2">
@@ -159,7 +163,9 @@ export const InGameMenuSavePanel = ({
                     ? `Saved ${new Date(existing.timestamp).toLocaleDateString()} (${Math.round(
                         existing.sizeBytes / 1024,
                       )} KB)`
-                    : "No saved state in this slot."}
+                    : slot === QUICK_SAVE_SLOT
+                      ? "Hold RB or . for 2s in game to quick save."
+                      : "No saved state in this slot."}
                 </p>
               </div>
 
@@ -167,7 +173,12 @@ export const InGameMenuSavePanel = ({
                 variant={existing ? "outline" : "default"}
                 size="sm"
                 disabled={isSaving}
-                onClick={() => handleSave(slot)}
+                onClick={(e) => {
+                  // The card's own click handler would start a second save.
+                  e.stopPropagation()
+                  setSelectedSlot(slot)
+                  handleSave(slot)
+                }}
                 className="shrink-0 gap-1.5 h-7 sm:h-8 px-2.5 sm:px-3 text-xs min-w-20 sm:min-w-28"
               >
                 {isSaving ? (

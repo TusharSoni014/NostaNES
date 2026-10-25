@@ -23,6 +23,11 @@
  * When ticks arrive late (a long task, a throttled tab) the loop may run a few
  * extra iterations per tick until the audio buffer is full again, so a stall
  * is absorbed instead of turning into an audio underrun.
+ *
+ * Fast-forward: RetroArch's hold-fast-forward hotkey makes its audio
+ * non-blocking, so every iteration runs one core frame. The scheduler then
+ * paces the loop itself at `speed` x 60 frames per second of wall time, which
+ * keeps the speed the same on 60, 90 and 120 Hz screens.
  */
 
 export type EmscriptenMainLoop = {
@@ -45,15 +50,25 @@ const FRAME_MS = 1000 / 60
 const MAX_DEBT_MS = 100
 const MAX_ITERATIONS_PER_TICK = 4
 const TICK_BUDGET_MS = 10
+/** Fast-forward may use more of each frame, but must leave time for input and rendering. */
+const FAST_TICK_BUDGET_MS = 12
+/** Frames owed at fast-forward are capped, so a stall never turns into a burst. */
+const MAX_FAST_CREDIT_FRAMES = 2
+
+export type FrameScheduler = {
+  /** 1 is normal speed. Above 1 the loop runs that many core frames per 60 Hz frame. */
+  setSpeed: (speed: number) => void
+  dispose: () => void
+}
 
 const noop = () => {}
 
 /**
  * Installs the rAF scheduler on an Emscripten `Browser` object. Safe to call
- * before or after the main loop has started. Returns a dispose function, or
+ * before or after the main loop has started. Returns the scheduler handle, or
  * null when nothing was installed (no Browser object, or already installed).
  */
-export function installFrameScheduler(browser: EmscriptenBrowser | null | undefined): (() => void) | null {
+export function installFrameScheduler(browser: EmscriptenBrowser | null | undefined): FrameScheduler | null {
   const mainLoop = browser?.mainLoop
   if (!mainLoop || typeof window === "undefined") return null
 
@@ -67,6 +82,8 @@ export function installFrameScheduler(browser: EmscriptenBrowser | null | undefi
   let rafId = 0
   let lastTick = 0
   let debt = 0
+  let speed = 1
+  let credit = 0
 
   const request = () => {
     if (pending || disposed) return
@@ -95,6 +112,20 @@ export function installFrameScheduler(browser: EmscriptenBrowser | null | undefi
     let iterations = 0
     inTick = true
     try {
+      if (speed > 1) {
+        // Only whole frames run; the remainder carries over to the next tick.
+        credit = Math.min(speed * MAX_FAST_CREDIT_FRAMES, credit + (gap / FRAME_MS) * speed)
+        const budget = Math.min(FAST_TICK_BUDGET_MS, Math.max(4, gap * 0.75))
+        while (credit >= 1 && !disposed) {
+          wanted = false
+          runner()
+          credit -= 1
+          if (!wanted || performance.now() - start >= budget) break
+        }
+        // Frames that did not fit the budget are dropped, not owed.
+        credit = Math.min(credit, 1)
+        return
+      }
       do {
         wanted = false
         runner()
@@ -111,8 +142,8 @@ export function installFrameScheduler(browser: EmscriptenBrowser | null | undefi
       )
     } finally {
       inTick = false
+      if (wanted && !disposed) request()
     }
-    if (wanted && !disposed) request()
   }
 
   Object.defineProperty(mainLoop, "scheduler", {
@@ -123,7 +154,15 @@ export function installFrameScheduler(browser: EmscriptenBrowser | null | undefi
     set: noop,
   })
 
-  return () => {
+  const setSpeed = (next: number) => {
+    const clamped = Math.max(1, Math.round(next))
+    if (clamped === speed) return
+    speed = clamped
+    credit = 0
+    debt = 0
+  }
+
+  const dispose = () => {
     if (disposed) return
     disposed = true
     if (rafId) window.cancelAnimationFrame(rafId)
@@ -135,4 +174,6 @@ export function installFrameScheduler(browser: EmscriptenBrowser | null | undefi
       if (typeof runner === "function") window.requestAnimationFrame(() => runner())
     }
   }
+
+  return { setSpeed, dispose }
 }

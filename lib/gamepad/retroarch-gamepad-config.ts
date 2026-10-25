@@ -67,6 +67,18 @@ export const getRetroArchInputConfig = (isMobile = false) => ({
     input_save_state: "nul",
     input_save_state_btn: "nul",
 
+    // Save states are read back as a single file; RetroArch's PNG thumbnail is never
+    // used and is a second file the save has to wait for.
+    savestate_thumbnail_enable: false,
+
+    // Fast-forward is driven from JS (see FAST_FORWARD_KEY_CODE): holding this key
+    // makes the audio non-blocking, and the frame scheduler sets the speed. An
+    // unlimited ratio keeps RetroArch's own limiter out of the way.
+    input_hold_fast_forward: "scroll_lock",
+    input_toggle_fast_forward: "nul",
+    fastforward_ratio: 0,
+    audio_fastforward_mute: true,
+
     // Canonical keyboard mappings: Z & X are B & A; A & S are Turbo B & A
     input_player1_up: "up",
     input_player1_down: "down",

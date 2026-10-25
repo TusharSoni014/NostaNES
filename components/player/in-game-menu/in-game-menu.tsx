@@ -14,6 +14,7 @@ import { InGameMenuLoadPanel } from "./in-game-menu-load-panel"
 import { InGameMenuResetPanel } from "./in-game-menu-reset-panel"
 import { InGameMenuSavePanel } from "./in-game-menu-save-panel"
 import { InGameMenuShadersPanel } from "./in-game-menu-shaders-panel"
+import { InGameMenuSpeedPanel } from "./in-game-menu-speed-panel"
 import { InGameMenuSidebar } from "./in-game-menu-sidebar"
 import type { InGameMenuProps, InGameMenuTab } from "./types"
 import { useInputMode } from "@/hooks/use-input-mode"
@@ -23,7 +24,7 @@ import { useGamepadStatus } from "@/hooks/use-gamepad-status"
 import { playUiSound } from "@/lib/ui-sounds"
 
 const MENU_TABS: readonly InGameMenuTab[] = [
-  "resume", "save", "load", "shaders", "controls", "cheats", "reset", "exit",
+  "resume", "save", "load", "speed", "shaders", "controls", "cheats", "reset", "exit",
 ] as const
 
 export const InGameMenu = ({
@@ -34,6 +35,8 @@ export const InGameMenu = ({
   onResetGame,
   onSaveState,
   onLoadState,
+  speed,
+  onSelectSpeed,
   activeShader = "none",
   onSelectShader,
   cheats,
@@ -161,6 +164,11 @@ export const InGameMenu = ({
                 ) : activeTab === "load" ? (
                   <InGameMenuLoadPanel
                     game={game} onLoadState={onLoadState} onResume={onResume}
+                    isFocused={focusPane === "content"} onCancel={backToSidebar} onNavigateLeft={backToSidebar}
+                  />
+                ) : activeTab === "speed" ? (
+                  <InGameMenuSpeedPanel
+                    speed={speed} onSelectSpeed={onSelectSpeed}
                     isFocused={focusPane === "content"} onCancel={backToSidebar} onNavigateLeft={backToSidebar}
                   />
                 ) : activeTab === "shaders" ? (
