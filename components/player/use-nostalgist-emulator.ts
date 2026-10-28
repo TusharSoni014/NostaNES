@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useRef } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import type { Nostalgist } from "nostalgist"
 import { preventScreenSleep } from "@/lib/display/wake-lock"
 import { ensureSafeResizeObserver } from "@/lib/display/safe-resize-observer"
@@ -35,6 +35,11 @@ const FAST_FORWARD_KEY_CODE = "ScrollLock"
 // A save or load that has not finished by now is reported as failed, so the menu
 // never spins forever. Nostalgist's own file wait gives up after about a minute.
 const STATE_OPERATION_TIMEOUT_MS = 8000
+
+// A launch that is not ready by now has stalled (a hung core or ROM request), so it
+// is torn down and started again, the same as a resize that re-runs the launch did.
+const LOAD_STALL_TIMEOUT_MS = 15000
+const MAX_LOAD_RETRIES = 2
 
 function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
   return new Promise((resolve) => {
@@ -255,6 +260,9 @@ export function useNostalgistEmulator({
   const readyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const cancelWakeLockRef = useRef<(() => void) | null>(null)
   const stoppedRef = useRef(false)
+  // Bumped by the load watchdog to restart a stalled launch.
+  const [loadAttempt, setLoadAttempt] = useState(0)
+  const loadRetriesRef = useRef(0)
 
   const unload = useCallback(() => {
     stoppedRef.current = true
@@ -292,6 +300,10 @@ export function useNostalgistEmulator({
     if (!canvas || !frame) return
 
     stoppedRef.current = false
+    // stoppedRef is reset by the next run, so a superseded run checks its own flag too;
+    // otherwise its late callbacks would act on the new run's emulator and refs.
+    let runStopped = false
+    const isStopped = () => runStopped || stoppedRef.current
     const controller = new AbortController()
     controllerRef.current = controller
     cancelWakeLockRef.current = preventScreenSleep()
@@ -318,16 +330,34 @@ export function useNostalgistEmulator({
     }
     window.addEventListener("pointerdown", handleFirstTouch, { once: true, passive: true })
 
+    // Each run owns its scheduler, so a superseded run can only dispose its own.
+    let runScheduler: FrameScheduler | null = null
     const ensureFrameScheduler = (emu: Nostalgist) => {
-      if (schedulerRef.current) return
-      schedulerRef.current = installFrameScheduler(getEmscriptenBrowser(emu))
-      schedulerRef.current?.setSpeed(speedRef.current)
+      if (runScheduler || isStopped()) return
+      runScheduler = installFrameScheduler(getEmscriptenBrowser(emu))
+      schedulerRef.current = runScheduler
+      runScheduler?.setSpeed(speedRef.current)
     }
+    const disposeRunScheduler = () => {
+      runScheduler?.dispose()
+      if (schedulerRef.current === runScheduler) schedulerRef.current = null
+    }
+
+    const loadWatchdog = setTimeout(() => {
+      if (isStopped()) return
+      if (loadRetriesRef.current < MAX_LOAD_RETRIES) {
+        loadRetriesRef.current += 1
+        setLoadAttempt((attempt) => attempt + 1)
+      } else {
+        loadRetriesRef.current = 0
+        onPhaseChange("error")
+      }
+    }, LOAD_STALL_TIMEOUT_MS)
 
     ;(async () => {
       try {
         const { Nostalgist } = await import("nostalgist")
-        if (stoppedRef.current) return
+        if (isStopped()) return
 
         const rom = game.customRom
           ? { fileName: game.file, fileContent: game.customRom }
@@ -348,17 +378,17 @@ export function useNostalgistEmulator({
           // Runs after the core is instantiated and before its main loop starts, so the
           // very first iteration is already scheduled from requestAnimationFrame.
           beforeLaunch(emu) {
-            if (stoppedRef.current) return
+            if (isStopped()) return
             ensureFrameScheduler(emu)
           },
           onLaunch(emu) {
-            if (stoppedRef.current) return
+            if (isStopped()) return
             instanceRef.current = emu
             ensureFrameScheduler(emu)
 
             void (async () => {
               const saved = getCheatSession(game.file)
-              if (saved && !stoppedRef.current) {
+              if (saved && !isStopped()) {
                 const controls: EmulatorCheatControls = {
                   loadCheats: (content) => emu.loadCheats(content),
                   enableCheat: (index) => Boolean(emu.enableCheat(index)),
@@ -370,19 +400,19 @@ export function useNostalgistEmulator({
                   await applyCheatSession(controls, saved.text, saved.rows)
                 } catch {}
               }
-              if (stoppedRef.current) return
+              if (isStopped()) return
 
-              if (initialSlot !== undefined && !stoppedRef.current) {
+              if (initialSlot !== undefined && !isStopped()) {
                 try {
                   const saveRecord = await loadGameState(game.file, initialSlot)
-                  if (saveRecord?.stateBlob && !stoppedRef.current) {
+                  if (saveRecord?.stateBlob && !isStopped()) {
                     await emu.loadState(saveRecord.stateBlob)
                   }
                 } catch (err) {
                   console.error("Failed to load initial save state slot", initialSlot, err)
                 }
               }
-              if (stoppedRef.current) return
+              if (isStopped()) return
 
               if (isPausedRef.current) {
                 try {
@@ -396,7 +426,9 @@ export function useNostalgistEmulator({
               const delayRemaining = isInitial ? Math.max(0, MIN_LOADER_DURATION_MS - elapsed) : 0
 
               readyTimerRef.current = setTimeout(() => {
-                if (!stoppedRef.current) {
+                if (!isStopped()) {
+                  clearTimeout(loadWatchdog)
+                  loadRetriesRef.current = 0
                   // Pay the first-call cost of the input path and audio resume now,
                   // behind the loader, instead of on the player's first tap.
                   // Down and up inside one task, so the core never polls the key as held.
@@ -414,29 +446,32 @@ export function useNostalgistEmulator({
           },
         })
 
-        if (stoppedRef.current) {
+        if (isStopped()) {
           setAudioContextState(emulator, "close")
           try {
             emulator.exit({ removeCanvas: false })
           } catch {}
-          schedulerRef.current?.dispose()
-          schedulerRef.current = null
+          disposeRunScheduler()
           return
         }
         instanceRef.current = emulator
       } catch (error) {
-        if (!stoppedRef.current && !controller.signal.aborted) {
+        if (!isStopped() && !controller.signal.aborted) {
           console.error(error)
+          clearTimeout(loadWatchdog)
+          loadRetriesRef.current = 0
           onPhaseChange("error")
         }
       }
     })()
 
     return () => {
+      runStopped = true
+      clearTimeout(loadWatchdog)
       window.removeEventListener("pointerdown", handleFirstTouch)
       unload()
     }
-  }, [canvasRef, game.file, game.customRom, initialSlot, isMobile, onPhaseChange, reloadKey, unload, applySpeed])
+  }, [canvasRef, game.file, game.customRom, initialSlot, isMobile, onPhaseChange, reloadKey, loadAttempt, unload, applySpeed])
 
   // Nostalgist's exit() leaves the canvas's WebGL context alive until GC. Mobile Chrome
   // caps live contexts, so a few launches would evict the home screen's shader context.

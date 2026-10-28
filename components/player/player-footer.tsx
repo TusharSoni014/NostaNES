@@ -128,7 +128,7 @@ export const PlayerFooter = ({ isFullscreen }: PlayerFooterProps) => {
 
       <span className="flex items-center gap-1.5 text-xs shrink-0">
         {inputMode === "gamepad" ? (
-          <span className="text-[11px] text-muted-foreground font-mono">Hold Select 5s</span>
+          <span className="text-[11px] text-muted-foreground font-mono">Hold Select 2s</span>
         ) : (
           <Kbd size="sm">Esc</Kbd>
         )}

@@ -142,7 +142,7 @@ Switch between 6 visual display presets in real time via the in-game menu:
 | **Select** | <kbd>View</kbd> | <kbd>Share</kbd> | <kbd>−</kbd> |
 | **In-Game Menu** | <kbd>Select</kbd> + <kbd>Start</kbd> | <kbd>Share</kbd> + <kbd>Options</kbd> | <kbd>−</kbd> + <kbd>+</kbd> |
 | **Fullscreen** | <kbd>R3</kbd> (Right Stick Click) | <kbd>R3</kbd> (Right Stick Click) | <kbd>R3</kbd> |
-| **Hold to Exit** | Hold <kbd>Select</kbd> (5s) | Hold <kbd>Share</kbd> (5s) | Hold <kbd>−</kbd> (5s) |
+| **Hold to Exit** | Hold <kbd>Select</kbd> (2s) | Hold <kbd>Share</kbd> (2s) | Hold <kbd>−</kbd> (2s) |
 | **Game Speed** | <kbd>RT</kbd> / <kbd>LT</kbd> | <kbd>R2</kbd> / <kbd>L2</kbd> | <kbd>ZR</kbd> / <kbd>ZL</kbd> |
 | **Quick Save** | Hold <kbd>RB</kbd> (2s) | Hold <kbd>R1</kbd> (2s) | Hold <kbd>R</kbd> (2s) |
 | **Quick Load** | Hold <kbd>LB</kbd> (2s) | Hold <kbd>L1</kbd> (2s) | Hold <kbd>L</kbd> (2s) |

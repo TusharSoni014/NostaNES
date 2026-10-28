@@ -38,7 +38,6 @@ export const GameList = ({
   const rangeRef = useRef<Range>({ start: 0, end: 24 })
   const lastScrollTimeRef = useRef(0)
   const frameRef = useRef(0)
-  const measuredRef = useRef(false)
   const [range, setRange] = useState<Range>({ start: 0, end: 24 })
 
   const publishRange = useCallback((next: Range) => {
@@ -80,7 +79,18 @@ export const GameList = ({
       behavior: isRapid ? "auto" : "smooth",
     })
     syncRange()
-  }, [selectedIndex, games.length, syncRange, isMobileTouchMode])
+  }, [selectedIndex, games.length, syncRange, isMobileTouchMode, stride])
+
+  // Row height follows the viewport breakpoints, so it is re-measured on every resize;
+  // a stale stride would let taller rows overlap and close the gap between them.
+  const measureStride = useCallback(() => {
+    const row = listRef.current?.querySelector("[data-game-row]")
+    if (!(row instanceof HTMLElement)) return
+    const next = row.offsetHeight + ROW_GAP
+    if (next <= ROW_GAP || next === strideRef.current) return
+    strideRef.current = next
+    setStride(next)
+  }, [])
 
   useEffect(() => {
     const listEl = listRef.current
@@ -96,31 +106,22 @@ export const GameList = ({
 
     syncRange()
     listEl.addEventListener("scroll", onScroll, { passive: true })
-    const observer = new ResizeObserver(() => syncRange())
+    const observer = new ResizeObserver(() => {
+      measureStride()
+      syncRange()
+    })
     observer.observe(listEl)
     return () => {
       observer.disconnect()
       listEl.removeEventListener("scroll", onScroll)
       if (frameRef.current) window.cancelAnimationFrame(frameRef.current)
     }
-  }, [syncRange])
+  }, [syncRange, measureStride])
 
   useEffect(() => {
-    measuredRef.current = false
-  }, [isMobileTouchMode])
-
-  useEffect(() => {
-    if (measuredRef.current) return
-    const row = listRef.current?.querySelector("[data-game-row]")
-    if (!(row instanceof HTMLElement)) return
-    const next = row.offsetHeight + ROW_GAP
-    if (next <= ROW_GAP) return
-    measuredRef.current = true
-    if (next === strideRef.current) return
-    strideRef.current = next
-    setStride(next)
+    measureStride()
     syncRange()
-  }, [syncRange])
+  }, [measureStride, syncRange, isMobileTouchMode, isMobile])
 
   const start = range.start
   const end = range.end

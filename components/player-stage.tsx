@@ -333,7 +333,7 @@ export const PlayerStage = ({ game, initialSlot, onExit }: PlayerStageProps) => 
             )}
           />
           <ShaderOverlay shader={activeShader} />
-          <PlayerOverlay game={game} phase={phase} onExit={handleConfirmExit} />
+          <PlayerOverlay game={game} phase={phase} onExit={handleConfirmExit} onRetry={handleResetGame} />
         </div>
 
         {/* On-screen controls on mobile landscape */}

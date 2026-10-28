@@ -22,7 +22,7 @@ export const GAMEPAD_NES_CONTROLS: ControlItem[] = [
   { label: "Select", keys: ["View", "Share"] },
   { label: "Fullscreen", keys: ["R3"], detail: "Press Right Stick" },
   { label: "In-Game Menu", keys: ["Select + Start"], detail: "Save, load, controls" },
-  { label: "Hold to Exit (5s)", keys: ["Select"], detail: "Hold 5s to leave" },
+  { label: "Hold to Exit (2s)", keys: ["Select"], detail: "Hold 2s to leave" },
   { label: "Game Speed", keys: ["RT / LT", "R2 / L2"], detail: "Faster / slower, 1x to 10x" },
   { label: "Quick Save (hold 2s)", keys: ["RB", "R1"], detail: "Separate quick save slot" },
   { label: "Quick Load (hold 2s)", keys: ["LB", "L1"], detail: "Loads the quick save" },

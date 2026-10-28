@@ -21,7 +21,7 @@ type UsePlayerInputOptions = {
   quickLoad: () => void
 }
 
-const EXIT_HOLD_MS = 5000
+const EXIT_HOLD_MS = 2000
 const QUICK_STATE_HOLD_MS = 2000
 /** Keyboard holds show their HUD after the same grace period as gamepad holds. */
 const KEY_HOLD_ANNOUNCE_DELAY_MS = 250

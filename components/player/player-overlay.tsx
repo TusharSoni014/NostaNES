@@ -17,9 +17,10 @@ type PlayerOverlayProps = {
   game: Game
   phase: "loading" | "ready" | "error"
   onExit: () => void
+  onRetry: () => void
 }
 
-export const PlayerOverlay = ({ game, phase, onExit }: PlayerOverlayProps) => (
+export const PlayerOverlay = ({ game, phase, onExit, onRetry }: PlayerOverlayProps) => (
   <>
     <AnimatePresence mode="wait">
       {phase === "loading" && (
@@ -60,11 +61,14 @@ export const PlayerOverlay = ({ game, phase, onExit }: PlayerOverlayProps) => (
           <EmptyHeader>
             <EmptyTitle>The cartridge did not start</EmptyTitle>
             <EmptyDescription>
-              The ROM could not be loaded from the server. Close this screen and try again.
+              The ROM could not be loaded from the server. Try again, or go back to the shelf.
             </EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
-            <Button onClick={onExit}>Back to the shelf</Button>
+            <div className="flex flex-wrap justify-center gap-2">
+              <Button onClick={onRetry}>Try again</Button>
+              <Button variant="outline" onClick={onExit}>Back to the shelf</Button>
+            </div>
           </EmptyContent>
         </Empty>
       </div>
