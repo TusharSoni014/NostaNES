@@ -5,8 +5,12 @@ import {
   FolderOpenIcon,
   Gamepad2Icon,
   HeartIcon,
+  HistoryIcon,
+  LibraryIcon,
   PlayIcon,
   SearchIcon,
+  ShuffleIcon,
+  Trash2Icon,
   XIcon,
 } from "lucide-react";
 import Image from "next/image";
@@ -35,6 +39,7 @@ import {
   InputGroupInput,
 } from "@/components/ui/input-group";
 import { Kbd, GamepadKey } from "@/components/ui/kbd";
+import { ResponsiveConfirmDialog } from "@/components/ui/responsive-confirm-dialog";
 import { Separator } from "@/components/ui/separator";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
@@ -48,6 +53,11 @@ import { useInputMode } from "@/hooks/use-input-mode";
 import { useFavorites } from "@/hooks/use-favorites";
 import { useIsMobile } from "@/hooks/use-is-mobile";
 import { useGamepadStatus } from "@/hooks/use-gamepad-status";
+import { usePlayHistory } from "@/hooks/use-play-history";
+import {
+  getHistoryKey,
+  recordPlayInHistory,
+} from "@/lib/storage/play-history-storage";
 import { enableUiSounds, playUiSound } from "@/lib/ui-sounds";
 import {
   type Game,
@@ -64,6 +74,22 @@ function isGameGroup(game: Game | GameGroup): game is GameGroup {
   return "versions" in game && Array.isArray((game as GameGroup).versions);
 }
 
+type ShelfTab = "library" | "recent";
+
+/** Library titles the random picker may still choose: never a local ROM, never one already played. */
+function getRandomPool(
+  groups: readonly GameGroup[] | null,
+  playedKeys: ReadonlySet<string>,
+): Game[] {
+  const pool: Game[] = [];
+  for (const group of groups ?? []) {
+    if (playedKeys.has(getHistoryKey(group))) continue;
+    const version = group.versions.find((v) => !v.customRom);
+    if (version) pool.push(version);
+  }
+  return pool;
+}
+
 export type HomeStageProps = {
   initialGames?: Game[];
 };
@@ -73,6 +99,7 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
   const { connected: gamepadConnected } = useGamepadStatus();
   const inputMode = useInputMode();
   const { isFavorite, favoritesCount } = useFavorites();
+  const { history, clearHistory } = usePlayHistory();
   const library = useLibrary(initialGames);
   const games = library.data ?? null;
   const failed = library.isError && !library.isFetching;
@@ -82,7 +109,13 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [index, setIndex] = useState(0);
   const indexRef = useRef(0);
-  const [playing, setPlaying] = useState<{ game: Game; slot?: number } | null>(null);
+  // `session` keys the player: a random swap keeps it so the stage (and fullscreen) stays mounted.
+  const [playing, setPlaying] = useState<{
+    game: Game;
+    slot?: number;
+    session: number;
+  } | null>(null);
+  const sessionRef = useRef(0);
   const [shaderReady, setShaderReady] = useState(false);
   const [presented, setPresented] = useState(false);
   const [bootMounted, setBootMounted] = useState(true);
@@ -95,6 +128,15 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
     useState<GameGroup | null>(null);
   const [infoDrawerOpen, setInfoDrawerOpen] = useState(false);
   const [shaderPaused, setShaderPaused] = useState(false);
+  const [tab, setTab] = useState<ShelfTab>("library");
+  const [confirmingClearHistory, setConfirmingClearHistory] = useState(false);
+
+  const startGame = useCallback((game: Game, slot?: number) => {
+    playUiSound("game_start");
+    void requestAppFullscreen(document.documentElement);
+    sessionRef.current += 1;
+    setPlaying({ game, slot, session: sessionRef.current });
+  }, []);
 
   const handleLoadRomFile = useCallback((file: File) => {
     const name = file.name;
@@ -122,10 +164,8 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
       return [customGame, ...filtered];
     });
 
-    playUiSound("game_start");
-    void requestAppFullscreen(document.documentElement);
-    setPlaying({ game: customGame });
-  }, []);
+    startGame(customGame);
+  }, [startGame]);
 
   useEffect(() => {
     if (!loadError) return;
@@ -156,6 +196,11 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
     return () => window.clearTimeout(timer);
   }, [playing]);
 
+  const playingGame = playing?.game ?? null;
+  useEffect(() => {
+    if (playingGame) recordPlayInHistory(playingGame);
+  }, [playingGame]);
+
   const allGames = useMemo(() => {
     if (!games) return customGames.length > 0 ? customGames : null;
     return [...customGames, ...games];
@@ -166,6 +211,33 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
     return groupGames(allGames);
   }, [allGames]);
 
+  const playedKeys = useMemo(
+    () => new Set(history.map((entry) => entry.key)),
+    [history],
+  );
+
+  const recentGroups = useMemo(() => {
+    if (!groupedGames) return null;
+    const byKey = new Map(groupedGames.map((g) => [getHistoryKey(g), g]));
+    const ordered: GameGroup[] = [];
+    for (const entry of history) {
+      const group = byKey.get(entry.key);
+      if (group) ordered.push(group);
+    }
+    return ordered;
+  }, [groupedGames, history]);
+
+  const randomPool = useMemo(
+    () => getRandomPool(groupedGames, playedKeys),
+    [groupedGames, playedKeys],
+  );
+  const randomAvailable = randomPool.length > 0;
+
+  const pickRandomGame = useCallback((): Game | null => {
+    if (randomPool.length === 0) return null;
+    return randomPool[Math.floor(Math.random() * randomPool.length)] ?? null;
+  }, [randomPool]);
+
   const regions = useMemo(() => {
     const found = new Set<string>();
     for (const group of groupedGames ?? []) {
@@ -175,9 +247,10 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
   }, [groupedGames]);
 
   const visible = useMemo(() => {
-    if (!groupedGames) return [];
+    const source = tab === "recent" ? recentGroups : groupedGames;
+    if (!source) return [];
     const needle = query.trim().toLowerCase();
-    return groupedGames.filter((group) => {
+    return source.filter((group) => {
       if (favoritesOnly && !isFavorite(group)) return false;
       const regionMatches = region === "All" || group.regions.includes(region);
       const versionFiles = group.versions
@@ -187,7 +260,7 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
         `${group.title} ${group.tags.join(" ")} ${versionFiles}`.toLowerCase();
       return regionMatches && (needle.length === 0 || text.includes(needle));
     });
-  }, [groupedGames, query, region, favoritesOnly, isFavorite]);
+  }, [tab, recentGroups, groupedGames, query, region, favoritesOnly, isFavorite]);
 
   const count = visible.length;
   const selected = visible[index] ?? null;
@@ -229,12 +302,33 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
         return;
       }
 
-      playUiSound("game_start");
-      void requestAppFullscreen(document.documentElement);
       const gameToPlay = isGameGroup(target) ? (target.versions[0] ?? target) : target;
-      setPlaying({ game: specificGame ?? gameToPlay, slot });
+      startGame(specificGame ?? gameToPlay, slot);
     },
-    [visible, selected],
+    [visible, selected, startGame],
+  );
+
+  const launchRandom = useCallback(() => {
+    const next = pickRandomGame();
+    if (!next) {
+      setLoadError(
+        "Every game is already in your history. Clear it to play random games again.",
+      );
+      playUiSound("error");
+      return;
+    }
+    startGame(next);
+  }, [pickRandomGame, startGame]);
+
+  const selectTab = useCallback(
+    (next: ShelfTab) => {
+      if (next === tab) return;
+      setTab(next);
+      indexRef.current = 0;
+      setIndex(0);
+      playUiSound("navigation");
+    },
+    [tab],
   );
 
   const revealShelf = useCallback(() => {
@@ -251,10 +345,14 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
     count,
     isPlaying: Boolean(playing) || !presented,
     controlsOpen:
-      controlsOpen || Boolean(versionSelectGroup) || infoDrawerOpen,
+      controlsOpen ||
+      Boolean(versionSelectGroup) ||
+      infoDrawerOpen ||
+      confirmingClearHistory,
     move,
     jump,
     launch,
+    onRandom: launchRandom,
     onToggleControls: toggleControls,
   });
 
@@ -432,6 +530,25 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
               </InputGroup>
             </Field>
 
+            <div className="flex shrink-0 items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={groupedGames === null}
+              onClick={launchRandom}
+              className="inline-flex items-center gap-1.5 sm:gap-2 h-8 sm:h-9 px-2.5 sm:px-3 text-xs font-medium border-amber-500/40 bg-amber-500/10 text-amber-200 hover:bg-amber-500/20 hover:text-white shadow-xs cursor-pointer shrink-0"
+              title="Play a random game you haven't played yet"
+            >
+              <ShuffleIcon className="size-3.5 text-amber-400" />
+              <span>Random</span>
+              {!isMobile ? (
+                inputMode === "gamepad" ? (
+                  <GamepadKey button="L3" size="sm" />
+                ) : (
+                  <Kbd size="sm">F2</Kbd>
+                )
+              ) : null}
+            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -443,6 +560,68 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
               <span className="hidden sm:inline">Load Local ROM</span>
               <span className="sm:hidden">Load ROM</span>
             </Button>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between gap-2">
+            <div
+              role="tablist"
+              aria-label="Shelf"
+              className="flex items-center gap-1 rounded-xl border border-white/10 bg-white/[0.03] p-1"
+            >
+              {(
+                [
+                  { id: "library", label: "Library", icon: LibraryIcon },
+                  { id: "recent", label: "Recent", icon: HistoryIcon },
+                ] as const
+              ).map((item) => {
+                const Icon = item.icon;
+                const active = tab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => selectTab(item.id)}
+                    className={cn(
+                      "flex h-7 items-center gap-1.5 rounded-lg px-2.5 sm:px-3 text-xs font-semibold transition-all cursor-pointer",
+                      active
+                        ? "bg-white text-zinc-950 shadow-sm"
+                        : "text-white/65 hover:bg-white/[0.06] hover:text-white",
+                    )}
+                  >
+                    <Icon className="size-3.5" />
+                    <span>{item.label}</span>
+                    {item.id === "recent" && recentGroups && recentGroups.length > 0 ? (
+                      <span
+                        className={cn(
+                          "rounded-full px-1.5 py-0.5 text-[10px] font-bold tabular-nums leading-none",
+                          active ? "bg-zinc-950/10" : "bg-white/10 text-white/70",
+                        )}
+                      >
+                        {recentGroups.length}
+                      </span>
+                    ) : null}
+                  </button>
+                );
+              })}
+            </div>
+
+            {tab === "recent" && history.length > 0 ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  playUiSound("option_selected");
+                  setConfirmingClearHistory(true);
+                }}
+                className="h-7 sm:h-8 gap-1.5 px-2.5 sm:px-3 text-xs font-medium border-rose-500/30 bg-rose-500/10 text-rose-300 hover:bg-rose-500/20 hover:text-rose-200 cursor-pointer shrink-0"
+              >
+                <Trash2Icon className="size-3.5" />
+                <span>Clear History</span>
+              </Button>
+            ) : null}
           </div>
 
           <AnimatePresence>
@@ -616,6 +795,46 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
                   </div>
                 </Empty>
               </motion.div>
+            ) : tab === "recent" && recentGroups?.length === 0 ? (
+              <motion.div
+                key="no-history"
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+                className="my-auto px-6 pb-16"
+              >
+                <Empty>
+                  <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                      <HistoryIcon />
+                    </EmptyMedia>
+                    <EmptyTitle>No games played yet</EmptyTitle>
+                    <EmptyDescription>
+                      Games you play show up here, most recent first. Random
+                      play only picks games that aren&apos;t in this list.
+                    </EmptyDescription>
+                  </EmptyHeader>
+                  <div className="mt-4 flex justify-center gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => selectTab("library")}
+                      className="gap-2 cursor-pointer"
+                    >
+                      <LibraryIcon className="size-4" />
+                      Browse Library
+                    </Button>
+                    <Button
+                      variant="default"
+                      onClick={launchRandom}
+                      className="gap-2 cursor-pointer"
+                    >
+                      <ShuffleIcon className="size-4" />
+                      Play Random
+                    </Button>
+                  </div>
+                </Empty>
+              </motion.div>
             ) : visible.length === 0 ? (
               <motion.div
                 key={favoritesOnly ? "no-favorites" : "no-matches"}
@@ -766,9 +985,11 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
             <span className="text-xs text-muted-foreground/80">
               {allGames === null
                 ? "Reading cartridges..."
-                : favoritesOnly
-                  ? `${visible.length} ${visible.length === 1 ? "favorite cartridge" : "favorite cartridges"}`
-                  : `${visible.length} ${visible.length === 1 ? "game" : "games"} available`}
+                : tab === "recent"
+                  ? `${visible.length} recently played`
+                  : favoritesOnly
+                    ? `${visible.length} ${visible.length === 1 ? "favorite cartridge" : "favorite cartridges"}`
+                    : `${visible.length} ${visible.length === 1 ? "game" : "games"} available`}
             </span>
           </div>
           <div className="ml-auto flex items-center gap-2">
@@ -807,9 +1028,7 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
         onOpenChange={setInfoDrawerOpen}
         onPlay={(chosenGame, slot) => {
           setInfoDrawerOpen(false);
-          playUiSound("game_start");
-          void requestAppFullscreen(document.documentElement);
-          setPlaying({ game: chosenGame, slot });
+          startGame(chosenGame, slot);
         }}
       />
 
@@ -821,21 +1040,46 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
         }}
         onSelectVersion={(version) => {
           setVersionSelectGroup(null);
-          playUiSound("game_start");
-          void requestAppFullscreen(document.documentElement);
-          setPlaying({ game: version });
+          startGame(version);
+        }}
+      />
+
+      <ResponsiveConfirmDialog
+        open={confirmingClearHistory}
+        badgeText="RECENTLY PLAYED"
+        badgeIcon={<HistoryIcon className="size-3 text-amber-400" />}
+        title="Clear play history?"
+        description="Every game will be removed from Recent, and random play can pick any of them again. Save states and favorites are kept."
+        cancelText="Keep History"
+        confirmText="Clear History"
+        defaultOption="cancel"
+        onCancel={() => setConfirmingClearHistory(false)}
+        onConfirm={() => {
+          setConfirmingClearHistory(false);
+          clearHistory();
+          indexRef.current = 0;
+          setIndex(0);
+          playUiSound("back_cancel");
         }}
       />
 
       <AnimatePresence>
         {playing ? (
           <PlayerStage
-            key={(playing.game.id || playing.game.file) + (playing.slot !== undefined ? `_slot${playing.slot}` : "")}
+            key={`session-${playing.session}`}
             game={playing.game}
             initialSlot={playing.slot}
             onExit={() => {
               setPlaying(null);
               setShaderPaused(false);
+            }}
+            randomAvailable={randomAvailable}
+            onPlayRandom={() => {
+              const next = pickRandomGame();
+              if (!next) return;
+              setPlaying((current) =>
+                current ? { game: next, session: current.session } : current,
+              );
             }}
           />
         ) : null}

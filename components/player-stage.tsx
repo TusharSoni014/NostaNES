@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import { ExitConfirmDialog } from "@/components/exit-confirm-dialog"
+import { RandomGameConfirmDialog } from "@/components/random-game-confirm-dialog"
 import { HoldActionHud, type ActiveHold } from "@/components/player/hold-action-hud"
 import { InGameMenu } from "@/components/player/in-game-menu/in-game-menu"
 import { PlayerFooter } from "@/components/player/player-footer"
@@ -35,9 +36,13 @@ type PlayerStageProps = {
   game: Game
   initialSlot?: number
   onExit: () => void
+  /** False once every library game is already in the play history. */
+  randomAvailable?: boolean
+  /** Swaps in a random unplayed game. The stage stays mounted, so fullscreen survives. */
+  onPlayRandom?: () => void
 }
 
-export const PlayerStage = ({ game, initialSlot, onExit }: PlayerStageProps) => {
+export const PlayerStage = ({ game, initialSlot, onExit, randomAvailable = false, onPlayRandom }: PlayerStageProps) => {
   const stageRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
@@ -49,6 +54,7 @@ export const PlayerStage = ({ game, initialSlot, onExit }: PlayerStageProps) => 
   const [phase, setPhase] = useState<"loading" | "ready" | "error">("loading")
   const [isFullscreen, setIsFullscreen] = useState(() => Boolean(getActiveFullscreenElement()))
   const [confirmingExit, setConfirmingExit] = useState(false)
+  const [confirmingRandom, setConfirmingRandom] = useState(false)
   const [inGameMenuOpen, setInGameMenuOpen] = useState(false)
   const [activeShader, setActiveShader] = useState<GameShader>(getSavedShader)
   const [romKey, setRomKey] = useState(0)
@@ -89,28 +95,28 @@ export const PlayerStage = ({ game, initialSlot, onExit }: PlayerStageProps) => 
 
   useEffect(() => {
     if (phase === "error") playUiSound("error")
-    else if (confirmingExit) playUiSound("game_paused")
-  }, [phase, confirmingExit])
+    else if (confirmingExit || confirmingRandom) playUiSound("game_paused")
+  }, [phase, confirmingExit, confirmingRandom])
 
   const {
     pause, resume, saveState, loadState, unload, pressDown, pressUp,
     loadCheats, enableCheat, disableCheat, clearCheats, getCheats,
   } = useNostalgistEmulator({
     game, canvasRef, onPhaseChange: setPhase, reloadKey: romKey,
-    isPaused: inGameMenuOpen || confirmingExit,
+    isPaused: inGameMenuOpen || confirmingExit || confirmingRandom,
     initialSlot,
     isMobile,
     speed,
   })
 
   useKeyboardControls({
-    enabled: phase === "ready" && !inGameMenuOpen && !confirmingExit,
+    enabled: phase === "ready" && !inGameMenuOpen && !confirmingExit && !confirmingRandom,
     pressDown,
     pressUp,
   })
 
   useGamepadControls({
-    enabled: phase === "ready" && !inGameMenuOpen && !confirmingExit,
+    enabled: phase === "ready" && !inGameMenuOpen && !confirmingExit && !confirmingRandom,
     pressDown,
     pressUp,
   })
@@ -244,13 +250,48 @@ export const PlayerStage = ({ game, initialSlot, onExit }: PlayerStageProps) => 
     onExit()
   }, [unload, onExit])
 
+  const requestRandomGame = useCallback(() => {
+    if (!onPlayRandom) return
+    if (!randomAvailable) {
+      playUiSound("error")
+      showNotice({ kind: "error", text: "Every game is in your history" })
+      return
+    }
+    setInGameMenuOpen(false)
+    setConfirmingRandom(true)
+    pause()
+  }, [onPlayRandom, randomAvailable, pause, showNotice])
+
+  const cancelRandomGame = useCallback(() => {
+    setConfirmingRandom(false)
+    resume()
+    playUiSound("back_cancel")
+  }, [resume])
+
+  const confirmRandomGame = useCallback(() => {
+    setConfirmingRandom(false)
+    setConfirmingExit(false)
+    setInGameMenuOpen(false)
+    setIsCustomizingTouch(false)
+    setHold(null)
+    setNotice(null)
+    handleSelectSpeed(1, { announce: false })
+    // A fresh canvas for the next ROM, exactly like a reset.
+    setPhase("loading")
+    setRomKey((prev) => prev + 1)
+    playUiSound("game_start")
+    onPlayRandom?.()
+  }, [handleSelectSpeed, onPlayRandom])
+
   usePlayerInput({
     shortcutsEnabled: phase === "ready",
-    inGameMenuOpen, confirmingExit, toggleInGameMenu, handleResume,
+    inGameMenuOpen, confirmingExit, confirmingRandom, toggleInGameMenu, handleResume,
     handleRequestExit, handleConfirmExit, toggleFullscreen, setHold,
     changeSpeedBy,
     quickSave: () => void quickSave(),
     quickLoad: () => void quickLoad(),
+    requestRandomGame,
+    cancelRandomGame,
   })
 
   return (
@@ -265,6 +306,7 @@ export const PlayerStage = ({ game, initialSlot, onExit }: PlayerStageProps) => 
       <PlayerNotice notice={hold ? null : notice} />
       <HoldActionHud hold={hold} />
       <ExitConfirmDialog open={confirmingExit} onResume={handleResume} onConfirmExit={handleConfirmExit} />
+      <RandomGameConfirmDialog open={confirmingRandom} onCancel={cancelRandomGame} onConfirm={confirmRandomGame} />
 
       <InGameMenu
         key={inGameMenuOpen ? "open" : "closed"}
@@ -281,6 +323,8 @@ export const PlayerStage = ({ game, initialSlot, onExit }: PlayerStageProps) => 
         onSelectShader={handleSelectShader}
         cheats={{ loadCheats, enableCheat, disableCheat, clearCheats, getCheats }}
         onOpenTouchLayout={handleOpenTouchLayout}
+        onRandomGame={onPlayRandom ? requestRandomGame : undefined}
+        randomAvailable={randomAvailable}
       />
 
       <PlayerHeader

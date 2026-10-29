@@ -55,6 +55,7 @@ export type GamepadAction =
   | "START"
   | "SPEED_UP"
   | "SPEED_DOWN"
+  | "RANDOM_GAME"
 
 export type GamepadProfile = {
   family: GamepadFamily

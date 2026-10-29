@@ -11,6 +11,7 @@ type ShelfNavigationOptions = {
   move: (direction: -1 | 1) => void
   jump?: (step: number) => void
   launch: () => void
+  onRandom?: () => void
   onToggleControls?: () => void
 }
 
@@ -28,6 +29,7 @@ export const useShelfNavigation = ({
   move,
   jump,
   launch,
+  onRandom,
   onToggleControls,
 }: ShelfNavigationOptions) => {
   const optionsRef = useRef({
@@ -37,6 +39,7 @@ export const useShelfNavigation = ({
     move,
     jump,
     launch,
+    onRandom,
     onToggleControls,
   })
 
@@ -51,6 +54,7 @@ export const useShelfNavigation = ({
       move,
       jump,
       launch,
+      onRandom,
       onToggleControls,
     }
   })
@@ -69,7 +73,7 @@ export const useShelfNavigation = ({
         Boolean(target.closest("input, textarea, [data-slot=toggle-group]"))
       const inInput =
         target instanceof HTMLElement && Boolean(target.closest("input"))
-      if (inForm && !["ArrowUp", "ArrowDown", "Enter", "PageUp", "PageDown"].includes(event.key)) {
+      if (inForm && !["ArrowUp", "ArrowDown", "Enter", "PageUp", "PageDown", "F2"].includes(event.key)) {
         return
       }
 
@@ -111,7 +115,10 @@ export const useShelfNavigation = ({
         return
       }
 
-      if (event.key === "Enter" && (!onControl || inInput)) {
+      if (event.key === "F2") {
+        event.preventDefault()
+        if (!event.repeat) opts.onRandom?.()
+      } else if (event.key === "Enter" && (!onControl || inInput)) {
         event.preventDefault()
         opts.launch()
       } else if (event.key === "PageDown" && opts.jump) {
@@ -144,10 +151,17 @@ export const useShelfNavigation = ({
 
     const dispatcher = new GamepadDispatcher((action) => {
       const opts = optionsRef.current
-      if (opts.isPlaying || opts.count === 0) return
+      if (opts.isPlaying) return
 
       // While controls modal is open, the modal handles its own scrolling, tabs, and dismiss
       if (opts.controlsOpen) return
+
+      // Random play works even when the current tab or filter shows nothing.
+      if (action === "RANDOM_GAME") {
+        opts.onRandom?.()
+        return
+      }
+      if (opts.count === 0) return
 
       if (action === "NAV_UP") {
         opts.move(-1)

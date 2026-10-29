@@ -10,6 +10,7 @@ type UsePlayerInputOptions = {
   shortcutsEnabled: boolean
   inGameMenuOpen: boolean
   confirmingExit: boolean
+  confirmingRandom: boolean
   toggleInGameMenu: () => void
   handleResume: () => void
   handleRequestExit: () => void
@@ -19,6 +20,8 @@ type UsePlayerInputOptions = {
   changeSpeedBy: (delta: number) => void
   quickSave: () => void
   quickLoad: () => void
+  requestRandomGame: () => void
+  cancelRandomGame: () => void
 }
 
 const EXIT_HOLD_MS = 2000
@@ -31,6 +34,7 @@ const GAMEPAD_RB = 5
 const GAMEPAD_LT = 6
 const GAMEPAD_RT = 7
 const GAMEPAD_SELECT = 8
+const GAMEPAD_L3 = 10
 
 // Keyboard shortcuts, by KeyboardEvent.code. A key the player has bound to a NES
 // button never reaches these: useKeyboardControls stops it first.
@@ -53,6 +57,7 @@ export function usePlayerInput({
   shortcutsEnabled,
   inGameMenuOpen,
   confirmingExit,
+  confirmingRandom,
   toggleInGameMenu,
   handleResume,
   handleRequestExit,
@@ -62,11 +67,14 @@ export function usePlayerInput({
   changeSpeedBy,
   quickSave,
   quickLoad,
+  requestRandomGame,
+  cancelRandomGame,
 }: UsePlayerInputOptions) {
   const actionsRef = useRef({
     shortcutsEnabled,
     inGameMenuOpen,
     confirmingExit,
+    confirmingRandom,
     toggleInGameMenu,
     handleResume,
     handleRequestExit,
@@ -76,6 +84,8 @@ export function usePlayerInput({
     changeSpeedBy,
     quickSave,
     quickLoad,
+    requestRandomGame,
+    cancelRandomGame,
   })
 
   useEffect(() => {
@@ -83,6 +93,7 @@ export function usePlayerInput({
       shortcutsEnabled,
       inGameMenuOpen,
       confirmingExit,
+      confirmingRandom,
       toggleInGameMenu,
       handleResume,
       handleRequestExit,
@@ -92,24 +103,38 @@ export function usePlayerInput({
       changeSpeedBy,
       quickSave,
       quickLoad,
+      requestRandomGame,
+      cancelRandomGame,
     }
   })
 
-  // Keyboard navigation & F1 menu toggle
+  // Keyboard navigation, F1 menu toggle & F2 random game
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const actions = actionsRef.current
       if (e.key === "F1") {
         e.preventDefault()
         e.stopPropagation()
-        actions.toggleInGameMenu()
+        if (!actions.confirmingRandom) actions.toggleInGameMenu()
       } else if (e.key === "Escape") {
         e.preventDefault()
         e.stopPropagation()
         if (actions.inGameMenuOpen) actions.handleResume()
+        else if (actions.confirmingRandom) actions.cancelRandomGame()
         else if (actions.confirmingExit) actions.handleResume()
         else actions.handleRequestExit()
-      } else if ((e.key === "f" || e.key === "F") && !actions.confirmingExit && !actions.inGameMenuOpen) {
+      } else if (e.key === "F2") {
+        e.preventDefault()
+        e.stopPropagation()
+        if (e.repeat || !actions.shortcutsEnabled || actions.inGameMenuOpen || actions.confirmingExit) return
+        if (actions.confirmingRandom) actions.cancelRandomGame()
+        else actions.requestRandomGame()
+      } else if (
+        (e.key === "f" || e.key === "F") &&
+        !actions.confirmingExit &&
+        !actions.confirmingRandom &&
+        !actions.inGameMenuOpen
+      ) {
         if (e.target instanceof HTMLElement && e.target.closest("input, textarea")) return
         e.preventDefault()
         actions.toggleFullscreen()
@@ -133,7 +158,9 @@ export function usePlayerInput({
 
     const shortcutsAllowed = (e: KeyboardEvent) => {
       const actions = actionsRef.current
-      if (!actions.shortcutsEnabled || actions.inGameMenuOpen || actions.confirmingExit) return false
+      if (!actions.shortcutsEnabled || actions.inGameMenuOpen || actions.confirmingExit || actions.confirmingRandom) {
+        return false
+      }
       if (e.ctrlKey || e.metaKey || e.altKey) return false
       return !(e.target instanceof HTMLElement && e.target.closest("input, textarea"))
     }
@@ -161,7 +188,9 @@ export function usePlayerInput({
         keyHold = null
         const actions = actionsRef.current
         actions.setHold(clearHold(action))
-        if (!actions.shortcutsEnabled || actions.inGameMenuOpen || actions.confirmingExit) return
+        if (!actions.shortcutsEnabled || actions.inGameMenuOpen || actions.confirmingExit || actions.confirmingRandom) {
+          return
+        }
         if (action === "quick-save") actions.quickSave()
         else actions.quickLoad()
       }, QUICK_STATE_HOLD_MS)
@@ -191,6 +220,7 @@ export function usePlayerInput({
         actions.shortcutsEnabled &&
         !actions.inGameMenuOpen &&
         !actions.confirmingExit &&
+        !actions.confirmingRandom &&
         !isBoundToGame(button)
       )
     }
@@ -215,14 +245,15 @@ export function usePlayerInput({
       (action) => {
         const actions = actionsRef.current
         if (action === "IN_GAME_MENU") {
-          actions.toggleInGameMenu()
+          if (!actions.confirmingRandom) actions.toggleInGameMenu()
           return
         }
-        if (actions.inGameMenuOpen || actions.confirmingExit) return
+        if (actions.inGameMenuOpen || actions.confirmingExit || actions.confirmingRandom) return
         if (action === "MENU") actions.handleRequestExit()
         else if (action === "TOGGLE_FULLSCREEN") actions.toggleFullscreen()
         else if (action === "SPEED_UP" && shortcutsAllowed(GAMEPAD_RT)) actions.changeSpeedBy(1)
         else if (action === "SPEED_DOWN" && shortcutsAllowed(GAMEPAD_LT)) actions.changeSpeedBy(-1)
+        else if (action === "RANDOM_GAME" && shortcutsAllowed(GAMEPAD_L3)) actions.requestRandomGame()
       },
       {
         holds: [
@@ -231,7 +262,7 @@ export function usePlayerInput({
             durationMs: EXIT_HOLD_MS,
             onStart: (startedAt) => {
               const actions = actionsRef.current
-              if (actions.confirmingExit || actions.inGameMenuOpen) return
+              if (actions.confirmingExit || actions.confirmingRandom || actions.inGameMenuOpen) return
               actions.setHold({ action: "exit", startedAt, durationMs: EXIT_HOLD_MS, inputLabel: "SELECT" })
             },
             onCancel: () => actionsRef.current.setHold(clearHold("exit")),

@@ -163,6 +163,8 @@ export class GamepadDispatcher {
     this.checkSinglePress(pad, 5, "PAGE_DOWN")
     this.checkSinglePress(pad, 6, "SPEED_DOWN")
     this.checkSinglePress(pad, 7, "SPEED_UP")
+    // 10: L3 (Left Stick click) - single press plays a random game
+    this.checkSinglePress(pad, 10, "RANDOM_GAME")
     // 11: R3 (Right Stick click) - single press toggles fullscreen for gamepad
     this.checkSinglePress(pad, 11, "TOGGLE_FULLSCREEN")
     this.checkSinglePress(pad, 16, "MENU")

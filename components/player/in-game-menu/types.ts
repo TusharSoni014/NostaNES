@@ -27,4 +27,6 @@ export type InGameMenuProps = {
   onSelectShader?: (shader: GameShader) => void
   cheats: EmulatorCheatControls
   onOpenTouchLayout?: () => void
+  onRandomGame?: () => void
+  randomAvailable?: boolean
 }

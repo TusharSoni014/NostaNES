@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from "react"
 import { AnimatePresence, motion } from "motion/react"
-import { Settings2Icon } from "lucide-react"
+import { Settings2Icon, ShuffleIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { FavoriteButton } from "@/components/ui/favorite-button"
 import { Kbd, GamepadKey } from "@/components/ui/kbd"
@@ -41,6 +41,8 @@ export const InGameMenu = ({
   onSelectShader,
   cheats,
   onOpenTouchLayout,
+  onRandomGame,
+  randomAvailable = false,
 }: InGameMenuProps) => {
   const inputMode = useInputMode()
   const isMobile = useIsMobile()
@@ -155,6 +157,24 @@ export const InGameMenu = ({
                       ) : null}
                       <FavoriteButton game={game} variant="button" className="h-8 sm:h-10 px-3 sm:px-4 text-xs sm:text-sm" showLabel />
                     </div>
+                    {onRandomGame ? (
+                      <Button
+                        variant="outline"
+                        onClick={onRandomGame}
+                        disabled={!randomAvailable}
+                        className="mt-3 sm:mt-4 gap-2 h-8 sm:h-10 px-4 text-xs sm:text-sm border-amber-500/40 text-amber-300 hover:bg-amber-950/40 hover:text-white"
+                      >
+                        <ShuffleIcon className="size-3.5 text-amber-400" />
+                        <span>{randomAvailable ? "Play Random Game" : "Every game is in your history"}</span>
+                        {randomAvailable && !isMobile ? (
+                          inputMode === "gamepad" || gamepadConnected ? (
+                            <GamepadKey button="L3" size="sm" />
+                          ) : (
+                            <Kbd size="sm">F2</Kbd>
+                          )
+                        ) : null}
+                      </Button>
+                    ) : null}
                   </div>
                 ) : activeTab === "save" ? (
                   <InGameMenuSavePanel
