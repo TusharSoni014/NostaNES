@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from "motion/react"
 import { Settings2Icon, ShuffleIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { FavoriteButton } from "@/components/ui/favorite-button"
-import { Kbd, GamepadKey } from "@/components/ui/kbd"
+import { Kbd, GamepadKey, KeyBadge } from "@/components/ui/kbd"
 import { InGameMenuCheatsPanel } from "./in-game-menu-cheats-panel"
 import { InGameMenuControlsPanel } from "./in-game-menu-controls-panel"
 import { InGameMenuExitPanel } from "./in-game-menu-exit-panel"
@@ -168,7 +168,7 @@ export const InGameMenu = ({
                         <span>{randomAvailable ? "Play Random Game" : "Every game is in your history"}</span>
                         {randomAvailable && !isMobile ? (
                           inputMode === "gamepad" || gamepadConnected ? (
-                            <GamepadKey button="L3" size="sm" />
+                            <KeyBadge combo="LB + RB" mode="gamepad" size="sm" />
                           ) : (
                             <Kbd size="sm">F2</Kbd>
                           )

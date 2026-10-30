@@ -34,7 +34,6 @@ const GAMEPAD_RB = 5
 const GAMEPAD_LT = 6
 const GAMEPAD_RT = 7
 const GAMEPAD_SELECT = 8
-const GAMEPAD_L3 = 10
 
 // Keyboard shortcuts, by KeyboardEvent.code. A key the player has bound to a NES
 // button never reaches these: useKeyboardControls stops it first.
@@ -253,7 +252,9 @@ export function usePlayerInput({
         else if (action === "TOGGLE_FULLSCREEN") actions.toggleFullscreen()
         else if (action === "SPEED_UP" && shortcutsAllowed(GAMEPAD_RT)) actions.changeSpeedBy(1)
         else if (action === "SPEED_DOWN" && shortcutsAllowed(GAMEPAD_LT)) actions.changeSpeedBy(-1)
-        else if (action === "RANDOM_GAME" && shortcutsAllowed(GAMEPAD_L3)) actions.requestRandomGame()
+        else if (action === "RANDOM_GAME" && shortcutsAllowed(GAMEPAD_LB) && shortcutsAllowed(GAMEPAD_RB)) {
+          actions.requestRandomGame()
+        }
       },
       {
         holds: [

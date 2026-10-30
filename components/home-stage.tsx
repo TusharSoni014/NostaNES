@@ -38,7 +38,7 @@ import {
   InputGroupAddon,
   InputGroupInput,
 } from "@/components/ui/input-group";
-import { Kbd, GamepadKey } from "@/components/ui/kbd";
+import { Kbd, GamepadKey, KeyBadge } from "@/components/ui/kbd";
 import { ResponsiveConfirmDialog } from "@/components/ui/responsive-confirm-dialog";
 import { Separator } from "@/components/ui/separator";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -543,7 +543,7 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
               <span>Random</span>
               {!isMobile ? (
                 inputMode === "gamepad" ? (
-                  <GamepadKey button="L3" size="sm" />
+                  <KeyBadge combo="LB + RB" mode="gamepad" size="sm" />
                 ) : (
                   <Kbd size="sm">F2</Kbd>
                 )

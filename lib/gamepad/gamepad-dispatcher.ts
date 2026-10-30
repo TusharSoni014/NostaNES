@@ -30,6 +30,8 @@ type HoldProgress = {
 }
 
 const HOLD_ANNOUNCE_DELAY_MS = 250
+const LB_BUTTON = 4
+const RB_BUTTON = 5
 const SELECT_BUTTON = 8
 const START_BUTTON = 9
 
@@ -49,6 +51,9 @@ export class GamepadDispatcher {
   private pressStartTime = 0
   private nextRepeatTime = 0
   private selectStartComboActive = false
+  // Stays true from the LB+RB combo until both shoulders are released, so the
+  // shoulders' own page / hold actions don't also fire.
+  private shoulderComboActive = false
   private isPolling = false
 
   constructor(callback: GamepadListenerCallback, options?: GamepadDispatcherOptions) {
@@ -84,6 +89,11 @@ export class GamepadDispatcher {
       const isPressed = typeof btn === "object" ? btn.pressed : Boolean(btn)
       if (isPressed) this.buttonPreviousStates.set(idx, true)
     })
+    // A shoulder already held when polling starts (e.g. the LB+RB that just
+    // launched a random game) must not fire the combo or a page jump again.
+    if (this.isButtonPressed(pad, LB_BUTTON) || this.isButtonPressed(pad, RB_BUTTON)) {
+      this.shoulderComboActive = true
+    }
     this.frameId = requestAnimationFrame(this.tick)
   }
 
@@ -120,6 +130,7 @@ export class GamepadDispatcher {
     this.nextRepeatTime = 0
     this.cancelHolds()
     this.selectStartComboActive = false
+    this.shoulderComboActive = false
   }
 
   private tick = (time: number): void => {
@@ -152,6 +163,29 @@ export class GamepadDispatcher {
     this.buttonPreviousStates.set(btnIndex, isPressed)
   }
 
+  private checkRelease = (pad: Gamepad, btnIndex: number, action: GamepadAction | null): void => {
+    const isPressed = this.isButtonPressed(pad, btnIndex)
+    const wasPressed = this.buttonPreviousStates.get(btnIndex) ?? false
+    if (!isPressed && wasPressed && action) this.callback(action)
+    this.buttonPreviousStates.set(btnIndex, isPressed)
+  }
+
+  private processShoulderCombo = (pad: Gamepad): boolean => {
+    const isLbPressed = this.isButtonPressed(pad, LB_BUTTON)
+    const isRbPressed = this.isButtonPressed(pad, RB_BUTTON)
+
+    if (isLbPressed && isRbPressed) {
+      if (!this.shoulderComboActive) {
+        this.shoulderComboActive = true
+        this.callback("RANDOM_GAME")
+      }
+      return true
+    } else if (!isLbPressed && !isRbPressed) {
+      this.shoulderComboActive = false
+    }
+    return this.shoulderComboActive
+  }
+
   private processButtons = (pad: Gamepad, time: number): void => {
     // Simultaneous Select (8) and Start (9) toggles in-game menu
     const isCombo = this.processSelectStartCombo(pad)
@@ -159,12 +193,15 @@ export class GamepadDispatcher {
     this.checkSinglePress(pad, 0, "CONFIRM")
     this.checkSinglePress(pad, 1, "CANCEL")
     this.checkSinglePress(pad, 3, "TOGGLE_CONTROLS")
-    this.checkSinglePress(pad, 4, "PAGE_UP")
-    this.checkSinglePress(pad, 5, "PAGE_DOWN")
+    // LB + RB together plays a random game. On their own, LB / RB page on release
+    // so that pressing both doesn't jump a page first.
+    const shoulderComboWasActive = this.shoulderComboActive
+    const isShoulderCombo = this.processShoulderCombo(pad)
+    const suppressShoulders = shoulderComboWasActive || isShoulderCombo
+    this.checkRelease(pad, LB_BUTTON, suppressShoulders ? null : "PAGE_UP")
+    this.checkRelease(pad, RB_BUTTON, suppressShoulders ? null : "PAGE_DOWN")
     this.checkSinglePress(pad, 6, "SPEED_DOWN")
     this.checkSinglePress(pad, 7, "SPEED_UP")
-    // 10: L3 (Left Stick click) - single press plays a random game
-    this.checkSinglePress(pad, 10, "RANDOM_GAME")
     // 11: R3 (Right Stick click) - single press toggles fullscreen for gamepad
     this.checkSinglePress(pad, 11, "TOGGLE_FULLSCREEN")
     this.checkSinglePress(pad, 16, "MENU")
@@ -201,10 +238,12 @@ export class GamepadDispatcher {
   private processHolds = (pad: Gamepad, time: number): void => {
     for (const hold of this.holds) {
       // Select is also half of the Select+Start menu combo, which cancels its hold
-      // until both buttons are released.
+      // until both buttons are released. LB / RB are likewise half of the LB+RB combo.
+      const isShoulder = hold.button === LB_BUTTON || hold.button === RB_BUTTON
       const blocked =
-        hold.button === SELECT_BUTTON &&
-        (this.selectStartComboActive || this.isButtonPressed(pad, START_BUTTON))
+        (hold.button === SELECT_BUTTON &&
+          (this.selectStartComboActive || this.isButtonPressed(pad, START_BUTTON))) ||
+        (isShoulder && this.shoulderComboActive)
       const isPressed = !blocked && this.isButtonPressed(pad, hold.button)
       let progress = this.holdProgress.get(hold.button)
 
