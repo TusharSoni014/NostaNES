@@ -2,6 +2,15 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { QueryProvider } from "@/components/query-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import {
+  GITHUB_URL,
+  SITE_DESCRIPTION,
+  SITE_NAME,
+  SITE_TITLE,
+  SITE_URL,
+  THEME_COLOR,
+  safeJsonLd,
+} from "@/lib/site";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -14,73 +23,57 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://nostanes.com";
-
+// The Open Graph image comes from app/opengraph-image.tsx (built once at
+// build time); X/Twitter falls back to it, so no image is listed here.
 export const metadata: Metadata = {
-  metadataBase: new URL(siteUrl),
+  metadataBase: new URL(SITE_URL),
   title: {
-    default: "NostaNES - Online NES Super Game Collection & Web Emulator",
-    template: "%s | NostaNES - Online NES Super Game Collection",
+    default: SITE_TITLE,
+    template: `%s | ${SITE_NAME}`,
   },
-  description:
-    "Play your favorite classic 8-bit NES games online in your browser. NostaNES is the ultimate online NES super game collection with gamepad support, CRT shaders, save states, cheats, and mobile touch controls.",
+  description: SITE_DESCRIPTION,
   keywords: [
-    "NES games online",
-    "online NES super game collection",
-    "play NES online",
+    "play NES games online",
+    "NES emulator online",
+    "NES games in browser",
+    "free NES games",
+    "retro games online",
+    "8-bit games online",
     "Nintendo Entertainment System emulator",
-    "retro 8-bit games browser",
-    "classic NES games",
-    "NES web emulator",
-    "play retro games online",
-    "NES save states cheats",
-    "free NES games online",
-    "retro gaming online",
-    "play 8-bit games",
+    "NES emulator with cheats",
+    "NES save states",
+    "play NES with gamepad",
+    "NES emulator for mobile",
+    "2 player NES online",
   ],
-  applicationName: "NostaNES",
+  applicationName: SITE_NAME,
   category: "Games",
-  classification: "Retro Gaming, NES Emulator, Classic Games",
-  authors: [{ name: "NostaNES" }],
-  creator: "NostaNES",
-  publisher: "NostaNES",
+  authors: [{ name: "Tushar Soni", url: GITHUB_URL }],
+  creator: "Tushar Soni",
+  publisher: SITE_NAME,
+  alternates: { canonical: "/" },
   icons: {
-    icon: [
-      { url: "/nostanes.png" },
-      { url: "/favicon.ico" },
-    ],
-    apple: [
-      { url: "/nostanes.png" },
-    ],
+    icon: [{ url: "/favicon.ico" }, { url: "/nostanes.png", type: "image/png" }],
+    apple: [{ url: "/nostanes.png" }],
   },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "NostaNES",
+    title: SITE_NAME,
   },
+  formatDetection: { telephone: false },
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: siteUrl,
-    siteName: "NostaNES",
-    title: "NostaNES - Online NES Super Game Collection & Web Emulator",
-    description:
-      "Play classic 8-bit NES games online right in your browser. NostaNES features an authentic NES super game collection with gamepad support, CRT filters, save states, cheats, and mobile touch controls.",
-    images: [
-      {
-        url: "/nostanes.png",
-        width: 1200,
-        height: 630,
-        alt: "NostaNES - Online NES Super Game Collection",
-      },
-    ],
+    url: "/",
+    siteName: SITE_NAME,
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
   },
   twitter: {
     card: "summary_large_image",
-    title: "NostaNES - Online NES Super Game Collection & Web Emulator",
-    description:
-      "Play classic 8-bit NES games online right in your browser. Features save states, cheat codes, gamepad support, and mobile touch controls.",
-    images: ["/nostanes.png"],
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
   },
   robots: {
     index: true,
@@ -96,7 +89,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#071422",
+  themeColor: THEME_COLOR,
   colorScheme: "dark",
   width: "device-width",
   initialScale: 1,
@@ -105,30 +98,59 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
+// One linked graph, like lazee.dev: other pages point back to these @ids.
 const structuredData = {
   "@context": "https://schema.org",
-  "@type": "WebApplication",
-  name: "NostaNES",
-  alternateName: "Online NES Super Game Collection",
-  applicationCategory: "GameApplication",
-  operatingSystem: "Any",
-  browserRequirements: "Requires JavaScript and HTML5 / WebAssembly support",
-  description:
-    "Play your favorite classic 8-bit NES games online in your browser. NostaNES is the ultimate online NES super game collection featuring save states, cheat codes, gamepad support, CRT shaders, and responsive mobile touch controls.",
-  image: `${siteUrl}/nostanes.png`,
-  url: siteUrl,
-  offers: {
-    "@type": "Offer",
-    price: "0",
-    priceCurrency: "USD",
-  },
-  featureList: [
-    "Online NES Super Game Collection",
-    "In-browser NES WebAssembly emulation",
-    "Save and load game states",
-    "Libretro NES cheat codes support",
-    "CRT scanline and retro display shaders",
-    "USB / Bluetooth gamepad and mobile touch D-Pad controls",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": `${SITE_URL}/#website`,
+      url: SITE_URL,
+      name: SITE_NAME,
+      description: SITE_DESCRIPTION,
+      inLanguage: "en",
+      publisher: { "@id": `${SITE_URL}/#organization` },
+    },
+    {
+      "@type": "Organization",
+      "@id": `${SITE_URL}/#organization`,
+      name: SITE_NAME,
+      url: SITE_URL,
+      logo: {
+        "@type": "ImageObject",
+        url: `${SITE_URL}/nostanes.png`,
+        width: 1254,
+        height: 1254,
+      },
+      founder: { "@type": "Person", name: "Tushar Soni", url: GITHUB_URL },
+      sameAs: [GITHUB_URL],
+    },
+    {
+      "@type": "WebApplication",
+      "@id": `${SITE_URL}/#app`,
+      name: SITE_NAME,
+      url: SITE_URL,
+      description: SITE_DESCRIPTION,
+      image: `${SITE_URL}/opengraph-image`,
+      applicationCategory: "GameApplication",
+      applicationSubCategory: "Emulator",
+      operatingSystem: "Any (web browser)",
+      browserRequirements: "Requires JavaScript and WebAssembly",
+      isAccessibleForFree: true,
+      offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+      publisher: { "@id": `${SITE_URL}/#organization` },
+      featureList: [
+        "Play NES games in the browser with no download",
+        "Load your own .nes or .zip ROM, kept on your device",
+        "10 save slots plus a quick save per game",
+        "Game Genie and raw memory cheats",
+        "CRT scanline, arcade and LCD display filters",
+        "Xbox, PlayStation, Switch Pro and generic gamepads",
+        "Custom touch controls for phones and tablets",
+        "2-player local play",
+        "Fast forward up to 10x",
+      ],
+    },
   ],
 };
 
@@ -142,7 +164,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <head>
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+          dangerouslySetInnerHTML={{ __html: safeJsonLd(structuredData) }}
         />
       </head>
       <body className="h-dvh overflow-hidden">

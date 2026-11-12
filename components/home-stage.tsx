@@ -14,6 +14,7 @@ import {
   XIcon,
 } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import { BootScreen } from "@/components/boot-screen";
 import { Clock } from "@/components/clock";
 import { ControlsDialog } from "@/components/controls-dialog";
@@ -475,7 +476,9 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
               className="h-8 w-auto sm:h-10 object-contain shrink-0 select-none"
             />
             <div className="flex flex-col">
-              <p className="text-sm sm:text-base font-semibold tracking-wide leading-tight">NostaNES</p>
+              <h1 className="text-sm sm:text-base font-semibold tracking-wide leading-tight">
+                NostaNES<span className="sr-only">: play NES games online in your browser</span>
+              </h1>
               <p className="text-xs text-muted-foreground hidden sm:block">
                 Nintendo Entertainment System
               </p>
@@ -934,6 +937,22 @@ export function HomeStage({ initialGames }: HomeStageProps = {}) {
             ) : null}
           </AnimatePresence>
         </main>
+
+        {/* Screen-reader and crawler summary of the console UI, with links to
+            the static info pages. It describes what is on screen, nothing more. */}
+        <div className="sr-only">
+          <p>
+            NostaNES is a free NES emulator that runs in your browser. Pick a
+            cartridge from the library or load your own .nes or .zip ROM, then
+            play with a keyboard, a gamepad or touch controls. Each game has 10
+            save slots and a quick save, cheats and CRT display filters.
+          </p>
+          <nav aria-label="About NostaNES">
+            <Link href="/about" tabIndex={-1}>About NostaNES</Link>
+            <Link href="/controls" tabIndex={-1}>Controls</Link>
+            <Link href="/faq" tabIndex={-1}>FAQ</Link>
+          </nav>
+        </div>
 
         <footer className="flex shrink-0 items-center justify-between gap-3 px-4 pb-5 sm:px-10">
           <div className="hidden flex-wrap items-center gap-3 text-sm text-muted-foreground sm:flex">

@@ -5,14 +5,11 @@ import {
 } from "@aws-sdk/client-s3"
 import { isSafeNesFile, parseRomFile, type Game } from "@/lib/games"
 
-const R2_ENDPOINT =
-  process.env.R2_ENDPOINT ||
-  "https://a0597f9fc5b865c8086918a23f47f44b.r2.cloudflarestorage.com"
-const R2_ACCESS_KEY_ID =
-  process.env.R2_ACCESS_KEY_ID || "fccef914d73aad55329c2e853bc989c9"
-const R2_SECRET_ACCESS_KEY =
-  process.env.R2_SECRET_ACCESS_KEY ||
-  "5505aa933d65d545be29344c7bc0f2b32f53776e48c1b8bbd58fa2a1bccfb6d4"
+// Credentials come only from the environment (.env.local locally, Project
+// Settings > Environment Variables on Vercel). Never hardcode them: the repo is public.
+const R2_ENDPOINT = process.env.R2_ENDPOINT ?? ""
+const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID ?? ""
+const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY ?? ""
 const R2_BUCKET_NAME = process.env.R2_BUCKET_NAME || "nostanes"
 
 const KNOWN_YEARS: { match: string; year: number }[] = [
@@ -71,6 +68,11 @@ function guessYear(filename: string): number | undefined {
 }
 
 export function getR2Client(): S3Client {
+  if (!R2_ENDPOINT || !R2_ACCESS_KEY_ID || !R2_SECRET_ACCESS_KEY) {
+    throw new Error(
+      "R2 is not configured: set R2_ENDPOINT, R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY",
+    )
+  }
   return new S3Client({
     region: "auto",
     endpoint: R2_ENDPOINT,
