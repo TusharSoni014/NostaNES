@@ -41,6 +41,16 @@ const STATE_OPERATION_TIMEOUT_MS = 8000
 const LOAD_STALL_TIMEOUT_MS = 15000
 const MAX_LOAD_RETRIES = 2
 
+// The NES core is served from this site (public/cores) rather than Nostalgist's
+// default public CDN, whose route from some networks took over 30 seconds for the
+// core and left players on the loader. The version folder keeps the one-year
+// cache header (next.config.ts) safe across upgrades.
+const CORE_BASE_PATH = "/cores/fceumm-v1.22.2"
+
+function coreFileUrl(core: string, extension: "js" | "wasm") {
+  return new URL(`${CORE_BASE_PATH}/${core}_libretro.${extension}`, window.location.origin).href
+}
+
 function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
   return new Promise((resolve) => {
     const timer = setTimeout(() => resolve(fallback), ms)
@@ -371,6 +381,8 @@ export function useNostalgistEmulator({
           element: canvas,
           signal: controller.signal,
           cache: game.customRom ? { core: true, rom: false } : { core: true, rom: true },
+          resolveCoreJs: (core) => coreFileUrl(String(core), "js"),
+          resolveCoreWasm: (core) => coreFileUrl(String(core), "wasm"),
           size: { width: 256 * effectiveScale, height: 240 * effectiveScale },
           style: { width: "100%", height: "100%", display: "block", backgroundColor: "black" },
           retroarchConfig: getRetroArchInputConfig(isMobileDevice),
